@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/components/DossierInfoSection.tsx
+// resources/js/pages/dossiers/components/DossierInfoSection.tsx - VERSION REFACTORISÉE
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,77 +8,32 @@ import {
     MapPin, Calendar, Building2, Hash, User, Clock, AlertCircle
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-
-interface DossierInfoSectionProps {
-    dossier: {
-        id: number;
-        nom_dossier: string;
-        numero_ouverture?: string;
-        numero_ouverture_display?: string;
-        circonscription: string;
-        type_commune: string;
-        commune: string;
-        fokontany: string;
-        date_descente_debut: string;
-        date_descente_fin: string;
-        date_ouverture: string;
-        date_fermeture?: string | null;
-        motif_fermeture?: string | null;
-        is_closed: boolean;
-        can_close?: boolean;
-        can_modify?: boolean;
-        closedBy?: {
-            name: string;
-        };
-    };
-    demandeursCount: number;
-    proprietesCount: number;
-    onCloseToggle: () => void;
-}
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { DossierInfoSectionProps } from '../types';
+import { formatDate, getDurationInDays, getDaysSince, getDisabledDocumentButtonTooltip } from '../helpers';
 
 export default function DossierInfoSection({ 
     dossier, 
     demandeursCount, 
     proprietesCount,
-    onCloseToggle 
+    onCloseToggle,
+    permissions
 }: DossierInfoSectionProps) {
     
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric'
-        });
-    };
+    const duration = getDurationInDays(dossier.date_descente_debut, dossier.date_descente_fin);
+    const daysSinceOpening = getDaysSince(dossier.date_ouverture);
 
-    const getDurationInDays = () => {
-        const start = new Date(dossier.date_descente_debut);
-        const end = new Date(dossier.date_descente_fin);
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    };
-
-    const getDaysSinceOpening = () => {
-        const opening = new Date(dossier.date_ouverture);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - opening.getTime());
-        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    };
-
-    const duration = getDurationInDays();
-    const daysSinceOpening = getDaysSinceOpening();
-
-    // ✅ DEBUG : Afficher la valeur de can_close
-    console.log('🔍 DossierInfoSection - Permissions:', {
-        can_close: dossier.can_close,
-        can_modify: dossier.can_modify,
-        is_closed: dossier.is_closed
-    });
+    // ✅ Obtenir le tooltip pour le bouton documents désactivé
+    const documentButtonTooltip = !permissions.canGenerateDocuments 
+        ? getDisabledDocumentButtonTooltip(dossier, { 
+            role: 'user_district', // Ce sera passé dynamiquement via les props
+            id_district: dossier.id_district 
+          })
+        : '';
 
     return (
         <div className="space-y-6">
-            {/* ✅ Alerte si dossier fermé - AVEC BOUTON ROUVRIR */}
+            {/* ✅ Alerte si dossier fermé */}
             {dossier.is_closed && (
                 <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                     <div className="flex items-start gap-3">
@@ -103,8 +58,8 @@ export default function DossierInfoSection({
                                     </p>
                                 </div>
                                 
-                                {/* ✅ BOUTON ROUVRIR dans l'alerte - TOUJOURS VISIBLE si permission */}
-                                {dossier.can_close === true && (
+                                {/* Bouton Rouvrir dans l'alerte */}
+                                {permissions.canClose && (
                                     <Button
                                         variant="default"
                                         size="sm"
@@ -152,10 +107,10 @@ export default function DossierInfoSection({
                             </div>
                         </div>
 
-                        {/* ✅ Boutons d'action - AVEC BOUTON FERMER/ROUVRIR PRINCIPAL */}
+                        {/* ✅ Boutons d'action avec gestion des permissions */}
                         <div className="flex flex-wrap gap-2">
-                            {/* ✅ BOUTON FERMER/ROUVRIR - VISIBLE SI PERMISSION */}
-                            {dossier.can_close === true && (
+                            {/* Bouton Fermer/Rouvrir */}
+                            {permissions.canClose && (
                                 <Button
                                     variant={dossier.is_closed ? "default" : "destructive"}
                                     size="sm"
@@ -189,28 +144,65 @@ export default function DossierInfoSection({
                                 </Button>
                             )}
 
-                            {/* Modifier - désactivé si fermé sans permission */}
-                            {dossier.can_modify && (
-                                <Button 
-                                    asChild 
-                                    variant="outline" 
-                                    size="sm"
-                                    disabled={dossier.is_closed && !dossier.can_close}
-                                >
+                            {/* Modifier */}
+                            {permissions.canEdit ? (
+                                <Button asChild variant="outline" size="sm">
                                     <Link href={`/dossiers/${dossier.id}/edit`}>
                                         <Pencil className="mr-2 h-4 w-4" />
                                         Modifier
                                     </Link>
                                 </Button>
+                            ) : dossier.can_modify !== false && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    disabled
+                                                >
+                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                    Modifier
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Dossier fermé - Modification interdite</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             )}
                             
-                            {/* Documents - toujours accessible */}
-                            <Button asChild size="sm" variant="outline">
-                                <Link href={`/documents/generate/${dossier.id}`}>
-                                    <FileOutput className="mr-2 h-4 w-4" />
-                                    Documents
-                                </Link>
-                            </Button>
+                            {/* ✅ Documents - avec tooltip si désactivé */}
+                            {permissions.canGenerateDocuments ? (
+                                <Button asChild size="sm" variant="outline">
+                                    <Link href={`/documents/generate/${dossier.id}`}>
+                                        <FileOutput className="mr-2 h-4 w-4" />
+                                        Documents
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline"
+                                                    disabled
+                                                >
+                                                    <FileOutput className="mr-2 h-4 w-4" />
+                                                    Documents
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs">
+                                            <p>{documentButtonTooltip}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
                             
                             {/* Résumé - toujours accessible */}
                             <Button asChild size="sm" variant="outline">

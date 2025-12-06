@@ -1,5 +1,5 @@
-// documents/types.ts
-import { Demandeur, Propriete } from '@/types';
+// documents/types.ts - VERSION FINALE CORRIGÉE
+import { Demandeur, Propriete, Dossier } from '@/types';
 
 /**
  * ✅ Document généré (référence dans la base)
@@ -41,7 +41,8 @@ export interface RecuPaiement {
 }
 
 /**
- * ✅ Demandeur lié avec son ordre dans la hiérarchie
+ * ✅ CORRECTION CRITIQUE : total_prix garanti non-null
+ * L'Observer backend garantit toujours un prix calculé
  */
 export interface DemandeurLie {
     id: number;
@@ -52,11 +53,11 @@ export interface DemandeurLie {
     ordre: number;
     status: 'active' | 'archive';
     status_consort: boolean;
-    total_prix: number;
+    total_prix: number; // ✅ Garanti par Observer
 }
 
 /**
- * ✅ NOUVEAU : Demandeur avec ordre pour affichage
+ * ✅ Demandeur avec ordre pour affichage
  */
 export interface DemandeurWithOrder {
     demandeur: Demandeur;
@@ -67,14 +68,18 @@ export interface DemandeurWithOrder {
 }
 
 /**
- * ✅ Propriété avec ses demandeurs associés
+ * ✅ CORRECTION : Propriété avec relation dossier explicite
+ * Pour éviter l'erreur "Property 'dossier' does not exist"
  */
 export interface ProprieteWithDemandeurs extends Propriete {
     demandeurs_lies: DemandeurLie[];
     has_recu?: boolean;
     dernier_recu?: RecuPaiement | null;
     
-    // ✅ Documents générés
+    // ✅ AJOUT : Relation dossier explicite
+    dossier: Dossier;
+    
+    // Documents générés
     document_recu?: DocumentGenere | null;
     document_adv?: DocumentGenere | null;
     document_csf?: DocumentGenere | null;
@@ -115,4 +120,16 @@ export interface DocumentConfig {
     buttonText: string;
     requiresRecu: boolean;
     requiresDemandeur: boolean;
+}
+
+/**
+ * ✅ NOUVEAU : Stats pour les cartes
+ */
+export interface DocumentStats {
+    totalProprietes: number;
+    proprietesAvecRecu: number;
+    proprietesAvecAdv: number;
+    totalDemandeurs: number;
+    demandeursAvecCsf: number;
+    requisitionsGenerees: number;
 }

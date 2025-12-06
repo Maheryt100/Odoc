@@ -131,61 +131,104 @@ class DossierController extends Controller
     }
 
     /**
-     * ✅ CORRECTION MAJEURE : Affichage avec permissions correctement calculées
+     * ✅ CORRECTION CRITIQUE : Utiliser apostrophes simples pour PostgreSQL
+     * 
+     * PROBLÈME : PostgreSQL n'accepte que les apostrophes simples 'active'
+     * ERREUR PRÉCÉDENTE : status = "active" (guillemets doubles)
      */
     public function show($id)
     {
-        /** @var User $user */
-        $user = Auth::user();
-
-        // ✅ Optimisation 1 : Charger uniquement les colonnes nécessaires
-        $dossier = Dossier::select([
-            'id', 'nom_dossier', 'type_commune', 'commune', 'fokontany',
-            'circonscription', 'date_descente_debut', 'date_descente_fin',
-            'date_ouverture', 'date_fermeture', 'closed_by', 'motif_fermeture',
-            'numero_ouverture', 'id_district', 'id_user', 'created_at', 'updated_at'
-        ])
-        ->with([
-            // ✅ Optimisation 2 : Eager loading avec sélection ciblée
-            'demandeurs:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin,date_naissance,lieu_naissance,date_delivrance,lieu_delivrance,domiciliation,occupation,nom_mere,telephone',
-            
-            'proprietes' => function($q) {
-                $q->select('id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 'situation', 'proprietaire', 'dep_vol', 'numero_dep_vol', 'id_dossier')
-                    ->with([
-                        'demandes' => function($subq) {
-                            $subq->select('id', 'id_propriete', 'id_demandeur', 'status', 'ordre', 'total_prix')
-                                ->where('status', 'active') // ✅ Filtrer directement
-                                ->with('demandeur:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin')
-                                ->orderBy('ordre');
-                        }
-                    ]);
+        // ✅ EAGER LOADING OPTIMISÉ avec SQL PostgreSQL correct
+        $dossier = Dossier::with([
+            // ✅ CORRECTION : Apostrophes simples au lieu de guillemets doubles
+            'demandeurs' => function($q) {
+                $q->select([
+                    'demandeurs.*',
+                    // ✅ CORRECTION CRITIQUE : Utiliser apostrophes simples
+                    DB::raw("(SELECT COUNT(*) FROM demander WHERE demander.id_demandeur = demandeurs.id AND demander.status = 'active') as proprietes_actives_count"),
+                    DB::raw("(SELECT COUNT(*) FROM demander WHERE demander.id_demandeur = demandeurs.id AND demander.status = 'archive') as proprietes_acquises_count")
+                ]);
             },
             
-            'district:id,nom_district,id_region',
+            'proprietes' => function($q) {
+                $q->with([
+                    'demandes' => function($query) {
+                        // ✅ CORRECTION : Apostrophes simples
+                        $query->where('status', 'active')
+                            ->orWhere('status', 'archive')
+                            ->orderBy('status', 'asc')
+                            ->orderBy('ordre', 'asc')
+                            ->with('demandeur:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin');
+                    }
+                ])
+                ->orderBy('lot');
+            },
+            
+            'district:id,nom_district,edilitaire,agricole,forestiere,touristique',
+            'user:id,name,email',
             'closedBy:id,name'
         ])
+        ->withCount('piecesJointes')
         ->findOrFail($id);
 
-        // ✅ Optimisation 3 : Calcul des permissions en une seule fois
+        /** @var User $user */
+        $user = Auth::user();
         $permissions = [
-            'canEdit' => $this->canModifyDossier($dossier, $user),
-            'canDelete' => $this->canDeleteDossier($dossier, $user),
-            'canClose' => $this->canCloseDossier($dossier, $user),
-            'canArchive' => $this->canModifyDossier($dossier, $user),
-            'canExport' => $this->canExportDossier($dossier, $user),
+            'canEdit' => $dossier->canBeModifiedBy($user),
+            'canDelete' => $user->isSuperAdmin() || 
+                        ($user->isAdminDistrict() && $user->id_district === $dossier->id_district),
+            'canClose' => $dossier->canBeClosedBy($user),
+            'canArchive' => !$dossier->is_closed,
+            'canExport' => true,
+            'canGenerateDocuments' => !$dossier->is_closed
         ];
 
-        // ✅ Optimisation 4 : Append des accessors seulement si nécessaire
-        $dossier->proprietes->each(function ($propriete) {
-            $propriete->makeVisible(['is_archived', 'is_empty', 'has_active_demandes', 'status_label']);
+        // ✅ ENRICHIR DEMANDEURS côté serveur
+        $enrichedDemandeurs = $dossier->demandeurs->map(function($demandeur) {
+            $attrs = $demandeur->toArray();
+            
+            // ✅ Calculer hasProperty côté serveur
+            $attrs['hasProperty'] = isset($attrs['proprietes_actives_count']) && $attrs['proprietes_actives_count'] > 0
+                                || isset($attrs['proprietes_acquises_count']) && $attrs['proprietes_acquises_count'] > 0;
+            
+            return $attrs;
         });
 
-        $dossierArray = $dossier->toArray();
-        $dossierArray['can_close'] = $permissions['canClose'];
-        $dossierArray['can_modify'] = $permissions['canEdit'];
-
         return Inertia::render('dossiers/Show', [
-            'dossier' => $dossierArray,
+            'dossier' => [
+                'id' => $dossier->id,
+                'nom_dossier' => $dossier->nom_dossier,
+                'numero_ouverture' => $dossier->numero_ouverture,
+                'numero_ouverture_display' => $dossier->numero_ouverture_display,
+                'type_commune' => $dossier->type_commune,
+                'commune' => $dossier->commune,
+                'fokontany' => $dossier->fokontany,
+                'circonscription' => $dossier->circonscription,
+                'date_descente_debut' => $dossier->date_descente_debut,
+                'date_descente_fin' => $dossier->date_descente_fin,
+                'date_ouverture' => $dossier->date_ouverture,
+                'date_fermeture' => $dossier->date_fermeture,
+                'closed_by' => $dossier->closed_by,
+                'motif_fermeture' => $dossier->motif_fermeture,
+                'id_district' => $dossier->id_district,
+                'id_user' => $dossier->id_user,
+                'is_closed' => $dossier->is_closed,
+                'is_open' => $dossier->is_open,
+                'status_label' => $dossier->status_label,
+                'demandeurs_count' => $dossier->demandeurs_count,
+                'proprietes_count' => $dossier->proprietes_count,
+                'pieces_jointes_count' => $dossier->pieces_jointes_count,
+                
+                // Relations
+                'demandeurs' => $enrichedDemandeurs,
+                'proprietes' => $dossier->proprietes,
+                'district' => $dossier->district,
+                'user' => $dossier->user,
+                'closedBy' => $dossier->closedBy,
+                
+                'created_at' => $dossier->created_at,
+                'updated_at' => $dossier->updated_at,
+            ],
             'permissions' => $permissions,
         ]);
     }
@@ -271,40 +314,48 @@ class DossierController extends Controller
     }
 
     /**
-     * ✅ CORRECTION CRITIQUE : Méthode canCloseDossier
-     * RÈGLE : Seuls super_admin, central_user ET admin_district peuvent fermer/rouvrir
+     * ✅ RÈGLE : Fermeture/réouverture
+     * AUTORISÉS : super_admin, central_user, admin_district (leur district)
      */
     private function canCloseDossier(Dossier $dossier, User $user): bool
     {
-        // ✅ Super admin peut TOUJOURS fermer/rouvrir (tous districts)
         if ($user->isSuperAdmin()) {
-            Log::info('✅ canClose: super_admin détecté', ['user_id' => $user->id]);
             return true;
         }
 
-        // ✅ Central user peut fermer/rouvrir (tous districts)
         if ($user->isCentralUser()) {
-            Log::info('✅ canClose: central_user détecté', ['user_id' => $user->id]);
             return true;
         }
 
-        // ✅ Admin district peut fermer/rouvrir DANS SON DISTRICT
         if ($user->isAdminDistrict()) {
-            $canClose = $user->id_district === $dossier->id_district;
-            Log::info('🔍 canClose: admin_district', [
-                'user_id' => $user->id,
-                'user_district' => $user->id_district,
-                'dossier_district' => $dossier->id_district,
-                'result' => $canClose
-            ]);
-            return $canClose;
+            return $user->id_district === $dossier->id_district;
         }
 
-        // ❌ User district NE PEUT PAS fermer
-        Log::info('❌ canClose: rôle non autorisé', [
-            'user_id' => $user->id,
-            'role' => $user->role
-        ]);
+        return false;
+    }
+
+    /**
+     * ✅ NOUVELLE MÉTHODE : Génération de documents sur dossiers fermés
+     * AUTORISÉS : super_admin, admin_district (leur district uniquement)
+     * INTERDITS : central_user, user_district
+     */
+    private function canGenerateDocuments(Dossier $dossier, User $user): bool
+    {
+        // Si le dossier est ouvert, tout le monde peut générer (selon permissions habituelles)
+        if (!$dossier->is_closed) {
+            return true;
+        }
+
+        // Dossier fermé : seulement super_admin et admin_district
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($user->isAdminDistrict()) {
+            return $user->id_district === $dossier->id_district;
+        }
+
+        // central_user et user_district NE PEUVENT PAS
         return false;
     }
 

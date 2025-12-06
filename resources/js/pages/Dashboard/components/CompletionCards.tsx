@@ -22,71 +22,68 @@ export function CompletionCards({ completion }: Props) {
         : 0;
 
     return (
-        <>
-            {/* Card 1: Taux de complétion global */}
-            <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Taux de complétion</CardTitle>
-                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-baseline gap-2 mb-3">
-                        <div className="text-2xl font-bold">{completion.taux}%</div>
-                        <Badge 
-                            variant={completion.taux >= 80 ? "default" : "secondary"}
-                            className={cn(
-                                "text-xs",
-                                completion.taux >= 80 && "bg-green-500 hover:bg-green-600"
-                            )}
-                        >
-                            {completion.taux >= 80 ? "Excellent" : 
-                             completion.taux >= 60 ? "Bon" : 
-                             completion.taux >= 40 ? "Moyen" : "Faible"}
-                        </Badge>
+        <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Taux de complétion</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                {/* Taux de complétion global */}
+                <div className="flex items-baseline gap-2 mb-3">
+                    <div className="text-2xl font-bold">{completion.taux}%</div>
+                    <Badge 
+                        variant={completion.taux >= 80 ? "default" : "secondary"}
+                        className={cn(
+                            "text-xs",
+                            completion.taux >= 80 && "bg-green-500 hover:bg-green-600"
+                        )}
+                    >
+                        {completion.taux >= 80 ? "Excellent" : 
+                         completion.taux >= 60 ? "Bon" : 
+                         completion.taux >= 40 ? "Moyen" : "Faible"}
+                    </Badge>
+                </div>
+                
+                {/* Barre de progression */}
+                <div className="w-full bg-muted rounded-full h-2.5 mb-3">
+                    <div 
+                        className={cn(
+                            "h-2.5 rounded-full transition-all duration-500",
+                            completion.taux >= 80 ? "bg-gradient-to-r from-green-500 to-emerald-500" :
+                            completion.taux >= 60 ? "bg-gradient-to-r from-blue-500 to-cyan-500" :
+                            completion.taux >= 40 ? "bg-gradient-to-r from-yellow-500 to-orange-500" :
+                            "bg-gradient-to-r from-orange-500 to-red-500"
+                        )}
+                        style={{ width: `${completion.taux}%` }}
+                    />
+                </div>
+                
+                {/* Statistiques globales */}
+                <div className="grid grid-cols-2 gap-2 text-xs mb-4">
+                    <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                        <span className="text-muted-foreground">Complets:</span>
+                        <span className="font-semibold">{completion.dossiers_complets}</span>
                     </div>
-                    
-                    {/* Barre de progression */}
-                    <div className="w-full bg-muted rounded-full h-2.5 mb-3">
-                        <div 
-                            className={cn(
-                                "h-2.5 rounded-full transition-all duration-500",
-                                completion.taux >= 80 ? "bg-gradient-to-r from-green-500 to-emerald-500" :
-                                completion.taux >= 60 ? "bg-gradient-to-r from-blue-500 to-cyan-500" :
-                                completion.taux >= 40 ? "bg-gradient-to-r from-yellow-500 to-orange-500" :
-                                "bg-gradient-to-r from-orange-500 to-red-500"
-                            )}
-                            style={{ width: `${completion.taux}%` }}
-                        />
+                    <div className="flex items-center gap-1.5">
+                        <AlertTriangle className="h-3 w-3 text-orange-600" />
+                        <span className="text-muted-foreground">Incomplets:</span>
+                        <span className="font-semibold">{completion.dossiers_incomplets}</span>
                     </div>
-                    
-                    {/* Statistiques */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3 w-3 text-green-600" />
-                            <span className="text-muted-foreground">Complets:</span>
-                            <span className="font-semibold">{completion.dossiers_complets}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <AlertTriangle className="h-3 w-3 text-orange-600" />
-                            <span className="text-muted-foreground">Incomplets:</span>
-                            <span className="font-semibold">{completion.dossiers_incomplets}</span>
-                        </div>
-                    </div>
-                    
-                    <p className="text-xs text-muted-foreground mt-2 pt-2 border-t">
-                        Total: {completion.total_dossiers} dossier(s)
-                    </p>
-                </CardContent>
-            </Card>
+                </div>
+                
+                <p className="text-xs text-muted-foreground mb-4 pb-3 border-b">
+                    Total: {completion.total_dossiers} dossier(s)
+                </p>
 
-            {/* Card 2: Données incomplètes (Propriétés & Demandeurs) */}
-            <Card className="hover:shadow-lg transition-shadow border-amber-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Données incomplètes</CardTitle>
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
+                {/* Section Données incomplètes */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <span className="text-sm font-medium">Données incomplètes</span>
+                    </div>
+
+                    <div className="space-y-2">
                         {/* Propriétés incomplètes */}
                         <div className="flex items-center justify-between p-2 bg-amber-50 rounded-lg">
                             <div className="flex items-center gap-2">
@@ -116,7 +113,7 @@ export function CompletionCards({ completion }: Props) {
                         </div>
                     </div>
                     
-                    <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+                    <p className="text-xs text-muted-foreground mt-2 pt-2 border-t">
                         Champs obligatoires manquants
                     </p>
                     
@@ -126,8 +123,8 @@ export function CompletionCards({ completion }: Props) {
                             <span className="text-xs font-medium">À compléter prioritairement</span>
                         </div>
                     )}
-                </CardContent>
-            </Card>
-        </>
+                </div>
+            </CardContent>
+        </Card>
     );
 }

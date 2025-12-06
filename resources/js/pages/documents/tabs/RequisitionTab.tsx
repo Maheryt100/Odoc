@@ -166,35 +166,49 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                 
                                 return (
                                     <SelectItem key={prop.id} value={String(prop.id)}>
-                                        <div className="flex flex-col gap-2 py-2">
-                                            <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="flex items-center gap-6 py-2 whitespace-nowrap">
+
+                                            {/* LOT + TITRE + BADGES */}
+                                            <div className="flex items-center gap-2">
                                                 <Badge variant="outline" className="font-mono">
                                                     Lot {prop.lot}
                                                 </Badge>
+
                                                 <Badge variant="outline">
                                                     TN°{prop.titre}
                                                 </Badge>
+
                                                 {hasDoc && (
                                                     <Badge variant="default" className="bg-green-500 text-xs">
                                                         <FileCheck className="h-3 w-3 mr-1" />
                                                         Généré
                                                     </Badge>
                                                 )}
+
                                                 {!isComplete && (
                                                     <Badge variant="destructive" className="text-xs">
                                                         <AlertCircle className="h-3 w-3 mr-1" />
                                                         Incomplet
                                                     </Badge>
                                                 )}
-                                                <Badge variant={prop.type_operation === 'morcellement' ? 'default' : 'secondary'} className="text-xs">
-                                                    {prop.type_operation === 'morcellement' ? 'Morcellement' : 'Immatriculation'}
+
+                                                <Badge
+                                                    variant={prop.type_operation === "morcellement" ? "default" : "secondary"}
+                                                    className="text-xs"
+                                                >
+                                                    {prop.type_operation === "morcellement"
+                                                        ? "Morcellement"
+                                                        : "Immatriculation"}
                                                 </Badge>
                                             </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {prop.proprietaire} - {prop.dossier?.commune || 'Commune N/A'}
+
+                                            {/* PROPRIÉTAIRE + COMMUNE */}
+                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                {prop.proprietaire} – {prop.dossier?.commune || "Commune N/A"}
                                             </div>
                                         </div>
                                     </SelectItem>
+
                                 );
                             })}
                         </SelectContent>

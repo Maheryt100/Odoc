@@ -1,39 +1,15 @@
-// users/types.ts
-export type UserRole = 'super_admin' | 'central_user' | 'admin_district' | 'user_district';
+// ============================================
+// 📦 pages/users/types.ts - RÉEXPORT DU TYPE GLOBAL
+// ============================================
+
+// ✅ CORRECTION CRITIQUE : Réexporter User depuis le fichier central
+export type { User, UserRole, District } from '@/types';
+
+// ============================================
+// 🔍 TYPES SPÉCIFIQUES AU MODULE USERS
+// ============================================
 
 export type UserStatus = 'active' | 'inactive';
-
-export interface District {
-    id: number;
-    nom_district: string;
-    region: {
-        id: number;
-        nom_region: string;
-        province?: {
-            id: number;
-            nom_province: string;
-        };
-    };
-}
-
-export interface User {
-    id: number;
-    name: string;
-    email: string;
-    role: UserRole;
-    role_name: string;
-    status: boolean;
-    district: {
-        id: number;
-        nom_district: string;
-        nom_region: string;
-        nom_province: string;
-    } | null;
-    location: string;
-    created_at: string;
-    can_edit: boolean;
-    can_delete: boolean;
-}
 
 export interface UserStats {
     total: number;
@@ -46,14 +22,14 @@ export interface UserStats {
 }
 
 export interface UserFilters {
-    role?: UserRole | string; // Permet string pour compatibilité avec les selects
+    role?: string;
     district?: string;
-    status?: UserStatus | string; // Permet string pour compatibilité avec les selects
+    status?: string;
     search?: string;
 }
 
 export interface PaginatedUsers {
-    data: User[];
+    data: import('@/types').User[];
     current_page: number;
     last_page: number;
     per_page: number;
@@ -63,12 +39,15 @@ export interface PaginatedUsers {
 export interface UsersIndexProps {
     users: PaginatedUsers;
     stats: UserStats;
-    districts: District[];
+    districts: import('@/types').District[];
     filters: UserFilters;
-    roles: Record<UserRole, string>;
+    roles: Record<import('@/types').UserRole, string>;
 }
 
-// Types pour les permissions personnalisées
+// ============================================
+// 🔐 PERMISSIONS
+// ============================================
+
 export interface UserPermission {
     id: number;
     id_user: number;

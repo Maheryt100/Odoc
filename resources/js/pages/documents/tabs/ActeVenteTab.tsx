@@ -22,6 +22,8 @@ import {
     getDemandeurPrincipal,
     getConsorts
 } from '../validation';
+import { safePrix, formatMontant } from '../helpers';
+
 
 interface ActeVenteTabProps {
     proprietes: ProprieteWithDemandeurs[];
@@ -78,7 +80,9 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
     );
 
     // ✅ Formater la contenance
-    const formatContenance = (contenance: number): string => {
+    const formatContenance = (contenance: number | undefined): string => {
+        if (!contenance) return '-';
+        
         const hectares = Math.floor(contenance / 10000);
         const reste = contenance % 10000;
         const ares = Math.floor(reste / 100);
@@ -198,7 +202,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                         onValueChange={setSelectedPropriete}
                         disabled={isGenerating}
                     >
-                        <SelectTrigger className="h-auto min-h-[60px]">
+                        <SelectTrigger className="h-auto min-h-[50px]">
                             <SelectValue placeholder="Sélectionner une propriété" />
                         </SelectTrigger>
                         <SelectContent>
@@ -209,7 +213,9 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                 
                                 return (
                                     <SelectItem key={prop.id} value={String(prop.id)}>
-                                        <div className="flex flex-col gap-2 py-2">
+                                        <div className="flex items-center gap-4 py-2">
+
+                                            {/* Badges (Lot, Titre, Reçu, ADV, Incomplet) */}
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <Badge variant="outline" className="font-mono">
                                                     Lot {prop.lot}
@@ -217,6 +223,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                                 <Badge variant="outline">
                                                     TN°{prop.titre}
                                                 </Badge>
+
                                                 {prop.document_recu && (
                                                     <Badge variant="default" className="bg-green-500 text-xs">
                                                         <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -236,22 +243,31 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                                     </Badge>
                                                 )}
                                             </div>
+
+                                            {/* Principal & consorts sur la même ligne */}
                                             {principal && (
-                                                <div className="text-xs text-muted-foreground space-y-1">
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+
                                                     <div className="flex items-center gap-1">
                                                         <Crown className="h-3 w-3 text-yellow-500" />
-                                                        <span className="font-medium">Principal:</span> {principal.nom} {principal.prenom}
+                                                        <span className="font-medium">
+                                                            {principal.nom} {principal.prenom}
+                                                        </span>
                                                     </div>
+
                                                     {consortsList.length > 0 && (
-                                                        <div className="flex items-center gap-1 ml-4">
+                                                        <div className="flex items-center gap-1">
                                                             <Users className="h-3 w-3" />
-                                                            <span>+ {consortsList.length} consort{consortsList.length > 1 ? 's' : ''}</span>
+                                                            <span>
+                                                                + {consortsList.length} consort{consortsList.length > 1 ? 's' : ''}
+                                                            </span>
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
                                     </SelectItem>
+
                                 );
                             })}
                         </SelectContent>
@@ -349,8 +365,8 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                         <Coins className="h-4 w-4 text-violet-600" />
                                         <span className="text-muted-foreground">Prix total:</span>
                                         <span className="font-semibold">
-                                            {new Intl.NumberFormat('fr-FR').format(
-                                                selectedProprieteData.demandeurs_lies[0]?.total_prix || 0
+                                            {formatMontant(
+                                                safePrix(selectedProprieteData.demandeurs_lies?.[0]?.total_prix)
                                             )} Ar
                                         </span>
                                     </div>

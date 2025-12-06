@@ -49,6 +49,9 @@ class Demandeur extends Model
     protected $appends = [
         'nom_complet',
         'is_incomplete',
+        'hasProperty', // ✅ AJOUT
+        // 'proprietes_actives_count', // ✅ AJOUT
+        // 'proprietes_acquises_count', // ✅ AJOUT
     ];
 
     // ============ RELATIONS ============
@@ -151,7 +154,43 @@ class Demandeur extends Model
         });
     }
 
+    /**
+     * ✅ NOUVEAU : Scope avec stats chargées
+     */
+    public function scopeWithStats($query)
+    {
+        return $query->withCount([
+            'demandesActives as proprietes_actives_count',
+            'demandesArchivees as proprietes_acquises_count'
+        ]);
+    }
+
+
     // ============ MÉTHODES MÉTIER ============
+
+    /**
+     * ✅ CORRECTION : Vérifier si a des propriétés (actives OU archivées)
+     */
+    public function getHasPropertyAttribute(): bool
+    {
+        return $this->demandes()->exists();
+    }
+
+    /**
+     * ✅ NOUVEAU : Nombre de propriétés actives
+     */
+    public function getProprietes_actives_countAttribute(): int
+    {
+        return $this->demandesActives()->count();
+    }
+
+    /**
+     * ✅ NOUVEAU : Nombre de propriétés acquises (archivées)
+     */
+    public function getProprietes_acquises_countAttribute(): int
+    {
+        return $this->demandesArchivees()->count();
+    }
 
     /**
      * ✅ Vérifier si peut être dissocié d'une propriété
@@ -205,9 +244,17 @@ class Demandeur extends Model
             'proprietes_acquises' => $this->getAcquiredProprietesCount(),
             'is_complete' => !$this->is_incomplete,
             'total_dossiers' => $this->dossiers()->count(),
+            'hasProperty' => $this->hasProperty,
         ];
     }
-
+    public function getProprietesActivesCountAttribute()
+    {
+        return $this->attributes['proprietes_actives_count'] ?? 0;
+    }
+    public function getProprietesAcquisesCountAttribute()
+    {
+        return $this->attributes['proprietes_acquises_count'] ?? 0;
+    }
     /**
      * ✅ Formater pour export
      */
@@ -226,6 +273,8 @@ class Demandeur extends Model
             'Téléphone' => $this->telephone ?? '',
             'Situation' => $this->situation_familiale ?? '',
             'Nb propriétés' => $this->getActiveProprietesCount(),
+            'Nb propriétés actives' => $this->proprietes_actives_count,
+            'Nb propriétés acquises' => $this->proprietes_acquises_count,
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Demandeur;
 use App\Models\Demander;
+use App\Models\Dossier;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -163,22 +164,16 @@ class ValidateDemandeurAction
     }
 
     /**
-     * ✅ Valider la modification
+     * ✅ CORRECTION : Valider la modification (version simplifiée)
      */
     private function validateModify($demandeur, $dossierId, $request, $next)
     {
-        // Vérifier si le dossier est fermé (si applicable)
+        // ✅ CAS 1 : Si on modifie depuis un dossier spécifique
         if ($dossierId) {
-            $propriete = $demandeur->demandes()
-                ->whereHas('propriete', function($q) use ($dossierId) {
-                    $q->where('id_dossier', $dossierId)
-                      ->whereHas('dossier', function($sub) {
-                          $sub->where('is_closed', true);
-                      });
-                })
-                ->first();
-
-            if ($propriete) {
+            $dossier = Dossier::find($dossierId);
+            
+            // Vérifier si le dossier est fermé
+            if ($dossier && $dossier->is_closed) {
                 Log::warning('Modification bloquée : dossier fermé', [
                     'demandeur_id' => $demandeur->id,
                     'dossier_id' => $dossierId
@@ -189,7 +184,29 @@ class ValidateDemandeurAction
                 );
             }
         }
+        
+        // ✅ CAS 2 : Vérifier si le demandeur a des propriétés archivées (optionnel)
+        $hasArchivedProperties = Demander::where('id_demandeur', $demandeur->id)
+            ->where('status', 'archive')
+            ->exists();
+        
+        if ($hasArchivedProperties) {
+            Log::info('Modification avec propriétés archivées', [
+                'demandeur_id' => $demandeur->id,
+                'warning' => 'Le demandeur a des propriétés acquises (archivées)'
+            ]);
+            
+            // ⚠️ CHOIX : Bloquer ou autoriser avec avertissement ?
+            // Option A : Bloquer complètement
+            // return back()->with('error', 
+            //     "❌ Ce demandeur a des propriétés acquises. Modification interdite."
+            // );
+            
+            // Option B : Autoriser avec avertissement (RECOMMANDÉ)
+            // (L'avertissement sera affiché dans le formulaire)
+        }
 
+        // ✅ Autoriser la modification
         return $next($request);
     }
 }

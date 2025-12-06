@@ -1,5 +1,6 @@
-// pages/proprietes/create.tsx
-// Composant de formulaire de création/édition de propriété
+// ============================================
+// 📦 pages/proprietes/create.tsx - VERSION CORRIGÉE
+// ============================================
 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -7,65 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Trash2, FileText, MapPin, Calendar, Layers, Shield } from 'lucide-react';
-import type { Nature, Vocation, TypeOperation } from '@/types';
+import type { TypeOperation, Nature, Vocation } from '@/types'; // ✅ Import types
 
-export interface ProprieteFormData {
-    lot: string;
-    type_operation: TypeOperation;
-    nature: Nature | '';
-    vocation: Vocation | '';
-    proprietaire: string;
-    situation: string;
-    propriete_mere: string;
-    titre_mere: string;
-    titre: string;
-    contenance: string;
-    charge: string;
-    numero_FN: string;
-    numero_requisition: string;
-    date_requisition: string;
-    date_inscription: string;
-    dep_vol: string;
-    numero_dep_vol: string;
-    [key: string]: any;
-}
+import type { ProprieteFormProps, ProprieteFormData } from '@/pages/proprietes/types';
+import { CHARGE_OPTIONS, EMPTY_PROPRIETE } from '@/pages/proprietes/types';
 
-export interface ProprieteFormProps {
-    data: ProprieteFormData;
-    onChange: (field: keyof ProprieteFormData, value: string) => void;
-    onRemove?: () => void;
-    index?: number;
-    showRemoveButton?: boolean;
-    selectedCharges?: string[];
-    onChargeChange?: (charge: string, checked: boolean) => void;
-}
-
-const chargeOptions = [
-    "Voie(s) publique(s)",
-    "Voie(s) d'accès",
-    "Servitude(s)",
-    "Aucune"
-];
-
-export const emptyPropriete: ProprieteFormData = {
-    lot: '',
-    type_operation: 'immatriculation',
-    nature: '',
-    vocation: '',
-    proprietaire: '',
-    situation: '',
-    propriete_mere: '',
-    titre_mere: '',
-    titre: '',
-    contenance: '',
-    charge: '',
-    numero_FN: '',
-    numero_requisition: '',
-    date_requisition: '',
-    date_inscription: '',
-    dep_vol: '',
-    numero_dep_vol: ''
-};
+export type { ProprieteFormData };
+export const emptyPropriete = EMPTY_PROPRIETE;
 
 export default function ProprieteCreate({
     data,
@@ -107,7 +56,7 @@ export default function ProprieteCreate({
                     <Label className="text-sm font-medium text-red-600">Type d'opération *</Label>
                     <Select
                         value={data.type_operation}
-                        onValueChange={(value) => onChange('type_operation', value as TypeOperation)}
+                        onValueChange={(value: string) => onChange('type_operation', value)} // ✅ Simplifié
                     >
                         <SelectTrigger className="w-full md:w-[280px] h-11">
                             <SelectValue />
@@ -140,7 +89,10 @@ export default function ProprieteCreate({
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-medium text-red-600">Nature *</Label>
-                        <Select value={data.nature} onValueChange={(e) => onChange('nature', e)}>
+                        <Select 
+                            value={data.nature} 
+                            onValueChange={(value: string) => onChange('nature', value)} // ✅ Simplifié
+                        >
                             <SelectTrigger className="h-11">
                                 <SelectValue placeholder="Sélectionner" />
                             </SelectTrigger>
@@ -153,7 +105,10 @@ export default function ProprieteCreate({
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-medium text-red-600">Vocation *</Label>
-                        <Select value={data.vocation} onValueChange={(e) => onChange('vocation', e)}>
+                        <Select 
+                            value={data.vocation} 
+                            onValueChange={(value: string) => onChange('vocation', value)} // ✅ Simplifié
+                        >
                             <SelectTrigger className="h-11">
                                 <SelectValue placeholder="Sélectionner" />
                             </SelectTrigger>
@@ -261,7 +216,7 @@ export default function ProprieteCreate({
                     <div className="space-y-2">
                         <Label className="text-sm font-medium">Charges</Label>
                         <div className="space-y-2 mt-2 p-3 border rounded-md bg-muted/30">
-                            {chargeOptions.map((charge) => (
+                            {CHARGE_OPTIONS.map((charge) => (
                                 <div key={charge} className="flex items-center space-x-2">
                                     <Checkbox
                                         id={`charge-${charge}-${index || 0}`}

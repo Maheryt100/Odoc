@@ -1,35 +1,25 @@
-// pages/demandeurs/index.tsx
-import { useState } from 'react';
-import { Link } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
+// pages/demandeurs/index.tsx - ✅ VERSION CORRIGÉE
+
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Archive, Users } from 'lucide-react';
-import type { Demandeur, Dossier, Propriete } from '@/types';
-import DemandeurDetailDialog from '@/pages/demandeurs/components/DemandeurDetailDialog';
+import { Users } from 'lucide-react';
+import DemandeurDetailDialog from './components/DemandeurDetailDialog';
 import ProprieteDetailDialog from '@/pages/proprietes/components/ProprieteDetailDialog';
+import DemandeurFilters from './components/DemandeurFilters';
+import DemandeurTable from './components/DemandeurTable';
+import type { 
+    DemandeursIndexProps, 
+    DemandeurWithProperty, 
+    FiltreStatutType, 
+    TriType 
+} from './types';
+import type { Propriete as GlobalPropriete, Propriete } from '@/types';
+import { 
+    filterDemandeursByStatus, 
+    sortDemandeurs, 
+    matchesSearch 
+} from './helpers';
 
-interface DemandeurWithProperty extends Demandeur {
-    hasProperty: boolean;
-}
-
-interface DemandeursIndexProps {
-    demandeurs: DemandeurWithProperty[];
-    dossier: Dossier;
-    proprietes: Propriete[];
-    onDeleteDemandeur: (id: number) => void;
-    onSelectDemandeur?: (demandeur: DemandeurWithProperty) => void;
-    onLinkPropriete?: (demandeur: Demandeur) => void;
-    isDemandeurIncomplete: (dem: Demandeur) => boolean;
-    onDissociate: (
-        demandeurId: number,
-        proprieteId: number,
-        demandeurNom: string,
-        proprieteLot: string,
-        type: 'from-demandeur' | 'from-propriete'
-    ) => void;
-}
 
 export default function DemandeursIndex({
     demandeurs,
@@ -40,59 +30,56 @@ export default function DemandeursIndex({
     onLinkPropriete,
     onDissociate
 }: DemandeursIndexProps) {
+    
+    // STATE
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
-
+    const [filtreStatut, setFiltreStatut] = useState<FiltreStatutType>('tous');
+    const [recherche, setRecherche] = useState('');
+    const [tri, setTri] = useState<TriType>('date');
+    const [ordre, setOrdre] = useState<'asc' | 'desc'>('desc');
+    
     const [selectedDemandeur, setSelectedDemandeur] = useState<DemandeurWithProperty | null>(null);
     const [showDemandeurDetail, setShowDemandeurDetail] = useState(false);
     const [selectedPropriete, setSelectedPropriete] = useState<Propriete | null>(null);
     const [showProprieteDetail, setShowProprieteDetail] = useState(false);
 
-    const getAcquiredLotsForDemandeur = (demandeurId: number): string[] => {
-        const lots: string[] = [];
-        proprietes.forEach(prop => {
-            if (prop.is_archived === true) {
-                const isLinked = prop.demandeurs?.some((d: any) => d.id === demandeurId);
-                if (isLinked) {
-                    lots.push(prop.lot);
-                }
-            }
-        });
-        return lots;
-    };
+    const itemsPerPage = 10;
 
-    // ✅ Handler pour ouvrir le dialogue de demandeur
-    const handleSelectDemandeur = (demandeur: DemandeurWithProperty) => {
-        // ✅ Fermer l'autre dialogue d'abord
-        setShowProprieteDetail(false);
+    // FILTRAGE ET TRI
+    const demandeursFiltres = useMemo(() => {
+        let filtered = filterDemandeursByStatus(demandeurs, filtreStatut);
         
-        // ✅ Ouvrir après un court délai
+        if (recherche) {
+            filtered = filtered.filter(d => matchesSearch(d, recherche));
+        }
+        
+        filtered = sortDemandeurs(filtered, tri, ordre);
+        
+        return filtered;
+    }, [demandeurs, filtreStatut, recherche, tri, ordre]);
+
+    // HANDLERS - DIALOGUES
+    const handleSelectDemandeur = (demandeur: DemandeurWithProperty) => {
+        setShowProprieteDetail(false);
         setTimeout(() => {
             setSelectedDemandeur(demandeur);
             setShowDemandeurDetail(true);
         }, 100);
     };
 
-    // ✅ Handler pour ouvrir le dialogue de propriété
-    const handleSelectProprieteFromDemandeur = (propriete: Propriete) => {
-        // ✅ Fermer le dialogue de demandeur d'abord
+    // ✅ Handler avec type global explicite
+    const handleSelectProprieteFromDemandeur = (propriete: GlobalPropriete) => {
         setShowDemandeurDetail(false);
-        
-        // ✅ Ouvrir le dialogue de propriété après un délai
         setTimeout(() => {
             setSelectedPropriete(propriete);
             setShowProprieteDetail(true);
         }, 100);
     };
 
-    // ✅ Handler pour revenir au dialogue de demandeur
-    const handleSelectDemandeurFromPropriete = (demandeur: Demandeur) => {
-        // ✅ Fermer le dialogue de propriété d'abord
+    const handleSelectDemandeurFromPropriete = (demandeur: any) => {
         setShowProprieteDetail(false);
-        
         const demandeurWithProperty = demandeurs.find(d => d.id === demandeur.id);
         if (demandeurWithProperty) {
-            // ✅ Ouvrir le dialogue de demandeur après un délai
             setTimeout(() => {
                 setSelectedDemandeur(demandeurWithProperty);
                 setShowDemandeurDetail(true);
@@ -100,7 +87,6 @@ export default function DemandeursIndex({
         }
     };
 
-    // ✅ Fermeture propre du dialogue de demandeur
     const handleCloseDemandeurDialog = (open: boolean) => {
         setShowDemandeurDetail(open);
         if (!open) {
@@ -110,7 +96,6 @@ export default function DemandeursIndex({
         }
     };
 
-    // ✅ Fermeture propre du dialogue de propriété
     const handleCloseProprieteDialog = (open: boolean) => {
         setShowProprieteDetail(open);
         if (!open) {
@@ -120,52 +105,35 @@ export default function DemandeursIndex({
         }
     };
 
-    const paginateDemandeurs = () => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return demandeurs.slice(startIndex, endIndex);
+    // HANDLERS - FILTRES
+    const handleFiltreStatutChange = (newFiltre: FiltreStatutType) => {
+        setFiltreStatut(newFiltre);
+        setCurrentPage(1);
     };
 
-    const totalPages = Math.ceil(demandeurs.length / itemsPerPage);
-
-    const Pagination = () => {
-        if (totalPages <= 1) return null;
-
-        return (
-            <div className="flex justify-center items-center gap-2 mt-6 pb-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                >
-                    Précédent
-                </Button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                    >
-                        {page}
-                    </Button>
-                ))}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                >
-                    Suivant
-                </Button>
-            </div>
-        );
+    const handleRechercheChange = (newRecherche: string) => {
+        setRecherche(newRecherche);
+        setCurrentPage(1);
     };
 
+    const handleTriChange = (newTri: TriType) => {
+        setTri(newTri);
+        setCurrentPage(1);
+    };
+
+    const handleOrdreToggle = () => {
+        setOrdre(prev => prev === 'asc' ? 'desc' : 'asc');
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+
+    // RENDER
     return (
         <>
             <Card className="border-0 shadow-lg">
+                {/* Header */}
                 <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 p-6 border-b">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -175,11 +143,13 @@ export default function DemandeursIndex({
                             <div>
                                 <h2 className="text-xl font-bold">Demandeurs</h2>
                                 <p className="text-sm text-muted-foreground">
-                                    {demandeurs.length} demandeur{demandeurs.length > 1 ? 's' : ''} enregistré{demandeurs.length > 1 ? 's' : ''}
+                                    {demandeursFiltres.length} demandeur{demandeursFiltres.length > 1 ? 's' : ''} 
+                                    {demandeursFiltres.length !== demandeurs.length && ` sur ${demandeurs.length}`}
                                 </p>
                             </div>
                         </div>
                         
+                        {/* Légende */}
                         <div className="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
@@ -193,132 +163,39 @@ export default function DemandeursIndex({
                     </div>
                 </div>
 
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted/30 border-b">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nom complet</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">CIN</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Domiciliation</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Situation</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Téléphone</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
-                                    <th className="px-6 py-4 w-[50px]"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {demandeurs.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
-                                            <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-                                            <p className="font-medium text-muted-foreground">Aucun demandeur enregistré</p>
-                                            <p className="text-sm text-muted-foreground/70 mt-1">Commencez par ajouter un demandeur au dossier</p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    paginateDemandeurs().map((demandeur) => {
-                                        const isIncomplete = isDemandeurIncomplete(demandeur);
-                                        const acquiredLots = getAcquiredLotsForDemandeur(demandeur.id);
-                                        const hasAcquiredProperty = acquiredLots.length > 0;
-                                        
-                                        const rowClass = isIncomplete 
-                                            ? 'hover:bg-red-50/50 dark:hover:bg-red-950/20 bg-red-50/30 dark:bg-red-950/10 cursor-pointer transition-colors' 
-                                            : demandeur.hasProperty
-                                                ? 'hover:bg-muted/30 cursor-pointer transition-colors'
-                                                : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20 bg-amber-50/30 dark:bg-amber-950/10 cursor-pointer transition-colors';
-                                        
-                                        return (
-                                            <tr 
-                                                key={demandeur.id} 
-                                                className={rowClass} 
-                                                onClick={() => handleSelectDemandeur(demandeur)}
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium">
-                                                            {demandeur.titre_demandeur} {demandeur.nom_demandeur} {demandeur.prenom_demandeur}
-                                                        </span>
-                                                        {isIncomplete && <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
-                                                        {hasAcquiredProperty && (
-                                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400">
-                                                                <Archive className="mr-1 h-3 w-3" />
-                                                                Lot(s): {acquiredLots.join(', ')}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 font-mono text-sm text-muted-foreground">
-                                                    {demandeur.cin}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted-foreground">
-                                                    {demandeur.domiciliation || '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted-foreground">
-                                                    {demandeur.situation_familiale || '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted-foreground">
-                                                    {demandeur.telephone || '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <Badge variant={demandeur.hasProperty ? "default" : "secondary"} className="text-xs">
-                                                        {demandeur.hasProperty ? "Avec propriété" : "Sans propriété"}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <Ellipsis className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => handleSelectDemandeur(demandeur)}>
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                Voir détails
-                                                            </DropdownMenuItem>
-                                                            {!dossier.is_closed && (
-                                                                <>
-                                                                    <DropdownMenuItem asChild>
-                                                                        <Link
-                                                                            href={route('demandeurs.edit', {
-                                                                                id_dossier: dossier.id,
-                                                                                id_demandeur: demandeur.id
-                                                                            })}
-                                                                            className="flex items-center"
-                                                                        >
-                                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                                            Modifier
-                                                                        </Link>
-                                                                    </DropdownMenuItem>
-                                                                    {proprietes.length > 0 && (
-                                                                        <DropdownMenuItem onClick={() => onLinkPropriete?.(demandeur)}>
-                                                                            <Link2 className="mr-2 h-4 w-4" />
-                                                                            Lier à une propriété
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-red-500" onClick={() => onDeleteDemandeur(demandeur.id)}>
-                                                                <Trash className="mr-2 h-4 w-4" />
-                                                                Supprimer
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    <Pagination />
+                <CardContent className="p-6">
+                    {/* Filtres */}
+                    <DemandeurFilters
+                        filtreStatut={filtreStatut}
+                        onFiltreStatutChange={handleFiltreStatutChange}
+                        recherche={recherche}
+                        onRechercheChange={handleRechercheChange}
+                        tri={tri}
+                        onTriChange={handleTriChange}
+                        ordre={ordre}
+                        onOrdreToggle={handleOrdreToggle}
+                        totalDemandeurs={demandeurs.length}
+                        totalFiltres={demandeursFiltres.length}
+                    />
+
+                    {/* Tableau */}
+                    <DemandeurTable
+                        demandeurs={demandeursFiltres}
+                        dossier={dossier}
+                        proprietes={proprietes}
+                        onDeleteDemandeur={onDeleteDemandeur}
+                        isDemandeurIncomplete={isDemandeurIncomplete}
+                        onLinkPropriete={onLinkPropriete}
+                        onSelectDemandeur={handleSelectDemandeur}
+                        onDissociate={onDissociate}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={handlePageChange}
+                    />
                 </CardContent>
             </Card>
 
-            {/* ✅ Dialogues avec gestion stricte de fermeture */}
+            {/* Dialogues */}
             <DemandeurDetailDialog
                 demandeur={selectedDemandeur}
                 open={showDemandeurDetail}

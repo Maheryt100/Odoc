@@ -1,5 +1,5 @@
 // pages/proprietes/update.tsx
-// Page de modification de propriété - Réutilise ProprieteCreate.tsx
+// ✅ VERSION CORRIGÉE - Dates fonctionnelles + Structure propre
 
 import { useState } from 'react';
 import { Head, usePage, useForm } from '@inertiajs/react';
@@ -10,49 +10,35 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast, Toaster } from 'sonner';
 import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import type { BreadcrumbItem, Dossier, Propriete } from '@/types';
+import type { BreadcrumbItem } from '@/types';
 
-import ProprieteCreate, { ProprieteFormData } from '@/pages/proprietes/create';
-
-interface PageProps {
-    propriete: Propriete;
-    dossier: Dossier;
-    [key: string]: any;
-}
+// ✅ Imports depuis les nouveaux fichiers
+import ProprieteCreate from '@/pages/proprietes/create';
+import { ProprieteFormData, ProprieteUpdatePageProps } from '@/pages/proprietes/types';
+import { proprieteToFormData, parseSelectedCharges } from '@/pages/proprietes/helpers';
+import { validateAndShowErrors } from '@/pages/proprietes/validation';
 
 export default function ProprieteUpdate() {
-    const { propriete, dossier } = usePage<PageProps>().props;
+    const { propriete, dossier } = usePage<ProprieteUpdatePageProps>().props;
     const [processing, setProcessing] = useState(false);
+    
+    // ✅ CORRECTION : Utiliser la fonction helper pour parser les charges
     const [selectedCharges, setSelectedCharges] = useState<string[]>(
-        propriete?.charge ? propriete.charge.split(', ').map(c => c.trim()) : []
+        parseSelectedCharges(propriete?.charge)
     );
 
-    const { data, setData, put, errors } = useForm<ProprieteFormData>({
-        lot: propriete?.lot || '',
-        type_operation: propriete?.type_operation || 'immatriculation',
-        nature: propriete?.nature || '',
-        vocation: propriete?.vocation || '',
-        proprietaire: propriete?.proprietaire || '',
-        situation: propriete?.situation || '',
-        propriete_mere: propriete?.propriete_mere || '',
-        titre_mere: propriete?.titre_mere || '',
-        titre: propriete?.titre || '',
-        contenance: propriete?.contenance?.toString() || '',
-        charge: propriete?.charge || '',
-        numero_FN: propriete?.numero_FN || '',
-        numero_requisition: propriete?.numero_requisition || '',
-        date_requisition: propriete?.date_requisition || '',
-        date_inscription: propriete?.date_inscription || '',
-        dep_vol: propriete?.dep_vol || '',
-        numero_dep_vol: propriete?.numero_dep_vol || '',
-        id_dossier: dossier?.id || 0,
-        
-    });
+    // ✅ CORRECTION CRITIQUE : Utiliser proprieteToFormData qui gère les dates correctement
+    const { data, setData, put, errors } = useForm<ProprieteFormData>(
+        proprieteToFormData(propriete, dossier?.id)
+    );
 
     const isArchived = propriete?.is_archived === true;
     const isClosed = dossier?.is_closed === true;
     const isDisabled = isArchived || isClosed;
 
+    /**
+     * ✅ Gestion des charges
+     */
     const handleChargeChange = (charge: string, checked: boolean) => {
         let newCharges: string[];
         
@@ -71,24 +57,14 @@ export default function ProprieteUpdate() {
         setData('charge', newCharges.join(', '));
     };
 
+    /**
+     * ✅ Soumission du formulaire avec validation
+     */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation de base
-        if (!data.lot?.trim()) {
-            toast.error('Le lot est obligatoire');
-            return;
-        }
-        if (!data.type_operation) {
-            toast.error('Le type d\'opération est obligatoire');
-            return;
-        }
-        if (!data.nature) {
-            toast.error('La nature est obligatoire');
-            return;
-        }
-        if (!data.vocation) {
-            toast.error('La vocation est obligatoire');
+        // Validation côté client
+        if (!validateAndShowErrors(data)) {
             return;
         }
 
@@ -105,6 +81,9 @@ export default function ProprieteUpdate() {
             },
             onSuccess: () => {
                 toast.success('Propriété modifiée avec succès !');
+            },
+            onFinish: () => {
+                setProcessing(false);
             }
         });
     };
@@ -159,7 +138,7 @@ export default function ProprieteUpdate() {
                         <form onSubmit={handleSubmit} className="space-y-8">
                             <ProprieteCreate
                                 data={data}
-                                onChange={(field, value) => setData(field, value)}
+                                onChange={(field, value) => setData(field, value)} 
                                 index={0}
                                 showRemoveButton={false}
                                 selectedCharges={selectedCharges}

@@ -1,4 +1,4 @@
-// pages/Dashboard/types.ts
+// js/pages/Dashboard/types.ts
 
 export interface KPI {
     demandeurs_details: { total: number; actifs: number; acquis: number; sans_propriete: number; hommes: number; femmes: number; hommes_actifs: number; femmes_actifs: number; };

@@ -41,16 +41,24 @@ Route::prefix('demandeurs')->name('demandeurs.')->group(function () {
     // ========================================================================
     // MODIFICATION
     // ========================================================================
-    Route::middleware([
-        'district.access:update', 
-        'check.dossier.closed:modify',
-        ValidateDemandeurAction::class . ':modify'
-    ])->group(function () {
-        Route::get('/{id_dossier}/{id_demandeur}/edit', [DemandeurController::class, 'edit'])
-            ->name('edit');
-        Route::put('/{id}', [DemandeurController::class, 'update'])
-            ->name('update');
-    });
+    
+    // ✅ CORRECTION : Route GET sans middleware de validation
+    Route::get('/{id_dossier}/{id_demandeur}/edit', [DemandeurController::class, 'edit'])
+        ->middleware([
+            'district.access:update', 
+            'check.dossier.closed:modify'
+            // ⚠️ RETIRÉ : ValidateDemandeurAction (bloque l'affichage)
+        ])
+        ->name('edit');
+    
+    // ✅ Route PUT avec middleware de validation
+    Route::put('/{id}', [DemandeurController::class, 'update'])
+        ->middleware([
+            'district.access:update', 
+            'check.dossier.closed:modify',
+            ValidateDemandeurAction::class . ':modify' // ✅ Appliqué uniquement ici
+        ])
+        ->name('update');
     
     // ========================================================================
     // SUPPRESSION

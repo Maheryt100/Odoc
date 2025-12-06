@@ -1,20 +1,23 @@
-// resources/js/pages/dossiers/index.tsx
+// resources/js/pages/dossiers/index.tsx - VERSION REFACTORISÉE
 import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem, Dossier, SharedData } from '@/types';
+import type { BreadcrumbItem, SharedData } from '@/types';
+import type { Dossier } from './types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, Search, Calendar, SlidersHorizontal, Eye, Pencil, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, LockOpen, Lock as LockIcon, FileText } from 'lucide-react';
+import { FolderPlus, Search, Calendar, SlidersHorizontal, Eye, Pencil, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, LockOpen, Lock as LockIcon, FileText, FileOutput } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { LandPlot, UserPlus, Link2, List, EllipsisVertical, Archive } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { LandPlot, EllipsisVertical, Archive } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { filterDossiers, sortDossiers, calculateDossierPermissions, getDisabledDocumentButtonTooltip } from './helpers';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dossiers', href: '/dossiers' },
@@ -22,12 +25,23 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const ITEMS_PER_PAGE = 10;
 
+interface PageProps {
+    dossiers: Dossier[];
+    auth: {
+        user: {
+            id: number;
+            role: string;
+            id_district?: number | null;
+        };
+    };
+    [key: string]: any;
+}
+
 export default function Index() {
-    const { dossiers = [] } = usePage<{ dossiers: Dossier[] }>().props;
+    const { dossiers = [], auth } = usePage<PageProps>().props;
     const { flash } = usePage<SharedData>().props;
 
     const [search, setSearch] = useState('');
-    const [filteredDossiers, setFilteredDossiers] = useState<Dossier[]>(dossiers);
     const [sortBy, setSortBy] = useState<'date' | 'nom'>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [dateDebut, setDateDebut] = useState('');
@@ -36,7 +50,7 @@ export default function Index() {
     const [showFilters, setShowFilters] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
-    const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all'); // ✅ AJOUTÉ
+    const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -44,58 +58,25 @@ export default function Index() {
         if (flash.message != null) {
             toast.info(flash.message);
         }
+        if (flash.success) {
+            toast.success(flash.success);
+        }
+        if (flash.error) {
+            toast.error(flash.error);
+        }
     }, [flash]);
 
-    // Fonction de filtrage et tri
-    useEffect(() => {
-        let result = [...dossiers];
-
-        // Filtrer par recherche
-        if (search) {
-            result = result.filter(d =>
-                d.nom_dossier.toLowerCase().includes(search.toLowerCase()) ||
-                d.commune.toLowerCase().includes(search.toLowerCase()) ||
-                d.circonscription.toLowerCase().includes(search.toLowerCase())
-            );
-        }
-
-        // Filtrer par dates
-        if (dateDebut) {
-            result = result.filter(d => new Date(d.date_descente_debut) >= new Date(dateDebut));
-        }
-        if (dateFin) {
-            result = result.filter(d => new Date(d.date_descente_fin) <= new Date(dateFin));
-        }
-
-        // Filtrer par lettre
-        if (selectedLetter) {
-            result = result.filter(d =>
-                d.nom_dossier.toUpperCase().startsWith(selectedLetter)
-            );
-        }
-
-        // ✅ Filtre par statut
-        if (statusFilter === 'open') {
-            result = result.filter(d => !d.is_closed);
-        } else if (statusFilter === 'closed') {
-            result = result.filter(d => d.is_closed);
-        }
-
-        // Trier
-        result.sort((a, b) => {
-            if (sortBy === 'date') {
-                const dateA = new Date(a.date_descente_debut).getTime();
-                const dateB = new Date(b.date_descente_debut).getTime();
-                return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-            } else {
-                return sortOrder === 'asc'
-                    ? a.nom_dossier.localeCompare(b.nom_dossier)
-                    : b.nom_dossier.localeCompare(a.nom_dossier);
-            }
+    // ✅ Fonction de filtrage avec helper
+    const filteredDossiers = useMemo(() => {
+        const filtered = filterDossiers(dossiers, {
+            search,
+            status: statusFilter,
+            dateDebut,
+            dateFin,
+            selectedLetter
         });
 
-        setFilteredDossiers(result);
-        setCurrentPage(1);
+        return sortDossiers(filtered, sortBy, sortOrder);
     }, [dossiers, search, dateDebut, dateFin, selectedLetter, sortBy, sortOrder, statusFilter]);
 
     const clearFilters = () => {
@@ -105,7 +86,7 @@ export default function Index() {
         setSelectedLetter(null);
         setSortBy('date');
         setSortOrder('desc');
-        setStatusFilter('all'); // ✅ AJOUTÉ
+        setStatusFilter('all');
     };
 
     const toggleExpand = (id: number) => {
@@ -118,7 +99,7 @@ export default function Index() {
         setExpandedRows(newExpanded);
     };
 
-    const hasActiveFilters = search || dateDebut || dateFin || selectedLetter || statusFilter !== 'all'; // ✅ MODIFIÉ
+    const hasActiveFilters = search || dateDebut || dateFin || selectedLetter || statusFilter !== 'all';
     const showAlphabet = sortBy === 'nom';
 
     // Pagination
@@ -320,6 +301,18 @@ export default function Index() {
                             <>
                                 {currentDossiers.map((dossier) => {
                                     const isExpanded = expandedRows.has(dossier.id);
+                                    
+                                    // ✅ Calculer les permissions pour chaque dossier
+                                    const permissions = calculateDossierPermissions(dossier, {
+                                        role: auth.user.role,
+                                        id_district: auth.user.id_district
+                                    });
+
+                                    const documentTooltip = getDisabledDocumentButtonTooltip(dossier, {
+                                        role: auth.user.role,
+                                        id_district: auth.user.id_district
+                                    });
+
                                     return (
                                         <Card key={dossier.id} className="hover:shadow-md transition-shadow">
                                             <CardContent className="p-2">
@@ -372,6 +365,7 @@ export default function Index() {
                                                         </span>
                                                     </div>
 
+                                                    {/* ✅ Menu actions avec permissions */}
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
@@ -386,30 +380,53 @@ export default function Index() {
                                                                     Voir Détails
                                                                 </Link>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem 
-                                                                asChild={dossier.can_modify}
-                                                                disabled={!dossier.can_modify}
-                                                            >
-                                                                <Link href={route("dossiers.edit", dossier.id)} className="flex items-center">
-                                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                                    Modifier
-                                                                </Link>
-                                                            </DropdownMenuItem>
+                                                            
+                                                            {permissions.canEdit && (
+                                                                <DropdownMenuItem asChild>
+                                                                    <Link href={route("dossiers.edit", dossier.id)} className="flex items-center">
+                                                                        <Pencil className="mr-2 h-4 w-4" />
+                                                                        Modifier
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuLabel>Ajouter</DropdownMenuLabel>
                                                             
-                                                            <DropdownMenuItem 
-                                                                asChild={!dossier.is_closed}
-                                                                disabled={dossier.is_closed}
-                                                            >
-                                                                <Link href={route("nouveau-lot.create", dossier.id)} className="flex items-center">
-                                                                    <LandPlot className="mr-2 h-4 w-4" />
-                                                                    Nouvelle entrées
-                                                                </Link>
-                                                            </DropdownMenuItem>                                                                                                      
+                                                            {!dossier.is_closed && (
+                                                                <DropdownMenuItem asChild>
+                                                                    <Link href={route("nouveau-lot.create", dossier.id)} className="flex items-center">
+                                                                        <LandPlot className="mr-2 h-4 w-4" />
+                                                                        Nouvelle entrées
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             
                                                             <DropdownMenuSeparator />
+                                                            
+                                                            {/* ✅ Documents avec tooltip si désactivé */}
+                                                            {permissions.canGenerateDocuments ? (
+                                                                <DropdownMenuItem asChild>
+                                                                    <Link href={route('documents.generate', dossier.id)}>
+                                                                        <FileOutput className="mr-2 h-4 w-4" />
+                                                                        Générer documents
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                            ) : (
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <div className="relative flex cursor-not-allowed select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none opacity-50">
+                                                                                <FileOutput className="mr-2 h-4 w-4" />
+                                                                                Générer documents
+                                                                            </div>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="max-w-xs">
+                                                                            <p>{documentTooltip}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            )}
                                                             
                                                             <DropdownMenuItem asChild>
                                                                 <Link href={route('demandes.resume', dossier.id)}>

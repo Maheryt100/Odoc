@@ -1,7 +1,14 @@
-// types/index.d.ts
+// ============================================
+// 📦 types/index.d.ts - VERSION FINALE CORRIGÉE
+// ============================================
+
 import { LucideIcon } from 'lucide-react';
 import type { Config } from 'ziggy-js';
 import { ReactNode } from 'react';
+
+// ============================================
+// 🔐 AUTHENTIFICATION & NAVIGATION
+// ============================================
 
 export interface Auth {
     user: User;
@@ -26,6 +33,7 @@ export interface NavItem {
     children?: NavItem[];
 }
 
+// ✅ CORRECTION : Index signature ajoutée
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
@@ -38,145 +46,42 @@ export interface SharedData {
     districts: District[];
     ziggy: Config & { location: string };
     sidebarOpen: boolean;
-    [key: string]: unknown;
+    [key: string]: unknown; // ✅ AJOUTÉ pour compatibilité usePage
 }
 
+// ============================================
+// 👤 USER - TYPE GLOBAL UNIFIÉ
+// ============================================
 
-export type Nature = 'Urbaine' | 'Suburbaine' | 'Rurale';
-export type Vocation = 'Edilitaire' | 'Agricole' | 'Forestière' | 'Touristique';
-export type TypeOperation = 'morcellement' | 'immatriculation';
+export type UserRole = 'super_admin' | 'central_user' | 'admin_district' | 'user_district';
 
-export interface Propriete {
+export interface User {
     id: number;
-    lot: string;
-    titre: string;
-    contenance: number;
-    proprietaire: string;
-    propriete_mere: string;
-    titre_mere: string;
-    charge: string;
-    situation: string;
-    nature: Nature;
-    vocation: Vocation;
-    numero_FN: string;
-    numero_requisition: string;
-    status: boolean;
-    type_operation: TypeOperation;
-    date_requisition: string;
-    date_inscription: string;
-    dep_vol: string;
-    numero_dep_vol?: string;
-    dep_vol_complet?: string;
-    id_dossier: number;
+    name: string;
+    email: string;
+    role: UserRole;
+    role_name?: string;
+    status?: boolean;
+    id_district?: number | null | undefined; // ✅ CORRECTION
+    email_verified_at?: string | null | undefined; // ✅ CORRECTION
+    created_at: string;
+    updated_at: string;
     
-    // ✅ Relations
-    demandeurs?: Demandeur[];
-    demandes?: Array<{
+    district?: {
         id: number;
-        id_demandeur: number;
-        id_propriete: number;
-        status: 'active' | 'archive';
-        ordre: number;
-        total_prix: number;
-        status_consort: boolean;
-        demandeur?: Demandeur;
-    }>;
+        nom_district: string;
+        nom_region?: string;
+        nom_province?: string;
+    } | null | undefined; // ✅ CORRECTION
+    location?: string;
     
-    // ✅ CORRECTION : Accessors calculés côté serveur
-    is_incomplete?: boolean;
-    is_archived?: boolean;
-    is_empty?: boolean;
-    has_active_demandes?: boolean;
-    status_label?: 'Vide' | 'Active' | 'Acquise' | 'Inconnu';
-    
-    // ✅ AJOUT : Computed côté client (pour compatibilité)
-    _computed: {
-        isIncomplete: boolean;
-        hasDemandeurs: boolean;
-        isArchived: boolean;
-    };
+    can_edit?: boolean;
+    can_delete?: boolean;
 }
 
-export interface Dossier {
-    id: number;
-    nom_dossier: string;
-    numero_ouverture?: string;
-    numero_ouverture_display?: string;
-    date_descente_debut: string;
-    date_descente_fin: string;
-    date_ouverture: string;
-    date_fermeture?: string | null;
-    closed_by?: number | null;
-    motif_fermeture?: string | null;
-    type_commune: string;
-    commune: string;
-    fokontany: string;
-    circonscription: string;
-    id_district: number;
-    id_user: number;
-    demandeurs_count: number;
-    proprietes_count: number;
-    is_closed: boolean;
-    is_open: boolean;
-    can_close?: boolean;
-    can_modify?: boolean;
-    status_label?: string;
-    closedBy?: User;
-    demandeurs?: Demandeur[];
-    proprietes?: Propriete[];
-    created_at: string;
-    updated_at: string;
-    
-}
-
-export interface Demandeur {
-    pivot: any;
-    id: number;
-    titre_demandeur: string;
-    nom_demandeur: string;
-    prenom_demandeur?: string;
-    date_naissance: string;
-    lieu_naissance?: string;
-    sexe?: string;
-    occupation?: string;
-    nom_pere?: string;
-    nom_mere?: string;
-    cin: string;
-    date_delivrance?: string;
-    lieu_delivrance?: string;
-    date_delivrance_duplicata?: string;
-    lieu_delivrance_duplicata?: string;
-    domiciliation?: string;
-    situation_familiale?: string;
-    regime_matrimoniale?: string;
-    nationalite: string;
-    telephone?: string;
-    date_mariage?: string;
-    lieu_mariage?: string;
-    marie_a?: string;
-    id_user: number;
-    status?: string;
-    id_demande?: number;
-    hasProperty?: boolean;
-
-    nom_complet?: string;
-    is_incomplete?: boolean;
-
-    created_at: string;
-    updated_at: string;
-}
-
-export interface Demander {
-    propriete: Propriete;
-    demandeur: Demandeur;
-    id: number;
-    id_demandeur: number;
-    id_propriete: number;
-    total_prix: number;
-    status: 'active' | 'archive';
-    status_consort: boolean;
-    motif_archive: string;
-}
+// ============================================
+// 🏢 DISTRICT
+// ============================================
 
 export interface District {
     id: number;
@@ -185,15 +90,176 @@ export interface District {
     agricole: number;
     forestiere: number;
     touristique: number;
+    
+    region?: {
+        id: number;
+        nom_region: string;
+        province?: {
+            id: number;
+            nom_province: string;
+        };
+    };
 }
 
-export interface PageProps {
-    dossier: Dossier;
+// ============================================
+// 🏠 PROPRIETE - TYPE COMPLET
+// ============================================
+
+export type Nature = 'Urbaine' | 'Suburbaine' | 'Rurale';
+export type Vocation = 'Edilitaire' | 'Agricole' | 'Forestière' | 'Touristique';
+export type TypeOperation = 'morcellement' | 'immatriculation';
+
+export interface Propriete {
+    id: number;
+    lot: string;
+    titre: string | undefined;  // ✅ CHANGÉ : null retiré
+    contenance: number | undefined;  // ✅ CHANGÉ
+    proprietaire: string | undefined;  // ✅ CHANGÉ
+    propriete_mere: string | undefined;
+    titre_mere: string | undefined;
+    charge: string | undefined;
+    situation: string | undefined;  // ✅ CHANGÉ
+    nature: Nature;
+    vocation: Vocation;
+    numero_FN: string | undefined;
+    numero_requisition: string | undefined;
+    status: boolean;
+    type_operation: TypeOperation;
+    date_requisition: string | undefined;
+    date_inscription: string | undefined;
+    dep_vol: string | undefined;
+    numero_dep_vol: string | undefined;
+    id_dossier: number;
+    
+    demandes?: Demande[];
+    
+    is_incomplete?: boolean;
+    is_archived?: boolean;
+    is_empty?: boolean;
+    has_active_demandes?: boolean;
+    status_label?: 'Vide' | 'Active' | 'Acquise' | 'Inconnu';
+}
+
+// ============================================
+// 👥 DEMANDEUR - TYPE COMPLET
+// ============================================
+
+export interface Demandeur {
+    id: number;
+    titre_demandeur: string;
+    nom_demandeur: string;
+    prenom_demandeur: string | undefined;  // ✅ CHANGÉ
+    date_naissance: string;
+    lieu_naissance: string | undefined;  // ✅ CHANGÉ
+    sexe: string | undefined;
+    occupation: string | undefined;  // ✅ CHANGÉ
+    nom_pere: string | undefined;
+    nom_mere: string | undefined;  // ✅ CHANGÉ
+    cin: string;
+    date_delivrance: string | undefined;  // ✅ CHANGÉ
+    lieu_delivrance: string | undefined;  // ✅ CHANGÉ
+    date_delivrance_duplicata: string | undefined;
+    lieu_delivrance_duplicata: string | undefined;
+    domiciliation: string | undefined;  // ✅ CHANGÉ
+    situation_familiale: string | undefined;
+    regime_matrimoniale: string | undefined;
+    nationalite: string;
+    telephone: string | undefined;
+    date_mariage: string | undefined;
+    lieu_mariage: string | undefined;
+    marie_a: string | undefined;
+    id_user: number;
+    
+    hasProperty?: boolean;
+    proprietes_actives_count?: number;
+    proprietes_acquises_count?: number;
+    nom_complet?: string;
+    is_incomplete?: boolean;
+    
+    demandes?: Demande[];
+    proprietes?: Propriete[];
+    
+    created_at: string;
+    updated_at: string;
+}
+
+// ============================================
+// 🔗 DEMANDE (PIVOT TABLE)
+// ============================================
+
+export interface Demande {
+    id: number;
+    id_demandeur: number;
+    id_propriete: number;
+    total_prix: number;
+    status: 'active' | 'archive';
+    status_consort: boolean;
+    ordre: number;
+    motif_archive: string | null | undefined; // ✅ CORRECTION
+    
+    propriete?: Propriete;
+    demandeur?: Demandeur;
+    
+    created_at?: string;
+    updated_at?: string;
+}
+
+export type Demander = Demande;
+
+// ============================================
+// 📁 DOSSIER - TYPE COMPLET
+// ============================================
+
+export interface Dossier {
+    id: number;
+    nom_dossier: string;
+    numero_ouverture: string | undefined;  // ✅ CHANGÉ
+    numero_ouverture_display: string | undefined;
+    date_descente_debut: string;
+    date_descente_fin: string;
+    date_ouverture: string;
+    date_fermeture: string | undefined;  // ✅ CHANGÉ : null retiré
+    closed_by: number | undefined;
+    motif_fermeture: string | undefined;
+    type_commune: string;
+    commune: string;
+    fokontany: string;
+    circonscription: string;
+    id_district: number;
+    id_user: number;
+    demandeurs_count: number;
+    proprietes_count: number;
+    
+    is_closed: boolean;
+    is_open: boolean;
+    can_close?: boolean;
+    can_modify?: boolean;
+    status_label?: string;
+    
+    closedBy?: User;
     demandeurs?: Demandeur[];
     proprietes?: Propriete[];
-    documents?: Paginated<Demander>;
+    district?: District;
+    user?: User;
+    pieces_jointes_count?: number;
+    
+    created_at: string;
+    updated_at: string;
+}
+
+// ============================================
+// 📄 PAGE PROPS - CORRIGÉE
+// ============================================
+
+// ✅ CORRECTION : Index signature ajoutée
+export interface PageProps {
+    dossier?: Dossier;
+    demandeurs?: Demandeur[];
+    proprietes?: Propriete[];
+    documents?: Paginated<Demande>;
     districts?: District[];
     suggested_numero?: string;
+    [key: string]: unknown; // ✅ AJOUTÉ
 }
 
 export interface Paginated<T> {
@@ -206,14 +272,18 @@ export interface Paginated<T> {
 export interface Link {
     active: boolean;
     label: string;
-    url: string | null;
+    url: string | null | undefined; // ✅ CORRECTION
 }
 
-export type Proprietes = Propriete[];
-export type Demandeurs = Demandeur[];
+// ============================================
+// 🌐 GLOBAL DECLARATIONS
+// ============================================
 
 declare global {
     interface Window {
         route: (name: string, params?: any) => string;
     }
 }
+
+export type Proprietes = Propriete[];
+export type Demandeurs = Demandeur[];

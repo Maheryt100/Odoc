@@ -1,13 +1,60 @@
-// components/ProprieteDetailDialog.tsx 
+// components/ProprieteDetailDialog.tsx - VERSION CORRIGÉE
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-    Home, MapPin, FileText, Calendar, 
-    Ruler, Users, Pencil, Archive, AlertCircle, Unlink
+    Home, MapPin, FileText, Hash, Calendar, Users, Archive, 
+    AlertCircle, Unlink, Pencil, Landmark, Scale, Flag,
+    MapPinned, Ruler, FileCheck, Building2, CreditCard
 } from 'lucide-react';
-import type { Propriete, Demandeur } from '@/types';
+
+interface Propriete {
+    id: number;
+    lot: string;
+    titre?: string;
+    type_operation: string;
+    contenance?: number;
+    proprietaire?: string;
+    propriete_mere?: string;
+    titre_mere?: string;
+    nature?: string;
+    vocation?: string;
+    situation?: string;
+    charge?: string;
+    numero_FN?: string;
+    numero_requisition?: string;
+    date_requisition?: string;
+    date_inscription?: string;
+    dep_vol?: string;
+    numero_dep_vol?: string;
+    dep_vol_complet?: string;
+    is_archived?: boolean;
+    status_label?: string;
+    demandes?: Array<{
+        id: number;
+        ordre: number;
+        status: 'active' | 'archive';
+        total_prix: number;
+        demandeur?: {
+            id: number;
+            titre_demandeur: string;
+            nom_demandeur: string;
+            prenom_demandeur?: string;
+            cin: string;
+        };
+    }>;
+}
+
+interface Demandeur {
+    id: number;
+    titre_demandeur: string;
+    nom_demandeur: string;
+    prenom_demandeur?: string;
+    cin: string;
+}
 
 interface ProprieteDetailDialogProps {
     propriete: Propriete | null;
@@ -22,7 +69,6 @@ interface ProprieteDetailDialogProps {
         proprieteLot: string,
         type: 'from-demandeur' | 'from-propriete'
     ) => void;
-    demandeursDossier?: Demandeur[]; // ✅ Liste complète du dossier
 }
 
 export default function ProprieteDetailDialog({
@@ -31,90 +77,16 @@ export default function ProprieteDetailDialog({
     onOpenChange,
     onSelectDemandeur,
     dossierClosed = false,
-    onDissociate,
-    demandeursDossier = []
+    onDissociate
 }: ProprieteDetailDialogProps) {
     if (!propriete) return null;
 
-    // ✅ CORRECTION CRITIQUE : Récupération des demandeurs avec FALLBACK
-    const getDemandeurs = (): Demandeur[] => {
-        // CAS 1 : propriete.demandes existe ET contient des objets demandeur complets
-        if (propriete.demandes && Array.isArray(propriete.demandes) && propriete.demandes.length > 0) {
-            // Vérifier si les demandes ont des objets demandeur complets
-            const firstDemande = propriete.demandes[0];
-            if (firstDemande.demandeur && typeof firstDemande.demandeur === 'object') {
-                // ✅ Cas normal (depuis proprietes/index)
-                console.log('📍 Mode: Demandes avec relations chargées');
-                return propriete.demandes
-                    .map(d => d.demandeur)
-                    .filter((d): d is Demandeur => d !== null && d !== undefined);
-            }
-        }
-
-        // CAS 2 : Utiliser demandeursDossier avec les IDs de propriete.demandes
-        if (propriete.demandes && demandeursDossier.length > 0) {
-            const demandeursIds = propriete.demandes
-                .map(d => d.id_demandeur)
-                .filter(id => id !== null && id !== undefined);
-            
-            console.log('📍 Mode: Reconstruction depuis demandeursDossier', {
-                ids_recherches: demandeursIds,
-                demandeurs_disponibles: demandeursDossier.length
-            });
-
-            const demandeursTrouves = demandeursDossier.filter(d => 
-                demandeursIds.includes(d.id)
-            );
-
-            // ✅ IMPORTANT : Trier par ordre si disponible
-            const demandesAvecOrdre = propriete.demandes.filter(d => d.ordre !== undefined);
-            if (demandesAvecOrdre.length > 0) {
-                demandeursTrouves.sort((a, b) => {
-                    const ordreA = propriete.demandes?.find(d => d.id_demandeur === a.id)?.ordre ?? 999;
-                    const ordreB = propriete.demandes?.find(d => d.id_demandeur === b.id)?.ordre ?? 999;
-                    return ordreA - ordreB;
-                });
-            }
-
-            console.log('✅ Demandeurs trouvés:', demandeursTrouves.length);
-            return demandeursTrouves;
-        }
-
-        // CAS 3 : Ancien système (fallback) - utiliser propriete.demandeurs
-        if (propriete.demandeurs && Array.isArray(propriete.demandeurs)) {
-            console.log('📍 Mode: Fallback ancien système');
-            return propriete.demandeurs;
-        }
-
-        console.warn('⚠️ Aucun demandeur trouvé pour propriété', {
-            propriete_id: propriete.id,
-            lot: propriete.lot,
-            has_demandes: !!propriete.demandes,
-            demandes_count: propriete.demandes?.length ?? 0,
-            demandeurs_dossier_count: demandeursDossier.length
-        });
-
-        return [];
-    };
-
-    const demandeurs = getDemandeurs();
-
-    // ✅ Séparer actifs et archivés
-    const demandeursActifs = demandeurs.filter((d) => {
-        if (!propriete.demandes) return false;
-        const demande = propriete.demandes.find(dem => 
-            (typeof dem.id_demandeur === 'number' ? dem.id_demandeur : parseInt(dem.id_demandeur)) === d.id
-        );
-        return demande?.status === 'active';
-    });
-
-    const demandeursArchives = demandeurs.filter((d) => {
-        if (!propriete.demandes) return false;
-        const demande = propriete.demandes.find(dem => 
-            (typeof dem.id_demandeur === 'number' ? dem.id_demandeur : parseInt(dem.id_demandeur)) === d.id
-        );
-        return demande?.status === 'archive';
-    });
+    // ✅ Utiliser UNIQUEMENT propriete.demandes
+    const demandeursActifs = propriete.demandes?.filter(d => d.status === 'active')
+        .sort((a, b) => a.ordre - b.ordre) || [];
+    
+    const demandeursAcquis = propriete.demandes?.filter(d => d.status === 'archive')
+        .sort((a, b) => a.ordre - b.ordre) || [];
 
     const formatNomComplet = (demandeur: Demandeur): string => {
         return [
@@ -124,87 +96,67 @@ export default function ProprieteDetailDialog({
         ].filter(Boolean).join(' ');
     };
 
-    // ✅ Obtenir le rôle du demandeur (principal/consort)
-    const getDemandeurRole = (demandeur: Demandeur): { ordre: number; isPrincipal: boolean } => {
-        if (!propriete.demandes) return { ordre: 999, isPrincipal: false };
-        
-        const demande = propriete.demandes.find(d => 
-            (typeof d.id_demandeur === 'number' ? d.id_demandeur : parseInt(d.id_demandeur)) === demandeur.id
-        );
-        
-        const ordre = demande?.ordre ?? 999;
-        return {
-            ordre,
-            isPrincipal: ordre === 1
-        };
+    const formatDate = (date?: string) => {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
     };
 
-    // Handler de dissociation
-    const handleDissociate = (demandeur: Demandeur, e: React.MouseEvent) => {
+    const formatContenance = (contenance?: number) => {
+        if (!contenance) return '-';
+        return new Intl.NumberFormat('fr-FR', { 
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2 
+        }).format(contenance) + ' m²';
+    };
+
+    const formatPrix = (prix?: number) => {
+        if (!prix) return '-';
+        return new Intl.NumberFormat('fr-FR').format(prix) + ' Ar';
+    };
+
+    const handleDissociate = (demande: any, e: React.MouseEvent) => {
         e.stopPropagation();
         
         if (!onDissociate || dossierClosed || propriete.is_archived) {
             return;
         }
         
-        if (!canDissociate(demandeur)) {
-            return;
-        }
-        
         onOpenChange(false);
         
         setTimeout(() => {
-            onDissociate(
-                demandeur.id,
-                propriete.id,
-                formatNomComplet(demandeur),
-                propriete.lot,
-                'from-propriete'
-            );
+            const demandeur = demande.demandeur;
+            if (demandeur) {
+                onDissociate(
+                    demandeur.id,
+                    propriete.id,
+                    formatNomComplet(demandeur),
+                    propriete.lot,
+                    'from-propriete'
+                );
+            }
         }, 100);
     };
 
-    const canDissociate = (demandeur: Demandeur): boolean => {
-        if (dossierClosed || propriete.is_archived) return false;
-        if (!propriete.demandes || !Array.isArray(propriete.demandes)) return false;
-        
-        const demande = propriete.demandes.find(d => {
-            const demandeIdDemandeur = typeof d.id_demandeur === 'number' 
-                ? d.id_demandeur 
-                : parseInt(d.id_demandeur);
-            const currentDemandeurId = typeof demandeur.id === 'number'
-                ? demandeur.id
-                : parseInt(demandeur.id);
-            return demandeIdDemandeur === currentDemandeurId;
-        });
-        
-        return demande ? demande.status === 'active' : false;
+    const canDissociate = (demande: any): boolean => {
+        return !dossierClosed && 
+               !propriete.is_archived && 
+               demande.status === 'active';
     };
 
-    const handleSelectDemandeur = (demandeur: Demandeur) => {
-        if (onSelectDemandeur) {
-            onOpenChange(false);
-            setTimeout(() => {
-                onSelectDemandeur(demandeur);
-            }, 100);
-        }
-    };
-
-    const handleModifier = () => {
-        onOpenChange(false);
-        setTimeout(() => {
-            window.location.href = route('proprietes.edit', propriete.id);
-        }, 100);
-    };
-
-    const InfoRow = ({ icon: Icon, label, value, highlight = false }: any) => {
+    const InfoItem = ({ icon: Icon, label, value, valueClass = '' }: any) => {
         if (!value || value === '-') return null;
         return (
-            <div className="flex items-start gap-3 py-2">
-                <Icon className={`h-5 w-5 mt-0.5 ${highlight ? 'text-primary' : 'text-muted-foreground'}`} />
+            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                    <Icon className="h-4 w-4 text-primary" />
+                </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-muted-foreground">{label}</p>
-                    <p className={`text-sm ${highlight ? 'font-semibold' : ''} break-words`}>{value}</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-0.5">{label}</p>
+                    <p className={`text-sm font-medium break-words ${valueClass}`}>{value}</p>
                 </div>
             </div>
         );
@@ -212,241 +164,363 @@ export default function ProprieteDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+                {/* Header Fixe */}
+                <DialogHeader className="pb-4 border-b">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                            <DialogTitle className="text-2xl flex items-center gap-2">
-                                <Home className="h-6 w-6" />
-                                Lot {propriete.lot}
+                            <DialogTitle className="text-3xl flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                                    <Home className="h-7 w-7 text-violet-600 dark:text-violet-400" />
+                                </div>
+                                <span>Lot {propriete.lot}</span>
                             </DialogTitle>
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                            
+                            <div className="flex flex-wrap items-center gap-2 ml-14">
                                 {propriete.titre && (
-                                    <Badge variant="outline">TNº{propriete.titre}</Badge>
+                                    <Badge variant="outline" className="font-mono text-sm">
+                                        TNº{propriete.titre}
+                                    </Badge>
                                 )}
-                                <Badge variant="default">{propriete.nature}</Badge>
-                                <Badge variant="secondary">{propriete.vocation}</Badge>
-                                {demandeursArchives.length > 0 && demandeursActifs.length === 0 && (
-                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                <Badge variant="outline" className="text-sm capitalize">
+                                    {propriete.type_operation}
+                                </Badge>
+                                {propriete.is_archived ? (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-400">
                                         <Archive className="mr-1 h-3 w-3" />
                                         Acquise
+                                    </Badge>
+                                ) : demandeursActifs.length > 0 ? (
+                                    <Badge variant="default" className="text-sm">
+                                        <Users className="mr-1 h-3 w-3" />
+                                        {demandeursActifs.length} demandeur{demandeursActifs.length > 1 ? 's' : ''}
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="secondary" className="text-sm">
+                                        Sans demandeur
                                     </Badge>
                                 )}
                             </div>
                         </div>
+                        
+                        {!dossierClosed && !propriete.is_archived && (
+                            <Button 
+                                onClick={() => {
+                                    onOpenChange(false);
+                                    setTimeout(() => {
+                                        window.location.href = `/proprietes/${propriete.id}/edit`;
+                                    }, 100);
+                                }}
+                                size="sm"
+                                className="shrink-0"
+                            >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Modifier
+                            </Button>
+                        )}
                     </div>
                 </DialogHeader>
 
-                <div className="space-y-6 mt-4">
-                    {/* Informations principales */}
-                    <section>
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <Home className="h-5 w-5" />
-                            Informations principales
-                        </h3>
-                        <div className="grid gap-2 bg-muted/30 rounded-lg p-4">
-                            <InfoRow 
-                                icon={FileText} 
-                                label="Type d'opération" 
-                                value={propriete.type_operation === 'morcellement' ? 'Morcellement' : 'Immatriculation'}
-                                highlight
-                            />
-                            <InfoRow icon={Home} label="Lot" value={propriete.lot} highlight />
-                            <InfoRow icon={FileText} label="Titre" value={propriete.titre ? `TNº${propriete.titre}` : '-'} />
-                            <InfoRow icon={FileText} label="Nature" value={propriete.nature} />
-                            <InfoRow icon={FileText} label="Vocation" value={propriete.vocation} />
-                            <InfoRow 
-                                icon={Ruler} 
-                                label="Contenance" 
-                                value={propriete.contenance ? `${new Intl.NumberFormat('fr-FR').format(propriete.contenance)} m²` : '-'}
-                            />
-                        </div>
-                    </section>
+                {/* Contenu Scrollable */}
+                <div className="flex-1 overflow-y-auto px-1">
+                    <Tabs defaultValue="informations" className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 mb-6">
+                            <TabsTrigger value="informations">
+                                <FileText className="mr-2 h-4 w-4" />
+                                Informations
+                            </TabsTrigger>
+                            <TabsTrigger value="cadastre">
+                                <Landmark className="mr-2 h-4 w-4" />
+                                Cadastre
+                            </TabsTrigger>
+                            <TabsTrigger value="demandeurs">
+                                <Users className="mr-2 h-4 w-4" />
+                                Demandeurs ({demandeursActifs.length + demandeursAcquis.length})
+                            </TabsTrigger>
+                        </TabsList>
 
-                    {/* Morcellement */}
-                    {propriete.type_operation === 'morcellement' && (propriete.propriete_mere || propriete.titre_mere) && (
-                        <section>
-                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <FileText className="h-5 w-5" />
-                                Morcellement
-                            </h3>
-                            <div className="grid gap-2 bg-muted/30 rounded-lg p-4">
-                                <InfoRow icon={Home} label="Propriété mère" value={propriete.propriete_mere} />
-                                <InfoRow icon={FileText} label="Titre mère" value={propriete.titre_mere} />
-                            </div>
-                        </section>
-                    )}
+                        {/* ONGLET 1: INFORMATIONS GÉNÉRALES */}
+                        <TabsContent value="informations" className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <Building2 className="h-5 w-5" />
+                                        Identification
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="grid md:grid-cols-2 gap-3">
+                                    <InfoItem 
+                                        icon={Hash} 
+                                        label="Numéro de Lot" 
+                                        value={propriete.lot}
+                                        valueClass="text-lg font-bold text-primary"
+                                    />
+                                    <InfoItem 
+                                        icon={FileText} 
+                                        label="Titre Foncier" 
+                                        value={propriete.titre ? `TNº${propriete.titre}` : '-'}
+                                        valueClass="font-mono"
+                                    />
+                                    <InfoItem 
+                                        icon={Flag} 
+                                        label="Type d'Opération" 
+                                        value={propriete.type_operation}
+                                        valueClass="capitalize"
+                                    />
+                                    <InfoItem 
+                                        icon={MapPin} 
+                                        label="Nature" 
+                                        value={propriete.nature}
+                                    />
+                                    <InfoItem 
+                                        icon={Landmark} 
+                                        label="Vocation" 
+                                        value={propriete.vocation}
+                                    />
+                                    <InfoItem 
+                                        icon={Ruler} 
+                                        label="Contenance" 
+                                        value={formatContenance(propriete.contenance)}
+                                        valueClass="text-lg font-semibold text-blue-600"
+                                    />
+                                </CardContent>
+                            </Card>
 
-                    {/* Localisation */}
-                    <section>
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <MapPin className="h-5 w-5" />
-                            Localisation et situation
-                        </h3>
-                        <div className="grid gap-2 bg-muted/30 rounded-lg p-4">
-                            <InfoRow icon={MapPin} label="Situation (sise à)" value={propriete.situation} />
-                            <InfoRow icon={FileText} label="Nom propriété / Propriétaire" value={propriete.proprietaire} />
-                            <InfoRow icon={FileText} label="Charge" value={propriete.charge} />
-                        </div>
-                    </section>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <Users className="h-5 w-5" />
+                                        Localisation
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <InfoItem 
+                                        icon={Users} 
+                                        label="Propriétaire" 
+                                        value={propriete.proprietaire}
+                                        valueClass="font-semibold"
+                                    />
+                                    <InfoItem 
+                                        icon={MapPinned} 
+                                        label="Situation" 
+                                        value={propriete.situation}
+                                    />
+                                    <InfoItem 
+                                        icon={Scale} 
+                                        label="Charges" 
+                                        value={propriete.charge}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
 
-                    {/* Informations administratives */}
-                    <section>
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
-                            Informations administratives
-                        </h3>
-                        <div className="grid gap-2 bg-muted/30 rounded-lg p-4">
-                            <InfoRow 
-                                icon={FileText} 
-                                label="Dep/Vol" 
-                                value={propriete.dep_vol_complet || propriete.dep_vol}
-                            />
-                            <InfoRow icon={FileText} label="Numéro FNº" value={propriete.numero_FN} />
-                            {propriete.type_operation === 'immatriculation' && (
-                                <InfoRow icon={FileText} label="Nº Réquisition" value={propriete.numero_requisition} />
-                            )}
-                            <InfoRow 
-                                icon={Calendar} 
-                                label="Date de réquisition" 
-                                value={propriete.date_requisition ? new Date(propriete.date_requisition).toLocaleDateString('fr-FR') : '-'}
-                            />
-                            <InfoRow 
-                                icon={Calendar} 
-                                label="Date d'inscription" 
-                                value={propriete.date_inscription ? new Date(propriete.date_inscription).toLocaleDateString('fr-FR') : '-'}
-                            />
-                        </div>
-                    </section>
+                        {/* ONGLET 2: RÉFÉRENCES CADASTRALES */}
+                        <TabsContent value="cadastre" className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <FileCheck className="h-5 w-5" />
+                                        Origine
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="grid md:grid-cols-2 gap-3">
+                                    <InfoItem 
+                                        icon={FileText} 
+                                        label="Propriété Mère" 
+                                        value={propriete.propriete_mere}
+                                    />
+                                    <InfoItem 
+                                        icon={FileText} 
+                                        label="Titre Mère" 
+                                        value={propriete.titre_mere}
+                                    />
+                                </CardContent>
+                            </Card>
 
-                    {/* ✅ SECTION DEMANDEURS AMÉLIORÉE */}
-                    {demandeurs.length > 0 ? (
-                        <section>
-                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <Users className="h-5 w-5" />
-                                Demandeurs associés ({demandeurs.length})
-                            </h3>
-                            <div className="space-y-2">
-                                {demandeursActifs.length > 0 && (
-                                    <>
-                                        <p className="text-sm font-medium text-muted-foreground">Actifs</p>
-                                        {demandeursActifs.map((demandeur) => {
-                                            const { ordre, isPrincipal } = getDemandeurRole(demandeur);
-                                            
-                                            return (
-                                                <div
-                                                    key={demandeur.id}
-                                                    className="p-4 border rounded-lg hover:bg-muted/50 transition"
-                                                >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <button
-                                                            onClick={() => handleSelectDemandeur(demandeur)}
-                                                            className="flex-1 text-left hover:text-primary transition-colors"
-                                                        >
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <p className="font-medium">
-                                                                    {formatNomComplet(demandeur)}
-                                                                </p>
-                                                                {/* ✅ Badge rôle */}
-                                                                {isPrincipal ? (
-                                                                    <Badge variant="default" className="text-xs">
-                                                                        Principal
-                                                                    </Badge>
-                                                                ) : (
-                                                                    <Badge variant="secondary" className="text-xs">
-                                                                        Consort {ordre > 1 ? ordre - 1 : ''}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-muted-foreground font-mono">
-                                                                CIN: {demandeur.cin}
-                                                            </p>
-                                                            {demandeur.domiciliation && (
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    {demandeur.domiciliation}
-                                                                </p>
-                                                            )}
-                                                        </button>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="default">Actif</Badge>
-                                                            {!dossierClosed && canDissociate(demandeur) && onDissociate && (
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={(e) => handleDissociate(demandeur, e)}
-                                                                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                                                >
-                                                                    <Unlink className="h-4 w-4" />
-                                                                </Button>
-                                                            )}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <Landmark className="h-5 w-5" />
+                                        Références
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="grid md:grid-cols-2 gap-3">
+                                    <InfoItem 
+                                        icon={FileText} 
+                                        label="Dépôt/Volume" 
+                                        value={propriete.dep_vol_complet || propriete.dep_vol}
+                                        valueClass="font-mono"
+                                    />
+                                    <InfoItem 
+                                        icon={Hash} 
+                                        label="Numéro FN" 
+                                        value={propriete.numero_FN}
+                                        valueClass="font-mono"
+                                    />
+                                    <InfoItem 
+                                        icon={Hash} 
+                                        label="Numéro Réquisition" 
+                                        value={propriete.numero_requisition}
+                                        valueClass="font-mono"
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <Calendar className="h-5 w-5" />
+                                        Dates
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="grid md:grid-cols-2 gap-3">
+                                    <InfoItem 
+                                        icon={Calendar} 
+                                        label="Réquisition" 
+                                        value={formatDate(propriete.date_requisition)}
+                                    />
+                                    <InfoItem 
+                                        icon={Calendar} 
+                                        label="Inscription" 
+                                        value={formatDate(propriete.date_inscription)}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* ONGLET 3: DEMANDEURS */}
+                        <TabsContent value="demandeurs" className="space-y-6">
+                            {/* Actifs */}
+                            {demandeursActifs.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Users className="h-5 w-5 text-blue-600" />
+                                            Actifs ({demandeursActifs.length})
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {demandeursActifs.map((demande) => (
+                                            <div
+                                                key={demande.id}
+                                                className="p-4 border rounded-lg hover:bg-muted/50 transition-all hover:shadow-sm"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            if (onSelectDemandeur && demande.demandeur) {
+                                                                onOpenChange(false);
+                                                                setTimeout(() => {
+                                                                    onSelectDemandeur(demande.demandeur!);
+                                                                }, 100);
+                                                            }
+                                                        }}
+                                                        className="flex-1 text-left group"
+                                                    >
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Badge variant={demande.ordre === 1 ? 'default' : 'secondary'}>
+                                                                {demande.ordre === 1 ? '👑 Principal' : `Consort #${demande.ordre}`}
+                                                            </Badge>
                                                         </div>
+                                                        <p className="font-semibold text-lg group-hover:text-primary transition-colors mb-1">
+                                                            {demande.demandeur ? formatNomComplet(demande.demandeur) : 'Inconnu'}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground font-mono mb-2">
+                                                            CIN: {demande.demandeur?.cin || 'N/A'}
+                                                        </p>
+                                                        {demande.total_prix > 0 && (
+                                                            <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                                                                <CreditCard className="h-4 w-4" />
+                                                                {formatPrix(demande.total_prix)}
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                    
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <Badge variant="default" className="text-xs">
+                                                            Actif
+                                                        </Badge>
+                                                        {canDissociate(demande) && onDissociate && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={(e) => handleDissociate(demande, e)}
+                                                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                                            >
+                                                                <Unlink className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </>
-                                )}
-                                
-                                {demandeursArchives.length > 0 && (
-                                    <>
-                                        {demandeursActifs.length > 0 && <Separator className="my-3" />}
-                                        <p className="text-sm font-medium text-muted-foreground">Ayant acquis</p>
-                                        {demandeursArchives.map((demandeur) => {
-                                            const { ordre, isPrincipal } = getDemandeurRole(demandeur);
-                                            
-                                            return (
-                                                <button
-                                                    key={demandeur.id}
-                                                    onClick={() => handleSelectDemandeur(demandeur)}
-                                                    className="w-full p-4 border rounded-lg hover:bg-muted/50 transition text-left bg-green-50/50"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <p className="font-medium">
-                                                                    {formatNomComplet(demandeur)}
-                                                                </p>
-                                                                {isPrincipal && (
-                                                                    <Badge variant="outline" className="text-xs">
-                                                                        Principal
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-muted-foreground font-mono">
-                                                                CIN: {demandeur.cin}
-                                                            </p>
-                                                            {demandeur.domiciliation && (
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    {demandeur.domiciliation}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                                                            <Archive className="mr-1 h-3 w-3" />
-                                                            Acquis
-                                                        </Badge>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </>
-                                )}
-                            </div>
-                        </section>
-                    ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                            <p>Aucun demandeur associé</p>
-                        </div>
-                    )}
-                </div>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            )}
 
-                {!dossierClosed && demandeursActifs.length > 0 && (
-                    <Button onClick={handleModifier} size="sm">
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Modifier
-                    </Button>
-                )}
+                            {/* Acquis */}
+                            {demandeursAcquis.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Archive className="h-5 w-5 text-green-600" />
+                                            Acquis ({demandeursAcquis.length})
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {demandeursAcquis.map((demande) => (
+                                            <button
+                                                key={demande.id}
+                                                onClick={() => {
+                                                    if (onSelectDemandeur && demande.demandeur) {
+                                                        onOpenChange(false);
+                                                        setTimeout(() => {
+                                                            onSelectDemandeur(demande.demandeur!);
+                                                        }, 100);
+                                                    }
+                                                }}
+                                                className="w-full p-4 border rounded-lg hover:bg-muted/50 transition-all text-left bg-green-50/50 dark:bg-green-950/20"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Badge variant={demande.ordre === 1 ? 'default' : 'secondary'}>
+                                                                {demande.ordre === 1 ? '👑' : `#${demande.ordre}`}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="font-semibold text-lg mb-1">
+                                                            {demande.demandeur ? formatNomComplet(demande.demandeur) : 'Inconnu'}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground font-mono">
+                                                            {demande.demandeur?.cin || 'N/A'}
+                                                        </p>
+                                                    </div>
+                                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                                        <Archive className="mr-1 h-3 w-3" />
+                                                        Acquise
+                                                    </Badge>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Vide */}
+                            {demandeursActifs.length === 0 && demandeursAcquis.length === 0 && (
+                                <Card>
+                                    <CardContent className="text-center py-12">
+                                        <AlertCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+                                        <p className="text-lg font-medium text-muted-foreground">Aucun demandeur</p>
+                                        <p className="text-sm text-muted-foreground/70 mt-2">
+                                            Propriété non attribuée
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </DialogContent>
         </Dialog>
     );

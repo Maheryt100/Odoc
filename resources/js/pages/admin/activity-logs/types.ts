@@ -1,4 +1,4 @@
-// admin/activity-logs/types.ts
+// pages/admin/activity-logs/types.ts
 
 export interface ActivityLog {
     id: number;

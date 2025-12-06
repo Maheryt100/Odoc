@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Collection;
 
 class Propriete extends Model
 {
@@ -80,6 +81,16 @@ class Propriete extends Model
     public function demandes(): HasMany
     {
         return $this->hasMany(Demander::class, 'id_propriete');
+    }
+
+    // ✅ AJOUTER cette méthode helper si besoin d'accéder aux demandeurs
+    public function getDemandeurs(): Collection
+    {
+        return $this->demandes()
+            ->with('demandeur')
+            ->get()
+            ->pluck('demandeur')
+            ->filter();
     }
 
     public function demandesActives(): HasMany
@@ -154,6 +165,12 @@ class Propriete extends Model
         }
 
         return $this->dep_vol;
+    }
+
+    // ✅ Accessors qui retournent toujours une valeur
+    public function getTitreAttribute($value)
+    {
+        return $value; // Laravel retourne null comme undefined en JSON
     }
 
     /**

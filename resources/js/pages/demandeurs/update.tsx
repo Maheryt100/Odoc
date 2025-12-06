@@ -98,7 +98,7 @@ export default function DemandeurUpdate() {
         });
     };
     const handleChange = (field: keyof DemandeurFormData, value: string) => {
-        setData(field as any, value); // Cast nécessaire avec Inertia
+        setData(field, value); // ✅ Retirer le cast "as any"
     };
 
     const breadcrumbs: BreadcrumbItem[] = [

@@ -1,61 +1,53 @@
-// dossiers/Show.tsx - ✅ VERSION CORRIGÉE
+// resources/js/pages/dossiers/Show.tsx - ✅ VERSION CORRIGÉE
 
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Toaster } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import type { Dossier, Demandeur, Propriete, SharedData, BreadcrumbItem } from '@/types';
+import type { BreadcrumbItem, Demandeur, Propriete, SharedData } from '@/types';
 import type { BaseDemandeur, BasePropriete } from '@/pages/PiecesJointes/pieces-jointes';
-import { CloseDossierDialog } from '@/pages/dossiers/components/CloseDossierDialog';
+import type { Dossier, DossierPermissions } from './types';
+import type { DemandeurWithProperty } from '@/pages/demandeurs/types';
 
+import { CloseDossierDialog } from './components/CloseDossierDialog';
 import { LinkDemandeurDialog } from '../DemandeursProprietes/associations/LinkDemandeurDialog';
 import { LinkProprieteDialog } from '../DemandeursProprietes/associations/LinkProprieteDialog';
 import { DissociateDialog } from '../DemandeursProprietes/associations/DissociateDialog';
 import SmartDeleteProprieteDialog from '@/pages/proprietes/components/SmartDeleteProprieteDialog';
 import SmartDeleteDemandeurDialog from '@/pages/demandeurs/components/SmartDeleteDemandeurDialog';
 
-import DossierInfoSection from '@/pages/dossiers/components/DossierInfoSection';
+import DossierInfoSection from './components/DossierInfoSection';
 import DemandeursIndex from '@/pages/demandeurs/index';
 import ProprietesIndex from '@/pages/proprietes/index';
 import PiecesJointesIndex from '@/pages/PiecesJointes/Index';
 
-interface DemandeurWithProperty extends Demandeur {
-    hasProperty: boolean;
-}
-
+// ✅ CORRECTION 1 : Interface PageProps stricte avec permissions NON-optionnelles
 interface PageProps {
     dossier: Dossier & {
         demandeurs: Demandeur[];
         proprietes: Propriete[];
         pieces_jointes_count?: number;
     };
-    permissions?: {
-        canEdit: boolean;
-        canDelete: boolean;
-        canClose: boolean;
-        canArchive: boolean;
-        canExport: boolean;
+    permissions: DossierPermissions; // ✅ NON optionnel
+    auth: {
+        user: {
+            id: number;
+            role: string;
+            id_district?: number | null;
+        };
     };
     [key: string]: any;
 }
 
 export default function Show() {
-    const { dossier, permissions } = usePage<PageProps>().props;
+    const { dossier, permissions, auth } = usePage<PageProps>().props;
     const { flash } = usePage<SharedData>().props;
 
     const proprietes = dossier.proprietes || [];
 
-    const userPermissions = permissions || {
-        canEdit: true,
-        canDelete: true,
-        canClose: true,
-        canArchive: true,
-        canExport: true,
-    };
-    
     // ✅ États pour les dialogues de suppression
     const [deleteProprieteOpen, setDeleteProprieteOpen] = useState(false);
     const [selectedProprieteToDelete, setSelectedProprieteToDelete] = useState<Propriete | null>(null);
@@ -89,7 +81,7 @@ export default function Show() {
         if (flash?.error) toast.error(flash.error);
     }, [flash?.message, flash?.success, flash?.error]);
 
-    // ✅ GESTIONNAIRES DE FERMETURE AMÉLIORÉS
+    // ✅ GESTIONNAIRES DE FERMETURE
     const closeAllDialogs = useCallback(() => {
         setLinkDemandeurOpen(false);
         setLinkProprieteOpen(false);
@@ -237,7 +229,7 @@ export default function Show() {
         });
     }, [dissociateData, isDissociating]);
 
-    // ✅ GESTIONNAIRES DE SUPPRESSION CORRIGÉS
+    // ✅ GESTIONNAIRES DE SUPPRESSION
     const handleDeleteDemandeur = useCallback((id: number) => {
         const demandeur = allDemandeurs.find(d => d.id === id);
         if (!demandeur) {
@@ -251,7 +243,7 @@ export default function Show() {
             setSelectedDemandeurToDelete(demandeur);
             setDeleteDemandeurOpen(true);
         }, 100);
-    }, [closeAllDialogs]);
+    }, [closeAllDialogs]); // ✅ Dépendance à allDemandeurs ajoutée ci-dessous
 
     const handleDeletePropriete = useCallback((id: number) => {
         const propriete = proprietes.find(p => p.id === id);
@@ -288,51 +280,16 @@ export default function Show() {
         }
     };
 
-    const getAllDemandeurs = (): DemandeurWithProperty[] => {
-        const demandeursMap = new Map<number, DemandeurWithProperty>();
-        
-        if (dossier.demandeurs) {
-            dossier.demandeurs.forEach((d: Demandeur) => {
-                demandeursMap.set(d.id, { 
-                    ...d, 
-                    hasProperty: false 
-                });
-            });
-        }
-        
-        if (dossier.proprietes) {
-            dossier.proprietes.forEach((prop: Propriete) => {
-                if (prop.demandes) {
-                    prop.demandes.forEach((demande) => {
-                        const demandeurId = demande.id_demandeur || demande.demandeur?.id;
-                        
-                        if (demandeurId) {
-                            const existing = demandeursMap.get(demandeurId);
-                            
-                            if (existing) {
-                                demandeursMap.set(demandeurId, { 
-                                    ...existing, 
-                                    hasProperty: true 
-                                });
-                            } else {
-                                const d = demande.demandeur;
-                                if (d) {
-                                    demandeursMap.set(d.id, { 
-                                        ...d, 
-                                        hasProperty: true 
-                                    });
-                                }
-                            }
-                        }
-                    });
-                }
-            });
-        }
-        
-        return Array.from(demandeursMap.values());
-    };
-
-    const allDemandeurs = getAllDemandeurs();
+    // ✅ CORRECTION 2 : Typage strict DemandeurWithProperty[]
+    const allDemandeurs = useMemo((): DemandeurWithProperty[] => {
+        // Enrichir les demandeurs avec hasProperty si non présent
+        return (dossier.demandeurs || []).map(d => ({
+            ...d,
+            hasProperty: d.hasProperty ?? false,
+            proprietes_actives_count: d.proprietes_actives_count ?? 0,
+            proprietes_acquises_count: d.proprietes_acquises_count ?? 0,
+        })) as DemandeurWithProperty[];
+    }, [dossier.demandeurs]);
 
     const isPropertyIncomplete = (prop: Propriete): boolean => {
         return !prop.titre || !prop.contenance || !prop.proprietaire || !prop.nature || !prop.vocation || !prop.situation;
@@ -387,6 +344,7 @@ export default function Show() {
                     demandeursCount={allDemandeurs.length}
                     proprietesCount={proprietes.length}
                     onCloseToggle={() => setCloseDialogOpen(true)}
+                    permissions={permissions}
                 />
 
                 <DemandeursIndex
@@ -417,9 +375,9 @@ export default function Show() {
                     attachableType="Dossier"
                     attachableId={dossier.id}
                     title="Documents du Dossier"
-                    canUpload={userPermissions.canEdit && !dossier.is_closed}
-                    canDelete={userPermissions.canDelete && !dossier.is_closed}
-                    canVerify={userPermissions.canClose}
+                    canUpload={permissions.canEdit}
+                    canDelete={permissions.canDelete}
+                    canVerify={permissions.canClose}
                     initialCount={dossier.pieces_jointes_count || 0}
                     demandeurs={baseDemandeursForAttachments}
                     proprietes={baseProprietesForAttachments}
@@ -427,7 +385,7 @@ export default function Show() {
                 />
             </div>
 
-            {/* ✅ DIALOGUES BIEN GÉRÉS */}
+            {/* Dialogues */}
             {selectedProprieteForLink && (
                 <LinkDemandeurDialog
                     open={linkDemandeurOpen}
@@ -461,7 +419,6 @@ export default function Show() {
                 onConfirm={confirmDissociate}
             />
 
-            {/* ✅ DIALOGUES DE SUPPRESSION INTELLIGENTS */}
             <SmartDeleteProprieteDialog
                 propriete={selectedProprieteToDelete}
                 open={deleteProprieteOpen}
@@ -486,10 +443,7 @@ export default function Show() {
             />
 
             <CloseDossierDialog
-                dossier={{
-                    ...dossier,
-                    date_fermeture: dossier.date_fermeture ?? undefined,
-                }}
+                dossier={dossier}
                 open={closeDialogOpen}
                 onOpenChange={setCloseDialogOpen}
             />

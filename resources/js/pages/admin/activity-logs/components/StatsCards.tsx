@@ -8,11 +8,20 @@ interface StatsCardsProps {
 }
 
 export const StatsCards = ({ stats }: StatsCardsProps) => {
+    // Fournir des valeurs par défaut pour éviter les erreurs null
+    const safeStats = {
+        total_actions: stats?.total_actions ?? 0,
+        today_actions: stats?.today_actions ?? 0,
+        week_actions: stats?.week_actions ?? 0,
+        month_actions: stats?.month_actions ?? 0,
+        total_documents: stats?.total_documents ?? 0,
+    };
+
     const calculatePercentage = (part: number, total: number): number => {
         return total > 0 ? Math.round((part / total) * 100) : 0;
     };
 
-    const todayPercentage = calculatePercentage(stats.today_actions, stats.total_actions);
+    const todayPercentage = calculatePercentage(safeStats.today_actions, safeStats.total_actions);
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -28,7 +37,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                 </div>
                 <CardContent className="pt-4">
                     <div className="text-3xl font-bold bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent">
-                        {stats.total_actions.toLocaleString()}
+                        {safeStats.total_actions.toLocaleString()}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                         Actions totales
@@ -48,7 +57,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                 </div>
                 <CardContent className="pt-4">
                     <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                        {stats.today_actions.toLocaleString()}
+                        {safeStats.today_actions.toLocaleString()}
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                         <TrendingUp className="h-3 w-3 text-blue-500" />
@@ -77,7 +86,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                 </div>
                 <CardContent className="pt-4">
                     <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                        {stats.week_actions.toLocaleString()}
+                        {safeStats.week_actions.toLocaleString()}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                         7 derniers jours
@@ -97,7 +106,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                 </div>
                 <CardContent className="pt-4">
                     <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                        {stats.month_actions.toLocaleString()}
+                        {safeStats.month_actions.toLocaleString()}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                         Mois en cours
@@ -117,7 +126,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                 </div>
                 <CardContent className="pt-4">
                     <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                        {stats.total_documents.toLocaleString()}
+                        {safeStats.total_documents.toLocaleString()}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                         Générés/téléchargés

@@ -267,15 +267,15 @@ return new class extends Migration
             $table->index(['nom_demandeur', 'prenom_demandeur'], 'idx_demandeurs_nom_complet');
         });
 
-        Schema::create('consorts', function (Blueprint $table) {
-            $table->id();
-            $table->boolean('status')->default(true);
-            $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
-            $table->foreignId('id_consort')->constrained('demandeurs')->onDelete('cascade');
-            $table->timestamps();
+        // Schema::create('consorts', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->boolean('status')->default(true);
+        //     $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
+        //     $table->foreignId('id_consort')->constrained('demandeurs')->onDelete('cascade');
+        //     $table->timestamps();
             
-            $table->unique(['id_demandeur', 'id_consort']);
-        });
+        //     $table->unique(['id_demandeur', 'id_consort']);
+        // });
 
         Schema::create('demander', function (Blueprint $table) {
             $table->id();
@@ -302,14 +302,14 @@ return new class extends Migration
             $table->index(['id_propriete', 'status']);
         });
 
-        Schema::create('demande_consorts', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('id_demande')->constrained('demander')->onDelete('cascade');
-            $table->foreignId('id_consort')->constrained('consorts')->onDelete('cascade');
-            $table->timestamps();
+        // Schema::create('demande_consorts', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->foreignId('id_demande')->constrained('demander')->onDelete('cascade');
+        //     $table->foreignId('id_consort')->constrained('consorts')->onDelete('cascade');
+        //     $table->timestamps();
             
-            $table->unique(['id_demande', 'id_consort']);
-        });
+        //     $table->unique(['id_demande', 'id_consort']);
+        // });
 
         Schema::create('contenir', function (Blueprint $table) {
             $table->id();
@@ -522,9 +522,9 @@ return new class extends Migration
         
         // Relations demandeurs
         Schema::dropIfExists('contenir');
-        Schema::dropIfExists('demande_consorts');
+        // Schema::dropIfExists('demande_consorts');
         Schema::dropIfExists('demander');
-        Schema::dropIfExists('consorts');
+        // Schema::dropIfExists('consorts');
         Schema::dropIfExists('demandeurs');
         
         // Dossiers et propriétés

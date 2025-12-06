@@ -1,4 +1,4 @@
-// types/pieces-jointes.ts
+// js/pages/PiecesJointes/pieces-jointes.ts
 
 export interface PieceJointe {
     id: number;
