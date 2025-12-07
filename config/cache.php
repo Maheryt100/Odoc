@@ -89,8 +89,32 @@ return [
         'octane' => [
             'driver' => 'octane',
         ],
+        // 'statistics' => [
+        //     'ttl' => 300, // 5 minutes
+        // ],
         'statistics' => [
-            'ttl' => 300, // 5 minutes
+            // Durées de cache par défaut (en secondes)
+            'ttl' => [
+                'short' => env('STATS_CACHE_TTL_SHORT', 300),      // 5 min
+                'medium' => env('STATS_CACHE_TTL_MEDIUM', 900),     // 15 min
+                'long' => env('STATS_CACHE_TTL_LONG', 1800),        // 30 min
+                'very_long' => env('STATS_CACHE_TTL_VERY_LONG', 3600), // 1h
+            ],
+            
+            // Activer/désactiver le cache
+            'enabled' => env('STATS_CACHE_ENABLED', true),
+            
+            // Préfixe des clés de cache
+            'prefix' => env('STATS_CACHE_PREFIX', 'stats'),
+            
+            // Périodes à préchauffer automatiquement
+            'warmup_periods' => ['today', 'week', 'month', 'year'],
+            
+            // Activer le préchauffage automatique via cron
+            'auto_warmup' => env('STATS_AUTO_WARMUP', false),
+            
+            // Invalidation automatique après modifications
+            'auto_invalidate' => env('STATS_AUTO_INVALIDATE', true),
         ],
 
     ],

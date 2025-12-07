@@ -5,8 +5,12 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Demander;
 use App\Models\Propriete;
+use App\Models\Dossier;
+use App\Models\Demandeur;
 use App\Observers\DemanderObserver;
 use App\Observers\ProprieteObserver;
+use App\Observers\DossierObserver;
+use App\Observers\DemandeurObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,8 +21,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // ✅ Enregistrer les observers
-        Demander::observe(DemanderObserver::class);
+        Dossier::observe(DossierObserver::class);
         Propriete::observe(ProprieteObserver::class);
+        Demandeur::observe(DemandeurObserver::class);
+        Demander::observe(DemanderObserver::class);
     }
 }

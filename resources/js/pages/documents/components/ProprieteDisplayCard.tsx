@@ -26,7 +26,7 @@ export default function ProprieteDisplayCard({
     /**
      * ✅ CORRECTION : Utiliser safeContenance pour gérer null
      */
-    const formatContenanceDisplay = (contenance: number | undefined): string => {
+    const formatContenanceDisplay = (contenance: number | null): string => {
         const contenanceSafe = contenance ?? 0;
         if (contenanceSafe === 0) return '-';
         

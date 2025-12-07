@@ -1,4 +1,4 @@
-// proprietes/index.tsx
+// pages/proprietes/index.tsx - ✅ VERSION CORRIGÉE FINALE
 
 import { useMemo, useState } from 'react';
 import { Link } from '@inertiajs/react';
@@ -11,6 +11,33 @@ import type { Propriete, Dossier, Demandeur } from '@/types';
 import ProprieteDetailDialog from '@/pages/proprietes/components/ProprieteDetailDialog';
 import DemandeurDetailDialog from '@/pages/demandeurs/components/DemandeurDetailDialog';
 
+// ✅ Interface pour propriété avec calculs
+interface ProprieteWithComputed extends Propriete {
+    _computed?: {
+        isIncomplete: boolean;
+        hasDemandeurs: boolean;
+        isArchived: boolean;
+    };
+}
+
+interface ProprietesIndexProps {
+    proprietes: Propriete[];
+    dossier: Dossier;
+    demandeurs: Demandeur[];
+    onDeletePropriete: (id: number) => void;
+    onArchivePropriete: (id: number) => void;
+    onUnarchivePropriete: (id: number) => void;
+    isPropertyIncomplete: (prop: Propriete) => boolean;
+    onLinkDemandeur?: (propriete: Propriete) => void;
+    onDissociate: (
+        demandeurId: number,
+        proprieteId: number,
+        demandeurNom: string,
+        proprieteLot: string,
+        type: 'from-demandeur' | 'from-propriete'
+    ) => void;
+}
+
 export default function ProprietesIndex({
     proprietes,
     dossier,
@@ -21,7 +48,7 @@ export default function ProprietesIndex({
     isPropertyIncomplete,
     onLinkDemandeur,
     onDissociate
-}: any) {
+}: ProprietesIndexProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -32,52 +59,37 @@ export default function ProprietesIndex({
 
     /**
      * ✅ CORRECTION FINALE : Vérifier les demandeurs ACTIFS uniquement
-     * LOGIQUE : Une propriété a des demandeurs SI au moins UNE demande est ACTIVE
      */
     const hasLinkedDemandeurs = (prop: Propriete): boolean => {
         if (prop.demandes && Array.isArray(prop.demandes) && prop.demandes.length > 0) {
-            // ✅ Vérifier qu'il y a au moins UNE demande ACTIVE
             return prop.demandes.some(d => d.status === 'active');
         }
-        
-        // Fallback : ancien système (pour compatibilité)
-        return prop.demandeurs !== undefined && prop.demandeurs.length > 0;
+        return false;
     };
 
     /**
-     * ✅ CORRECTION FINALE : Détecter si acquise (toutes demandes archivées)
-     * LOGIQUE : 
-     * - Propriété ACQUISE = AU MOINS 1 demande archivée ET AUCUNE demande active
-     * - Propriété VIDE = Aucune demande du tout
-     * - Propriété ACTIVE = Au moins 1 demande active
+     * ✅ CORRECTION FINALE : Détecter si acquise
+     * LOGIQUE : PropriÃ©tÃ© ACQUISE = AU MOINS 1 demande archivée ET AUCUNE demande active
      */
     const isPropertyArchived = (prop: Propriete): boolean => {
-        // ✅ PRIORITÉ 1 : Utiliser is_archived calculé côté serveur (le plus fiable)
+        // Priorité 1: Utiliser is_archived calculé côté serveur
         if (prop.is_archived === true) {
             return true;
         }
         
-        // ✅ PRIORITÉ 2 : Vérifier _computed si disponible
-        if (prop._computed?.isArchived === true) {
-            return true;
-        }
-        
-        // ✅ PRIORITÉ 3 : Calculer manuellement via les demandes
+        // Priorité 2: Calculer via les demandes
         if (prop.demandes && Array.isArray(prop.demandes) && prop.demandes.length > 0) {
             const activeDemandes = prop.demandes.filter(d => d.status === 'active');
             const archivedDemandes = prop.demandes.filter(d => d.status === 'archive');
             
-            // ✅ LOGIQUE CORRECTE : Acquise = AUCUNE active ET au moins UNE archivée
             return activeDemandes.length === 0 && archivedDemandes.length > 0;
         }
         
-        // ✅ AUCUNE demande = pas archivée (juste vide)
         return false;
     };
 
-
     /**
-     * ✅ NOUVEAU : Vérifier si propriété est complètement vide (jamais liée)
+     * ✅ Vérifier si propriété est vide
      */
     const isPropertyEmpty = (prop: Propriete): boolean => {
         return !prop.demandes || prop.demandes.length === 0;
@@ -94,7 +106,7 @@ export default function ProprietesIndex({
 
     const handleSelectDemandeurFromPropriete = (demandeur: Demandeur) => {
         setShowProprieteDetail(false);
-        const demandeurComplet = demandeurs.find((d: { id: number; }) => d.id === demandeur.id) || demandeur;
+        const demandeurComplet = demandeurs.find(d => d.id === demandeur.id) || demandeur;
         setTimeout(() => {
             setSelectedDemandeur(demandeurComplet);
             setShowDemandeurDetail(true);
@@ -123,13 +135,12 @@ export default function ProprietesIndex({
         }
     };
 
-   
-
+    // ✅ Calcul des propriétés avec _computed
     const processedProprietes = useMemo(() => {
         if (!proprietes || !Array.isArray(proprietes)) {
             return [];
         }
-        return proprietes.map((prop: Propriete) => ({
+        return proprietes.map((prop: Propriete): ProprieteWithComputed => ({
             ...prop,
             _computed: {
                 isIncomplete: isPropertyIncomplete(prop),
@@ -201,7 +212,7 @@ export default function ProprietesIndex({
                             </div>
                         </div>
                         
-                        {/* ✅ LÉGENDE AMÉLIORÉE */}
+                        {/* Légende */}
                         <div className="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
@@ -243,10 +254,14 @@ export default function ProprietesIndex({
                                         </td>
                                     </tr>
                                 ) : (
-                                    (paginatedProprietes || []).map((propriete: Propriete) => {
-                                        const { isIncomplete, hasDemandeurs, isArchived } = propriete._computed;
+                                    (paginatedProprietes || []).map((propriete: ProprieteWithComputed) => {
+                                        const { isIncomplete, hasDemandeurs, isArchived } = propriete._computed || {
+                                            isIncomplete: false,
+                                            hasDemandeurs: false,
+                                            isArchived: false
+                                        };
                                         
-                                        // ✅ CORRECTION : Classes CSS selon statut
+                                        // Classes CSS selon statut
                                         const rowClass = isArchived
                                             ? 'hover:bg-green-50/50 dark:hover:bg-green-900/20 bg-green-50/30 dark:bg-green-900/10 cursor-pointer transition-colors'
                                             : isIncomplete 
@@ -282,7 +297,6 @@ export default function ProprietesIndex({
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
-                                                        {/* ✅ CORRECTION CRITIQUE : Badge selon statut */}
                                                         {isArchived ? (
                                                             <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-400">
                                                                 <Archive className="mr-1 h-3 w-3" />
@@ -365,7 +379,6 @@ export default function ProprietesIndex({
                 onSelectDemandeur={handleSelectDemandeurFromPropriete}
                 dossierClosed={dossier.is_closed}
                 onDissociate={onDissociate}
-                demandeursDossier={demandeurs}
             />
 
             <DemandeurDetailDialog

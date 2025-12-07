@@ -98,7 +98,7 @@ export default function DemandeurUpdate() {
         });
     };
     const handleChange = (field: keyof DemandeurFormData, value: string) => {
-        setData(field, value); // ✅ Retirer le cast "as any"
+         setData(field as string, value);
     };
 
     const breadcrumbs: BreadcrumbItem[] = [

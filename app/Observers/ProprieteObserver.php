@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Propriete;
 use App\Services\PrixCalculatorService;
+use App\Http\Controllers\Dashboard\Services\StatisticsCacheService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -11,6 +12,69 @@ use Illuminate\Support\Facades\Log;
  */
 class ProprieteObserver
 {
+
+    public function __construct(
+        private StatisticsCacheService $cache
+    ) {}
+    
+    // public function created(Propriete $propriete): void
+    // {
+    //     $this->invalidateCache($propriete);
+    // }
+
+    public function created(Propriete $propriete): void
+    {
+        // 1️⃣ Invalidation du cache si dossier présent
+        if ($propriete->dossier) {
+            $this->cache->forgetDistrictCache($propriete->dossier->id_district);
+            
+            Log::info("🗑️ Cache invalidé suite à création Propriete", [
+                'propriete_id' => $propriete->id,
+                'district_id' => $propriete->dossier->id_district,
+            ]);
+        }
+
+        // 2️⃣ Calcul du prix + log
+        try {
+            $prix = PrixCalculatorService::calculerPrixTotal($propriete);
+
+            Log::info("Propriété créée", [
+                'propriete_id' => $propriete->id,
+                'lot' => $propriete->lot,
+                'vocation' => $propriete->vocation,
+                'contenance' => $propriete->contenance,
+                'prix_calcule' => $prix
+            ]);
+        } catch (\Exception $e) {
+            Log::warning("Propriété créée mais prix non calculable", [
+                'propriete_id' => $propriete->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+
+    public function updated(Propriete $propriete): void
+    {
+        $this->invalidateCache($propriete);
+    }
+
+    public function deleted(Propriete $propriete): void
+    {
+        $this->invalidateCache($propriete);
+    }
+    
+    private function invalidateCache(Propriete $propriete): void
+    {
+        if ($propriete->dossier) {
+            $this->cache->forgetDistrictCache($propriete->dossier->id_district);
+            
+            Log::info("🗑️ Cache invalidé suite à modification Propriete", [
+                'propriete_id' => $propriete->id,
+                'district_id' => $propriete->dossier->id_district,
+            ]);
+        }
+    }
     /**
      * Quand la vocation ou la contenance change, recalculer les prix de toutes les demandes liées
      */
@@ -63,23 +127,23 @@ class ProprieteObserver
     /**
      * Quand une propriété est créée, loguer l'info
      */
-    public function created(Propriete $propriete): void
-    {
-        try {
-            $prix = PrixCalculatorService::calculerPrixTotal($propriete);
+    // public function created(Propriete $propriete): void
+    // {
+    //     try {
+    //         $prix = PrixCalculatorService::calculerPrixTotal($propriete);
             
-            Log::info("Propriété créée", [
-                'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'vocation' => $propriete->vocation,
-                'contenance' => $propriete->contenance,
-                'prix_calcule' => $prix
-            ]);
-        } catch (\Exception $e) {
-            Log::warning("Propriété créée mais prix non calculable", [
-                'propriete_id' => $propriete->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
+    //         Log::info("Propriété créée", [
+    //             'propriete_id' => $propriete->id,
+    //             'lot' => $propriete->lot,
+    //             'vocation' => $propriete->vocation,
+    //             'contenance' => $propriete->contenance,
+    //             'prix_calcule' => $prix
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         Log::warning("Propriété créée mais prix non calculable", [
+    //             'propriete_id' => $propriete->id,
+    //             'error' => $e->getMessage()
+    //         ]);
+    //     }
+    // }
 }

@@ -4,16 +4,21 @@ namespace App\Observers;
 
 use App\Models\Demander;
 use App\Services\PrixCalculatorService;
+use App\Http\Controllers\Dashboard\Services\StatisticsCacheService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Observer pour calculer automatiquement le prix lors de la création/modification d'une demande
+ * Observer pour gérer les calculs de prix + invalidation cache sur les demandes
  */
 class DemanderObserver
 {
+    public function __construct(
+        private StatisticsCacheService $cache
+    ) {}
+
     /**
-     * Événement déclenché AVANT la création d'une demande
-     * Permet de calculer le prix avant l'insertion en DB
+     * AVANT création d'une demande
+     * → calcul du prix
      */
     public function creating(Demander $demander): void
     {
@@ -21,24 +26,50 @@ class DemanderObserver
     }
 
     /**
-     * Événement déclenché AVANT la mise à jour d'une demande
-     * Recalcule le prix si la propriété a changé
+     * AVANT mise à jour d'une demande
+     * → recalcul du prix si la propriété change
      */
     public function updating(Demander $demander): void
     {
-        // Recalculer seulement si la propriété a changé
         if ($demander->isDirty('id_propriete')) {
             $this->calculerPrix($demander, 'updating');
         }
     }
 
     /**
-     * Calcule et assigne le prix total
+     * APRÈS création d'une demande
+     * → invalider le cache
+     */
+    public function created(Demander $demander): void
+    {
+        $this->invalidateCache($demander);
+    }
+
+    /**
+     * APRÈS mise à jour d'une demande
+     * → invalider le cache
+     */
+    public function updated(Demander $demander): void
+    {
+        $this->invalidateCache($demander);
+    }
+
+    /**
+     * APRÈS suppression d'une demande
+     * → invalider le cache
+     */
+    public function deleted(Demander $demander): void
+    {
+        $this->invalidateCache($demander);
+    }
+
+    /**
+     * Calcul du prix d'une demande
      */
     private function calculerPrix(Demander $demander, string $event): void
     {
         try {
-            // Charger la propriété si elle n'est pas déjà chargée
+            // Charger relation si pas chargée
             if (!$demander->relationLoaded('propriete')) {
                 $demander->load('propriete.dossier');
             }
@@ -47,49 +78,59 @@ class DemanderObserver
 
             if (!$propriete) {
                 Log::warning("Observer Demander [{$event}]: Propriété introuvable", [
-                    'demander_id' => $demander->id,
-                    'id_propriete' => $demander->id_propriete
+                    'demander_id'   => $demander->id,
+                    'id_propriete'  => $demander->id_propriete,
                 ]);
                 return;
             }
 
-            // Calculer le prix via le service
-            $prixTotal = PrixCalculatorService::calculerPrixTotal($propriete);
-            
-            // Assigner le prix (sera sauvegardé automatiquement)
-            $demander->total_prix = $prixTotal;
+            // Calcul du prix
+            $prix = PrixCalculatorService::calculerPrixTotal($propriete);
+            $demander->total_prix = $prix;
 
             Log::info("Observer Demander [{$event}]: Prix calculé", [
-                'demander_id' => $demander->id ?? 'nouveau',
-                'id_propriete' => $propriete->id,
-                'lot' => $propriete->lot,
-                'vocation' => $propriete->vocation,
-                'contenance' => $propriete->contenance,
-                'prix_calcule' => $prixTotal
+                'demander_id'   => $demander->id ?? 'nouveau',
+                'propriete_id'  => $propriete->id,
+                'lot'           => $propriete->lot,
+                'prix_calcule'  => $prix,
             ]);
 
         } catch (\Exception $e) {
             Log::error("Observer Demander [{$event}]: Erreur calcul prix", [
-                'demander_id' => $demander->id ?? 'nouveau',
-                'id_propriete' => $demander->id_propriete,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'demander_id'   => $demander->id ?? 'nouveau',
+                'id_propriete'  => $demander->id_propriete,
+                'error'         => $e->getMessage(),
             ]);
-
-            // Ne pas bloquer la création/modification même en cas d'erreur
-            // Le prix restera à 0 et pourra être recalculé plus tard
         }
     }
 
     /**
-     * Événement après sauvegarde - pour logging
+     * Invalidation du cache du district
+     */
+    private function invalidateCache(Demander $demander): void
+    {
+        if ($demander->propriete && $demander->propriete->dossier) {
+            $district = $demander->propriete->dossier->id_district;
+
+            $this->cache->forgetDistrictCache($district);
+
+            Log::info("🗑️ Cache invalidé suite à modification Demande", [
+                'demande_id'    => $demander->id,
+                'propriete_id'  => $demander->id_propriete,
+                'district_id'   => $district,
+            ]);
+        }
+    }
+
+    /**
+     * Logging après sauvegarde
      */
     public function saved(Demander $demander): void
     {
         if ($demander->total_prix > 0) {
             Log::info("Demande sauvegardée avec prix", [
                 'demander_id' => $demander->id,
-                'total_prix' => $demander->total_prix
+                'total_prix'  => $demander->total_prix,
             ]);
         }
     }

@@ -50,35 +50,35 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
                 {/* Header redesigné */}
                 <div className="flex items-center justify-between">
+
+                    {/* GAUCHE : Titre + infos */}
                     <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                            <Button 
-                                variant="outline" 
-                                size="sm"
-                                asChild
-                                className="shadow-sm hover:shadow-md transition-all"
-                            >
-                                <Link href={route('dossiers.show', dossier.id)}>
-                                    <ArrowLeft className="h-4 w-4 mr-2" />
-                                    Retour au dossier
-                                </Link>
-                            </Button>
-                        </div>
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                             Génération de documents
                         </h1>
+
                         <div className="flex items-center gap-3 text-muted-foreground">
                             <span className="font-medium">{dossier.nom_dossier}</span>
                             <span className="text-gray-400">•</span>
                             <span>{dossier.commune}</span>
-                            <span className="text-gray-400">•</span>
-                            <Badge variant="outline" className="gap-1">
-                                <Sparkles className="h-3 w-3" />
-                                Système unique
-                            </Badge>
                         </div>
                     </div>
+
+                    {/* DROITE : Bouton retour */}
+                    <Button 
+                        variant="outline" 
+                        size="sm"
+                        asChild
+                        className="shadow-sm hover:shadow-md transition-all"
+                    >
+                        <Link href={route('dossiers.show', dossier.id)}>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Retour au dossier
+                        </Link>
+                    </Button>
+
                 </div>
+
 
                 {/* ✅ Statistiques avec composants réutilisables */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

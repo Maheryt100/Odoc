@@ -1,4 +1,4 @@
-// pages/demandeurs/index.tsx - ✅ VERSION CORRIGÉE
+// pages/demandeurs/index.tsx - ✅ VERSION CORRIGÉE FINALE
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,19 +7,18 @@ import DemandeurDetailDialog from './components/DemandeurDetailDialog';
 import ProprieteDetailDialog from '@/pages/proprietes/components/ProprieteDetailDialog';
 import DemandeurFilters from './components/DemandeurFilters';
 import DemandeurTable from './components/DemandeurTable';
+import type { Propriete } from '@/types';
 import type { 
     DemandeursIndexProps, 
     DemandeurWithProperty, 
     FiltreStatutType, 
     TriType 
 } from './types';
-import type { Propriete as GlobalPropriete, Propriete } from '@/types';
 import { 
     filterDemandeursByStatus, 
     sortDemandeurs, 
     matchesSearch 
 } from './helpers';
-
 
 export default function DemandeursIndex({
     demandeurs,
@@ -40,6 +39,8 @@ export default function DemandeursIndex({
     
     const [selectedDemandeur, setSelectedDemandeur] = useState<DemandeurWithProperty | null>(null);
     const [showDemandeurDetail, setShowDemandeurDetail] = useState(false);
+    
+    // ✅ CORRECTION: Ajout de l'état manquant
     const [selectedPropriete, setSelectedPropriete] = useState<Propriete | null>(null);
     const [showProprieteDetail, setShowProprieteDetail] = useState(false);
 
@@ -67,8 +68,7 @@ export default function DemandeursIndex({
         }, 100);
     };
 
-    // ✅ Handler avec type global explicite
-    const handleSelectProprieteFromDemandeur = (propriete: GlobalPropriete) => {
+    const handleSelectProprieteFromDemandeur = (propriete: Propriete) => {
         setShowDemandeurDetail(false);
         setTimeout(() => {
             setSelectedPropriete(propriete);

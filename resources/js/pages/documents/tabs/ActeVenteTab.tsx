@@ -80,7 +80,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
     );
 
     // ✅ Formater la contenance
-    const formatContenance = (contenance: number | undefined): string => {
+    const formatContenance = (contenance: number | null): string => {
         if (!contenance) return '-';
         
         const hectares = Math.floor(contenance / 10000);

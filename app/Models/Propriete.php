@@ -49,7 +49,7 @@ class Propriete extends Model
         'is_archived',
         'is_empty',
         'has_active_demandes',
-        'status_label', // ✅ AJOUT
+        'status_label',
     ];
 
     private $_status_cache = null;
@@ -109,46 +109,6 @@ class Propriete extends Model
     }
 
     // ============ ACCESSORS ============
-
-    /**
-     * ✅ LOGIQUE MÉTIER CLARIFIÉE :
-     * Une propriété est "acquise" (archivée) SI ET SEULEMENT SI :
-     * - Elle a au moins UNE demande archivée
-     * - ET aucune demande active
-     * 
-     * EXPLICATION : 
-     * Les demandes d'une même propriété s'archivent TOUJOURS ENSEMBLE
-     * Donc si toutes sont archivées = propriété définitivement acquise
-     */
-    
-
-    /**
-     * ✅ Vérifier si a des demandes actives, une autre version en bas
-     */
-    // public function getHasActiveDemandesAttribute(): bool
-    // {
-    //     return $this->getStatusInfo()['has_actives'];
-    // }
-
-
-    // public function getNomCompletAttribute(): string
-    // {
-    //     $parts = [];
-
-    //     if ($this->lot) {
-    //         $parts[] = "Lot {$this->lot}";
-    //     }
-
-    //     if ($this->titre) {
-    //         $parts[] = "Titre nº{$this->titre}";
-    //     }
-
-    //     if ($this->proprietaire) {
-    //         $parts[] = "({$this->proprietaire})";
-    //     }
-
-    //     return implode(' ', $parts) ?: "Propriété #{$this->id}";
-    // }
 
 
     /**
@@ -232,10 +192,6 @@ class Propriete extends Model
     // ============ MÉTHODES MÉTIER ============
 
     /**
-     * ✅ NOUVEAU : Obtenir les statistiques des demandes
-     */
-
-    /**
      * ✅ Vérifier si peut être supprimée
      * RÈGLE : Une propriété ne peut être supprimée que si elle n'a AUCUNE demande
      */
@@ -244,47 +200,40 @@ class Propriete extends Model
         return $this->getStatusInfo()['can_be_deleted'];
     }
 
-    /**
-     * ✅ Vérifier si peut être modifiée
-     * RÈGLE : Une propriété acquise (toutes demandes archivées) ne peut plus être modifiée
-     */
-    // public function canBeModified(): bool
-    // {
-    //     if ($this->is_archived) {
-    //         return false;
-    //     }
-
-    //     if ($this->dossier && $this->dossier->is_closed) {
-    //         return false;
-    //     }
-
-    //     return true;
-    // }
+   
 
     public function getStatusInfo(): array
     {
-        // ✅ Cache d'instance pour éviter les requêtes répétées
-        if (isset($this->_status_cache)) {
+
+        return Cache::remember(
+        "propriete.{$this->id}.status_info",
+        60, // 1 minute
+        function () {
+             // ✅ Cache d'instance pour éviter les requêtes répétées
+            if (isset($this->_status_cache)) {
+                return $this->_status_cache;
+            }
+            
+            $hasActives = $this->demandesActives()->exists();
+            $hasArchivees = $this->demandesArchivees()->exists();
+            $isArchived = !$hasActives && $hasArchivees;
+            $isDossierClosed = $this->dossier && $this->dossier->is_closed;
+            
+            $this->_status_cache = [
+                'has_actives' => $hasActives,
+                'has_archivees' => $hasArchivees,
+                'is_archived' => $isArchived,
+                'is_dossier_closed' => $isDossierClosed,
+                'can_be_modified' => !$isArchived && !$isDossierClosed,
+                'can_be_deleted' => !$hasActives && !$hasArchivees && !$isDossierClosed,
+                'can_be_archived' => $hasActives && !$isArchived,
+                'can_be_unarchived' => $isArchived && !$isDossierClosed,
+            ];
+            
             return $this->_status_cache;
         }
-        
-        $hasActives = $this->demandesActives()->exists();
-        $hasArchivees = $this->demandesArchivees()->exists();
-        $isArchived = !$hasActives && $hasArchivees;
-        $isDossierClosed = $this->dossier && $this->dossier->is_closed;
-        
-        $this->_status_cache = [
-            'has_actives' => $hasActives,
-            'has_archivees' => $hasArchivees,
-            'is_archived' => $isArchived,
-            'is_dossier_closed' => $isDossierClosed,
-            'can_be_modified' => !$isArchived && !$isDossierClosed,
-            'can_be_deleted' => !$hasActives && !$hasArchivees && !$isDossierClosed,
-            'can_be_archived' => $hasActives && !$isArchived,
-            'can_be_unarchived' => $isArchived && !$isDossierClosed,
-        ];
-        
-        return $this->_status_cache;
+    );
+       
     }
 
     /**
@@ -471,26 +420,6 @@ class Propriete extends Model
 
     // ============ BOOT METHOD ============
     
-    // protected static function boot()
-    // {
-    //     parent::boot();
-
-    //     static::saving(function ($propriete) {
-    //         if ($propriete->lot) {
-    //             $propriete->lot = strtoupper($propriete->lot);
-    //         }
-
-    //         if ($propriete->nature) {
-    //             $propriete->nature = ucfirst(strtolower($propriete->nature));
-    //         }
-
-    //         if ($propriete->vocation) {
-    //             $propriete->vocation = ucfirst(strtolower($propriete->vocation));
-    //         }
-    //     });
-    // }
-
-
     /**
      * ✅ Vérifier si peut être archivée
      */

@@ -215,8 +215,6 @@ return new class extends Migration
             $table->string('numero_dep_vol', 50)->nullable();
             
             
-            // ✅ AMÉLIORATION: is_archived et status supprimés
-            // L'archivage est géré par demander.status = 'archive'
             
             $table->foreignId('id_dossier')->constrained('dossiers')->onDelete('cascade');
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');

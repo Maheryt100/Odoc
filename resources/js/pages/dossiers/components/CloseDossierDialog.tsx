@@ -14,7 +14,7 @@ interface CloseDossierDialogProps {
     dossier: Dossier & {
         is_closed?: boolean;
         date_ouverture?: string;
-        date_fermeture?: string;
+        date_fermeture?: string | null;
         can_close?: boolean;
     };
     open: boolean;

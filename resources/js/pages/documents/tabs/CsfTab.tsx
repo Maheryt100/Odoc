@@ -142,20 +142,23 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
         return getConsorts(selectedProprieteData.demandeurs_lies || []);
     }, [selectedProprieteData]);
 
-    // ✅ Formater la contenance
-    const formatContenance = (contenance: number): string => {
+    // Formater la contenance
+    const formatContenance = (contenance: number | null | undefined): string => {
+        if (!contenance) return "-";  // sécurité valeurs null/undefined/0
+        
         const hectares = Math.floor(contenance / 10000);
         const reste = contenance % 10000;
         const ares = Math.floor(reste / 100);
         const centiares = reste % 100;
-        
+
         const parts = [];
         if (hectares > 0) parts.push(`${hectares}Ha`);
         if (ares > 0) parts.push(`${ares}A`);
         parts.push(`${centiares}Ca`);
-        
-        return parts.join(' ');
+
+        return parts.join(" ");
     };
+
 
     return (
         <Card className="border-0 shadow-lg">

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -423,6 +425,11 @@ class Demander extends Model
 
             // ✅ Auto-calculer status_consort basé sur l'ordre
             $demande->status_consort = $demande->ordre > 1;
+        });
+
+        // Invalider dans Demander::boot()
+        static::updated(function ($demande) {
+            Cache::forget("propriete.{$demande->id_propriete}.status_info");
         });
 
         /**

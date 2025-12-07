@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Dashboard\Services;
 
 use App\Models\Propriete;
+use App\Models\Dossier;
 use App\Models\Demandeur;
 use App\Models\Demander;
-use App\Models\Dossier;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 /**
  * Service de calcul des statistiques numériques
  * Responsabilité : Calculer toutes les métriques et KPIs
+ * 
+ * ✅ CORRECTIONS v2.0 :
+ * - Exclusion des demandeurs avec sexe NULL/vide dans les calculs démographiques
+ * - Optimisation des requêtes avec une seule query pour les stats par genre
+ * - Gestion correcte des âges moyens avec validation des données
  */
 class StatisticsCalculator
 {
@@ -164,16 +169,20 @@ class StatisticsCalculator
     }
     
     /**
-     * Statistiques démographiques détaillées
+     * ✅ CORRECTION MAJEURE : Statistiques démographiques avec exclusion des données invalides
      */
     public function getDemographicsStats(array $dates): array
     {
         $user = $this->getAuthUser();
         
+        // ✅ AMÉLIORATION : Query de base avec filtres AVANT comptage
         $baseQuery = Demandeur::query()
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                 $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
-            });
+            })
+            ->whereNotNull('sexe')
+            ->where('sexe', '!=', '')
+            ->whereIn('sexe', ['Homme', 'Femme']); // ✅ Uniquement H/F valides
         
         $totalHommes = (clone $baseQuery)->where('sexe', 'Homme')->count();
         $totalFemmes = (clone $baseQuery)->where('sexe', 'Femme')->count();
@@ -189,11 +198,13 @@ class StatisticsCalculator
             ->whereHas('proprietes')
             ->count();
         
-        $hommesActifs = $this->countActiveByGender('Homme');
-        $femmesActifs = $this->countActiveByGender('Femme');
+        // ✅ OPTIMISATION : Une seule requête pour actifs/acquis par genre
+        $statsParGenre = $this->getGenderStatsOptimized();
         
-        $hommesAcquis = $this->countAcquisByGender('Homme');
-        $femmesAcquis = $this->countAcquisByGender('Femme');
+        $hommesActifs = $statsParGenre['Homme']['actifs'] ?? 0;
+        $femmesActifs = $statsParGenre['Femme']['actifs'] ?? 0;
+        $hommesAcquis = $statsParGenre['Homme']['acquis'] ?? 0;
+        $femmesAcquis = $statsParGenre['Femme']['acquis'] ?? 0;
         
         return [
             'total_hommes' => $totalHommes,
@@ -323,14 +334,13 @@ class StatisticsCalculator
     // ========================================
     
     /**
-     * ✅ FIX: Calculer l'âge moyen correctement
+     * ✅ FIX MAJEUR : Calculer l'âge moyen avec exclusion des données invalides
      */
     private function calculateAverageAge(): float
     {
         $user = $this->getAuthUser();
         
-        // Utiliser TIMESTAMPDIFF ou DATE_PART selon la base de données
-        $ageMoyen = DB::table('demandeurs')
+        $result = DB::table('demandeurs')
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                 $q->whereExists(function($subq) use ($user) {
                     $subq->from('contenir')
@@ -340,14 +350,21 @@ class StatisticsCalculator
                 });
             })
             ->whereNotNull('date_naissance')
-            ->selectRaw('AVG(DATE_PART(\'year\', AGE(CURRENT_DATE, date_naissance))) as age_moyen')
-            ->value('age_moyen');
+            ->whereNotNull('sexe')           // ✅ AJOUT : Exclure sexe NULL
+            ->where('sexe', '!=', '')        // ✅ AJOUT : Exclure sexe vide
+            ->whereIn('sexe', ['Homme', 'Femme']) // ✅ AJOUT : Uniquement H/F valides
+            ->selectRaw('
+                AVG(DATE_PART(\'year\', AGE(CURRENT_DATE, date_naissance))) as age_moyen,
+                COUNT(*) as count
+            ')
+            ->first();
         
-        return $ageMoyen ?? 0;
+        // ✅ Retourner 0 si aucune donnée valide
+        return ($result && $result->count > 0) ? (float) $result->age_moyen : 0.0;
     }
     
     /**
-     * Calculer les tranches d'âge
+     * ✅ NOUVEAU : Calculer les tranches d'âge avec exclusion des invalides
      */
     private function calculateAgeBrackets(): array
     {
@@ -372,6 +389,9 @@ class StatisticsCalculator
                     });
                 })
                 ->whereNotNull('date_naissance')
+                ->whereNotNull('sexe')           // ✅ AJOUT
+                ->where('sexe', '!=', '')        // ✅ AJOUT
+                ->whereIn('sexe', ['Homme', 'Femme']) // ✅ AJOUT
                 ->whereRaw("DATE_PART('year', AGE(CURRENT_DATE, date_naissance)) BETWEEN ? AND ?", [$min, $max])
                 ->count();
         }
@@ -380,46 +400,67 @@ class StatisticsCalculator
     }
     
     /**
-     * Compter les demandeurs actifs par genre
+     * ✅ OPTIMISATION MAJEURE : Stats par genre en une seule requête
      */
-    private function countActiveByGender(string $gender): int
+    private function getGenderStatsOptimized(): array
     {
         $user = $this->getAuthUser();
         
-        return Demandeur::query()
+        $results = DB::table('demandeurs')
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
-                $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
+                $q->whereExists(function($subq) use ($user) {
+                    $subq->from('contenir')
+                        ->join('dossiers', 'contenir.id_dossier', '=', 'dossiers.id')
+                        ->whereColumn('contenir.id_demandeur', 'demandeurs.id')
+                        ->where('dossiers.id_district', $user->id_district);
+                });
             })
-            ->where('sexe', $gender)
-            ->whereHas('proprietes', function($q) {
-                $q->whereHas('demandes', fn($q2) => $q2->where('status', 'active'));
-            })
-            ->count();
-    }
-    
-    /**
-     * Compter les demandeurs acquis par genre
-     */
-    private function countAcquisByGender(string $gender): int
-    {
-        $user = $this->getAuthUser();
+            ->whereNotNull('sexe')
+            ->where('sexe', '!=', '')
+            ->whereIn('sexe', ['Homme', 'Femme'])
+            ->select('sexe')
+            ->selectRaw('
+                COUNT(DISTINCT CASE 
+                    WHEN EXISTS(
+                        SELECT 1 FROM demander d 
+                        WHERE d.id_demandeur = demandeurs.id 
+                        AND d.status = ?
+                    ) THEN demandeurs.id 
+                END) as actifs,
+                COUNT(DISTINCT CASE 
+                    WHEN EXISTS(
+                        SELECT 1 FROM demander d1 
+                        WHERE d1.id_demandeur = demandeurs.id 
+                        AND d1.status = ?
+                    ) AND NOT EXISTS(
+                        SELECT 1 FROM demander d2 
+                        WHERE d2.id_demandeur = demandeurs.id 
+                        AND d2.status = ?
+                    ) THEN demandeurs.id 
+                END) as acquis
+            ', [
+                Demander::STATUS_ACTIVE,
+                Demander::STATUS_ARCHIVE,
+                Demander::STATUS_ACTIVE
+            ])
+            ->groupBy('sexe')
+            ->get()
+            ->keyBy('sexe');
         
-        return Demandeur::query()
-            ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
-                $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
-            })
-            ->where('sexe', $gender)
-            ->whereHas('proprietes', function($q) {
-                $q->whereHas('demandes', fn($q2) => $q2->where('status', 'archive'));
-            })
-            ->whereDoesntHave('proprietes', function($q) {
-                $q->whereHas('demandes', fn($q2) => $q2->where('status', 'active'));
-            })
-            ->count();
+        return [
+            'Homme' => [
+                'actifs' => $results->get('Homme')->actifs ?? 0,
+                'acquis' => $results->get('Homme')->acquis ?? 0,
+            ],
+            'Femme' => [
+                'actifs' => $results->get('Femme')->actifs ?? 0,
+                'acquis' => $results->get('Femme')->acquis ?? 0,
+            ],
+        ];
     }
     
     /**
-     * Obtenir les revenus par vocation
+     * Obtenir les revenus par vocation (ancienne méthode conservée)
      */
     private function getRevenueByVocation(string $status): array
     {

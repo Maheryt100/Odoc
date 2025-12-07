@@ -1,5 +1,5 @@
 // ============================================
-// 📦 types/index.d.ts - VERSION FINALE CORRIGÉE
+// 📦 types/index.d.ts - VERSION HARMONISÉE FINALE
 // ============================================
 
 import { LucideIcon } from 'lucide-react';
@@ -33,20 +33,19 @@ export interface NavItem {
     children?: NavItem[];
 }
 
-// ✅ CORRECTION : Index signature ajoutée
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
     flash: {
-        error: string; 
+        error?: string; 
         message?: string; 
         success?: string;
     };
     districts: District[];
     ziggy: Config & { location: string };
     sidebarOpen: boolean;
-    [key: string]: unknown; // ✅ AJOUTÉ pour compatibilité usePage
+    [key: string]: unknown;
 }
 
 // ============================================
@@ -61,20 +60,21 @@ export interface User {
     email: string;
     role: UserRole;
     role_name?: string;
-    status?: boolean;
-    id_district?: number | null | undefined; // ✅ CORRECTION
-    email_verified_at?: string | null | undefined; // ✅ CORRECTION
+    id_district: number | null;
+    avatar?: string;
+    email_verified_at: string | null;
     created_at: string;
     updated_at: string;
     
+    // Relations
     district?: {
         id: number;
         nom_district: string;
         nom_region?: string;
         nom_province?: string;
-    } | null | undefined; // ✅ CORRECTION
-    location?: string;
+    } | null;
     
+    location?: string;
     can_edit?: boolean;
     can_delete?: boolean;
 }
@@ -102,7 +102,7 @@ export interface District {
 }
 
 // ============================================
-// 🏠 PROPRIETE - TYPE COMPLET
+// 🏠 PROPRIETE - ✅ HARMONISÉ AVEC LARAVEL
 // ============================================
 
 export type Nature = 'Urbaine' | 'Suburbaine' | 'Rurale';
@@ -112,167 +112,210 @@ export type TypeOperation = 'morcellement' | 'immatriculation';
 export interface Propriete {
     id: number;
     lot: string;
-    titre: string | undefined;  // ✅ CHANGÉ : null retiré
-    contenance: number | undefined;  // ✅ CHANGÉ
-    proprietaire: string | undefined;  // ✅ CHANGÉ
-    propriete_mere: string | undefined;
-    titre_mere: string | undefined;
-    charge: string | undefined;
-    situation: string | undefined;  // ✅ CHANGÉ
+    titre: string | null;
+    contenance: number | null;
+    proprietaire: string | null;
+    propriete_mere: string | null;
+    titre_mere: string | null;
+    charge: string | null;
+    situation: string | null;
     nature: Nature;
-    vocation: Vocation;
-    numero_FN: string | undefined;
-    numero_requisition: string | undefined;
-    status: boolean;
+    vocation: Vocation | null;
+    numero_FN: string | null;
+    numero_requisition: string | null;
     type_operation: TypeOperation;
-    date_requisition: string | undefined;
-    date_inscription: string | undefined;
-    dep_vol: string | undefined;
-    numero_dep_vol: string | undefined;
+    date_requisition: string | null;
+    date_inscription: string | null;
+    dep_vol: string | null;
+    numero_dep_vol: string | null;
     id_dossier: number;
+    id_user: number;
+    created_at: string;
+    updated_at: string;
     
+    // Relations (chargées via Eloquent)
+    dossier?: Dossier;
     demandes?: Demande[];
+    demandeurs?: Demandeur[];
     
+    // Accessors (calculés côté serveur)
+    dep_vol_complet?: string;
+    titre_complet?: string;
     is_incomplete?: boolean;
     is_archived?: boolean;
     is_empty?: boolean;
     has_active_demandes?: boolean;
     status_label?: 'Vide' | 'Active' | 'Acquise' | 'Inconnu';
+    
+    // ✅ AJOUT: Propriété calculée côté client
+    _computed?: {
+        isIncomplete: boolean;
+        hasDemandeurs: boolean;
+        isArchived: boolean;
+    };
 }
 
 // ============================================
-// 👥 DEMANDEUR - TYPE COMPLET
+// 👥 DEMANDEUR - ✅ HARMONISÉ AVEC LARAVEL
 // ============================================
 
 export interface Demandeur {
     id: number;
     titre_demandeur: string;
     nom_demandeur: string;
-    prenom_demandeur: string | undefined;  // ✅ CHANGÉ
+    prenom_demandeur: string | null;
     date_naissance: string;
-    lieu_naissance: string | undefined;  // ✅ CHANGÉ
-    sexe: string | undefined;
-    occupation: string | undefined;  // ✅ CHANGÉ
-    nom_pere: string | undefined;
-    nom_mere: string | undefined;  // ✅ CHANGÉ
+    lieu_naissance: string | null;
+    sexe: string | null;
+    occupation: string | null;
+    nom_pere: string | null;
+    nom_mere: string | null;
     cin: string;
-    date_delivrance: string | undefined;  // ✅ CHANGÉ
-    lieu_delivrance: string | undefined;  // ✅ CHANGÉ
-    date_delivrance_duplicata: string | undefined;
-    lieu_delivrance_duplicata: string | undefined;
-    domiciliation: string | undefined;  // ✅ CHANGÉ
-    situation_familiale: string | undefined;
-    regime_matrimoniale: string | undefined;
-    nationalite: string;
-    telephone: string | undefined;
-    date_mariage: string | undefined;
-    lieu_mariage: string | undefined;
-    marie_a: string | undefined;
+    date_delivrance: string | null;
+    lieu_delivrance: string | null;
+    date_delivrance_duplicata: string | null;
+    lieu_delivrance_duplicata: string | null;
+    domiciliation: string | null;
+    situation_familiale: string | null;
+    regime_matrimoniale: string | null;
+    nationalite: string | null;
+    telephone: string | null;
+    date_mariage: string | null;
+    lieu_mariage: string | null;
+    marie_a: string | null;
     id_user: number;
+    created_at: string;
+    updated_at: string;
     
+    // Relations
+    demandes?: Demande[];
+    proprietes?: Propriete[];
+    dossiers?: Dossier[];
+    
+    // Accessors
+    nom_complet?: string;
+    is_incomplete?: boolean;
     hasProperty?: boolean;
     proprietes_actives_count?: number;
     proprietes_acquises_count?: number;
-    nom_complet?: string;
-    is_incomplete?: boolean;
-    
-    demandes?: Demande[];
-    proprietes?: Propriete[];
-    
-    created_at: string;
-    updated_at: string;
 }
 
 // ============================================
 // 🔗 DEMANDE (PIVOT TABLE)
 // ============================================
 
+export type DemandeStatus = 'active' | 'archive';
+
 export interface Demande {
     id: number;
     id_demandeur: number;
     id_propriete: number;
     total_prix: number;
-    status: 'active' | 'archive';
+    status: DemandeStatus;
     status_consort: boolean;
     ordre: number;
-    motif_archive: string | null | undefined; // ✅ CORRECTION
+    motif_archive: string | null;
+    id_user: number;
+    created_at: string;
+    updated_at: string;
     
+    // Relations
     propriete?: Propriete;
     demandeur?: Demandeur;
     
-    created_at?: string;
-    updated_at?: string;
+    // Accessors
+    is_principal?: boolean;
+    is_consort?: boolean;
+    is_active?: boolean;
+    is_archived?: boolean;
 }
 
+// Alias pour compatibilité
 export type Demander = Demande;
 
 // ============================================
-// 📁 DOSSIER - TYPE COMPLET
+// 📁 DOSSIER
 // ============================================
 
 export interface Dossier {
     id: number;
     nom_dossier: string;
-    numero_ouverture: string | undefined;  // ✅ CHANGÉ
-    numero_ouverture_display: string | undefined;
+    numero_ouverture: string | null;
+    numero_ouverture_display?: string;
     date_descente_debut: string;
     date_descente_fin: string;
     date_ouverture: string;
-    date_fermeture: string | undefined;  // ✅ CHANGÉ : null retiré
-    closed_by: number | undefined;
-    motif_fermeture: string | undefined;
+    date_fermeture: string | null;
+    closed_by: number | null;
+    motif_fermeture: string | null;
     type_commune: string;
     commune: string;
     fokontany: string;
     circonscription: string;
     id_district: number;
     id_user: number;
-    demandeurs_count: number;
-    proprietes_count: number;
+    created_at: string;
+    updated_at: string;
     
-    is_closed: boolean;
-    is_open: boolean;
-    can_close?: boolean;
-    can_modify?: boolean;
-    status_label?: string;
+    // Counts
+    demandeurs_count?: number;
+    proprietes_count?: number;
+    pieces_jointes_count?: number;
     
+    // Relations
     closedBy?: User;
     demandeurs?: Demandeur[];
     proprietes?: Propriete[];
     district?: District;
     user?: User;
-    pieces_jointes_count?: number;
     
-    created_at: string;
-    updated_at: string;
+    // Accessors
+    is_closed?: boolean;
+    is_open?: boolean;
+    can_close?: boolean;
+    can_modify?: boolean;
+    status_label?: string;
 }
 
 // ============================================
-// 📄 PAGE PROPS - CORRIGÉE
+// 📄 PAGINATION
 // ============================================
 
-// ✅ CORRECTION : Index signature ajoutée
+export interface Paginated<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
+    links?: Link[];
+}
+
+export interface Link {
+    active: boolean;
+    label: string;
+    url: string | null;
+}
+
+// ============================================
+// 📄 PAGE PROPS
+// ============================================
+
 export interface PageProps {
+    auth: Auth;
+    flash?: {
+        error?: string;
+        message?: string;
+        success?: string;
+    };
     dossier?: Dossier;
     demandeurs?: Demandeur[];
     proprietes?: Propriete[];
     documents?: Paginated<Demande>;
     districts?: District[];
     suggested_numero?: string;
-    [key: string]: unknown; // ✅ AJOUTÉ
-}
-
-export interface Paginated<T> {
-    last_page: number;
-    current_page: number;
-    data: T[];
-    links: Link[];
-}
-
-export interface Link {
-    active: boolean;
-    label: string;
-    url: string | null | undefined; // ✅ CORRECTION
+    [key: string]: unknown;
 }
 
 // ============================================
@@ -285,5 +328,10 @@ declare global {
     }
 }
 
+// ============================================
+// 📦 EXPORTS UTILITAIRES
+// ============================================
+
 export type Proprietes = Propriete[];
 export type Demandeurs = Demandeur[];
+export type Demandes = Demande[];

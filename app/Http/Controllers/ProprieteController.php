@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Dossier;
 use App\Models\Propriete;
 use App\Models\Demander;
-use App\Services\DeletionValidationService; // ✅ NOUVEAU
+use App\Services\DeletionValidationService;
+use App\Services\ProprieteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,15 +14,11 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
-use App\Services\PrixCalculatorService;
-use App\Services\ProprieteService;
 
 class ProprieteController extends Controller
 {
-    // ✅ INJECTION DU SERVICE
     protected $deletionService;
     protected $proprieteService;
-
 
     public function __construct(
         DeletionValidationService $deletionService,
@@ -30,7 +27,6 @@ class ProprieteController extends Controller
         $this->deletionService = $deletionService;
         $this->proprieteService = $proprieteService;
     }
-
 
     public function index(Request $request, $id_dossier)
     {
@@ -76,20 +72,20 @@ class ProprieteController extends Controller
             'type_operation' => 'required|in:morcellement,immatriculation',
             'nature' => 'required|in:Urbaine,Suburbaine,Rurale',
             'vocation' => 'required|in:Edilitaire,Agricole,Forestière,Touristique',
-            'proprietaire' => 'nullable|string|max:50',
+            'proprietaire' => 'nullable|string|max:100',
             'situation' => 'nullable|string',
-            'propriete_mere' => 'nullable|string|max:20',
-            'titre_mere' => 'nullable|string|max:20',
-            'titre' => 'nullable|string|max:20',
+            'propriete_mere' => 'nullable|string|max:50',
+            'titre_mere' => 'nullable|string|max:50',
+            'titre' => 'nullable|string|max:50',
             'contenance' => 'nullable|numeric|min:1',
             'charge' => 'nullable|string|max:255',
-            'numero_FN' => 'nullable|string|max:10',
-            'numero_requisition' => 'nullable|string|max:30',
+            'numero_FN' => 'nullable|string|max:30',
+            'numero_requisition' => 'nullable|string|max:50',
             'id_dossier' => 'required|numeric|exists:dossiers,id',
             'date_requisition' => 'nullable|date',
             'date_inscription' => 'nullable|date',
-            'dep_vol' => 'nullable|string',
-            'numero_dep_vol' => 'nullable|string',
+            'dep_vol' => 'nullable|string|max:50',
+            'numero_dep_vol' => 'nullable|string|max:50',
         ],[
             'lot.required' => 'Le lot est obligatoire',
             'type_operation.required' => 'Le type d\'opération est obligatoire',
@@ -102,7 +98,11 @@ class ProprieteController extends Controller
         
         try {
             $request->merge(['id_user' => Auth::id()]);
-            Propriete::create($request->all());
+            
+            // ✅ Convertir chaînes vides en null
+            $data = array_map(fn($v) => ($v === '' ? null : $v), $request->all());
+            
+            Propriete::create($data);
             
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Propriété ajoutée avec succès');
@@ -128,21 +128,21 @@ class ProprieteController extends Controller
         $validator = Validator::make(['proprietes' => $proprietes], [
             'proprietes' => 'required|array|min:1',
             'proprietes.*.lot' => 'required|string|max:15',
-            'proprietes.*.titre' => 'nullable|string|max:30',
+            'proprietes.*.titre' => 'nullable|string|max:50',
             'proprietes.*.contenance' => 'nullable|numeric',
             'proprietes.*.proprietaire' => 'nullable|string|max:100',
-            'proprietes.*.propriete_mere' => 'nullable|string|max:15',
-            'proprietes.*.titre_mere' => 'nullable|string|max:30',
+            'proprietes.*.propriete_mere' => 'nullable|string|max:50',
+            'proprietes.*.titre_mere' => 'nullable|string|max:50',
             'proprietes.*.charge' => 'nullable|string',
             'proprietes.*.situation' => 'nullable|string',
             'proprietes.*.nature' => 'required|in:Urbaine,Suburbaine,Rurale',
             'proprietes.*.vocation' => 'required|in:Edilitaire,Agricole,Forestière,Touristique',
             'proprietes.*.numero_FN' => 'nullable|string|max:30',
-            'proprietes.*.numero_requisition' => 'nullable|string|max:30',
+            'proprietes.*.numero_requisition' => 'nullable|string|max:50',
             'proprietes.*.date_requisition' => 'nullable|date',
             'proprietes.*.date_inscription' => 'nullable|date',
-            'proprietes.*.dep_vol' => 'nullable|string|max:30',
-            'proprietes.*.numero_dep_vol' => 'nullable|string|max:30',
+            'proprietes.*.dep_vol' => 'nullable|string|max:50',
+            'proprietes.*.numero_dep_vol' => 'nullable|string|max:50',
             'proprietes.*.type_operation' => 'required|in:morcellement,immatriculation',
         ], [
             'proprietes.*.lot.required' => 'Le numéro de lot est obligatoire (propriété :position).',
@@ -165,11 +165,8 @@ class ProprieteController extends Controller
             $createdCount = 0;
             
             foreach ($proprietes as $proprieteData) {
-                foreach ($proprieteData as $key => $value) {
-                    if ($value === '') {
-                        $proprieteData[$key] = null;
-                    }
-                }
+                // ✅ Convertir chaînes vides en null
+                $proprieteData = array_map(fn($v) => ($v === '' ? null : $v), $proprieteData);
                 
                 $proprieteData['id_user'] = Auth::id();
                 $proprieteData['id_dossier'] = $validated['id_dossier'];
@@ -253,21 +250,21 @@ class ProprieteController extends Controller
         $validate = $request->validate([
             'lot' => 'required|string|max:15',
             'type_operation' => 'required|in:morcellement,immatriculation',
-            'nature' => 'required|string|max:40',
+            'nature' => 'required|string|max:50',
             'vocation' => 'required|in:Edilitaire,Agricole,Forestière,Touristique',
-            'proprietaire' => 'nullable|string|max:50',
+            'proprietaire' => 'nullable|string|max:100',
             'situation' => 'nullable|string',
-            'propriete_mere' => 'nullable|string|max:20',
-            'titre_mere' => 'nullable|string|max:20',
-            'titre' => 'nullable|string|max:20',
+            'propriete_mere' => 'nullable|string|max:50',
+            'titre_mere' => 'nullable|string|max:50',
+            'titre' => 'nullable|string|max:50',
             'contenance' => 'nullable|numeric|min:1',
             'charge' => 'nullable|string|max:255',
-            'numero_FN' => 'nullable|string|max:10',
-            'numero_requisition' => 'nullable|string|max:30',
+            'numero_FN' => 'nullable|string|max:30',
+            'numero_requisition' => 'nullable|string|max:50',
             'date_requisition' => 'nullable|date',
             'date_inscription' => 'nullable|date',
-            'dep_vol' => 'nullable|string',
-            'numero_dep_vol' => 'nullable|string',
+            'dep_vol' => 'nullable|string|max:50',
+            'numero_dep_vol' => 'nullable|string|max:50',
             'id_dossier' => 'required|numeric|exists:dossiers,id',
         ], [
             'lot.required' => 'Le lot est obligatoire',
@@ -280,8 +277,10 @@ class ProprieteController extends Controller
         DB::beginTransaction();
         
         try {
-            // ✅ SIMPLIFICATION : L'Observer gère automatiquement le recalcul
-            // Pas besoin de vérifier contenanceChanged ou vocationChanged
+            // ✅ Convertir chaînes vides en null
+            $validate = array_map(fn($v) => ($v === '' ? null : $v), $validate);
+            
+            // L'Observer gère automatiquement le recalcul du prix si nécessaire
             $existPropriete->update($validate);
             
             DB::commit();
@@ -302,7 +301,7 @@ class ProprieteController extends Controller
     }
 
     /**
-     * ✅ SIMPLIFIÉ : Suppression (utilise le service)
+     * ✅ Suppression (utilise le service)
      */
     public function destroy(string $id)
     {
@@ -329,7 +328,9 @@ class ProprieteController extends Controller
         }
     }
 
-    // Simplifier les méthodes :
+    /**
+     * ✅ Archiver (utilise le service)
+     */
     public function archive(Request $request)
     {
         $request->validate(['id' => 'required|exists:proprietes,id']);
@@ -342,7 +343,7 @@ class ProprieteController extends Controller
     }
 
     /**
-     * ✅ DÉSARCHIVER : Réactiver TOUTES les demandes ENSEMBLE
+     * ✅ Désarchiver (utilise le service)
      */
     public function unarchive(Request $request)
     {
@@ -356,5 +357,4 @@ class ProprieteController extends Controller
             ? back()->with('success', $result['message'])
             : back()->withErrors(['error' => $result['message']]);
     }
-
 }

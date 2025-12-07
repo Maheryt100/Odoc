@@ -64,7 +64,7 @@ class DemandeController extends Controller
             $premiere = $groupe->first();
             
             return [
-                'id' => $premiere->id, // ID de la première demande pour compatibilité
+                'id' => $premiere->id,
                 'id_propriete' => $premiere->id_propriete,
                 'propriete' => $premiere->propriete,
                 'demandeurs' => $groupe->map(function ($demande) {
@@ -77,7 +77,7 @@ class DemandeController extends Controller
                         'status' => $demande->status,
                     ];
                 })->values(),
-                'demandeur' => $premiere->demandeur, // Premier demandeur pour l'affichage
+                'demandeur' => $premiere->demandeur,
                 'total_prix' => $premiere->total_prix,
                 'status_consort' => $groupe->count() > 1,
                 'status' => $premiere->status,
@@ -103,7 +103,6 @@ class DemandeController extends Controller
             'to' => min($page * $perPage, $total),
         ];
         
-
         return Inertia::render('documents/index', [
             'dossier' => $dossier,
             'documents' => $documents,
@@ -114,8 +113,12 @@ class DemandeController extends Controller
     {
         $dossier = Dossier::find($id);
         $demandeurs = $dossier->demandeurs->toArray();
+        
+        // propriétés disponibles = sans demandes actives
         return Inertia::render('documents/create',[
-            'proprietes' => Propriete::where('status',false)->where('id_dossier', $dossier->id)->get(),
+            'proprietes' => Propriete::where('id_dossier', $dossier->id)
+                ->whereDoesntHave('demandesActives')
+                ->get(),
             'demandeurs' => $demandeurs,
             'dossier' => $dossier,
         ]);
@@ -199,7 +202,7 @@ class DemandeController extends Controller
             $dossier = Dossier::findOrFail($validate['id_dossier']);
             $propriete = Propriete::findOrFail($validate['propriete_id']);
 
-            // ✅ VÉRIFIER que le prix peut être calculé AVANT de créer
+            // Vérifier que le prix peut être calculé AVANT de créer
             try {
                 PrixCalculatorService::calculerPrixTotal($propriete);
             } catch (\Exception $e) {
@@ -209,18 +212,16 @@ class DemandeController extends Controller
                 ]);
             }
 
-            // ✅ CRÉATION SIMPLIFIÉE - L'Observer calcule automatiquement le prix
+            // Création simplifiée - L'Observer calcule automatiquement le prix
             $document = Demander::create([
                 'id_demandeur' => $validate['demandeur_id'],
                 'id_propriete' => $validate['propriete_id'],
-                // ❌ NE PAS mettre 'total_prix' ici - l'Observer s'en charge
                 'id_user' => Auth::id(),
                 'status' => 'active',
                 'status_consort' => !empty($validate['consort']),
             ]);
 
-            // Mise à jour du statut de la propriété
-            $propriete->update(['status' => true]);
+            // ✅ SUPPRIMÉ: Mise à jour propriete.status (n'existe plus)
 
             // Gestion des consorts
             if (!empty($validate['consort'])) {
@@ -551,22 +552,20 @@ class DemandeController extends Controller
             $demande->status = 'archive';
             $demande->save();
 
-            // Bloquer la propriété
-            $propriete = Propriete::findOrFail($demande->id_propriete);
-            $propriete->status = true;
-            $propriete->save();
+            // ✅ SUPPRIMÉ: Bloquer la propriété (n'existe plus)
+            // La propriété est considérée "archivée" si toutes ses demandes sont archivées
+            // Ceci est géré automatiquement par l'accessor Propriete::getIsArchivedAttribute()
 
             DB::commit();
 
-            Log::info('Document archivé et propriété bloquée', [
+            Log::info('Document archivé', [
                 'demande_id' => $demande->id,
-                'propriete_id' => $propriete->id,
-                'propriete_lot' => $propriete->lot
+                'propriete_id' => $demande->id_propriete,
             ]);
 
             return redirect()
                 ->route('dossiers.list', $validated['id_dossier'])
-                ->with('success', 'Document archivé et propriété bloquée avec succès');
+                ->with('success', 'Document archivé avec succès');
 
         } catch (\Exception $e) {
             DB::rollBack();

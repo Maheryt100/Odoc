@@ -1,5 +1,5 @@
 // ============================================
-// 📦 pages/demandeurs/types.ts - VERSION COMPLÈTE
+// 📦 pages/demandeurs/types.ts - VERSION SIMPLIFIÉE
 // ============================================
 
 import type { Demandeur, Dossier, Propriete } from '@/types';
@@ -7,11 +7,15 @@ import type { LucideIcon } from 'lucide-react';
 
 /**
  * ✅ Demandeur enrichi avec informations de propriétés
+ * Étend le type global Demandeur
  */
 export interface DemandeurWithProperty extends Demandeur {
+    // Accessors déjà définis dans le type global
     hasProperty: boolean;
-    proprietes_actives_count?: number;
-    proprietes_acquises_count?: number;
+    proprietes_actives_count: number;
+    proprietes_acquises_count: number;
+    
+    // Données supplémentaires chargées côté serveur
     proprietes_actives?: Propriete[];
     proprietes_acquises?: Propriete[];
 }
@@ -37,17 +41,17 @@ export interface DemandeursIndexProps {
 }
 
 /**
- * ✅ AJOUT : Types de filtres disponibles
+ * ✅ Types de filtres disponibles
  */
 export type FiltreStatutType = 'tous' | 'actives' | 'acquises' | 'sans';
 
 /**
- * ✅ AJOUT : Types de tri disponibles
+ * ✅ Types de tri disponibles
  */
 export type TriType = 'date' | 'nom' | 'proprietes' | 'statut';
 
 /**
- * ✅ AJOUT : Configuration de badge pour affichage
+ * ✅ Configuration de badge pour affichage
  */
 export interface BadgeConfig {
     variant: 'default' | 'secondary' | 'outline' | 'destructive';
@@ -57,7 +61,7 @@ export interface BadgeConfig {
 }
 
 /**
- * ✅ AJOUT : Statistiques d'un demandeur
+ * ✅ Statistiques d'un demandeur
  */
 export interface DemandeurStats {
     total_proprietes: number;

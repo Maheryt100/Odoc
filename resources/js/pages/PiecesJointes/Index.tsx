@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, FolderOpen, Search, Filter, Loader2, FileText, User, Home } from 'lucide-react';
 import { toast } from 'sonner';
-import PreviewModal from '@/components/PreviewModal';
+
 import PieceJointeItem from '@/pages/PiecesJointes/components/PieceJointeItem';
 import UploadPieceJointeDialog from '@/pages/PiecesJointes/components/UploadPieceJointeDialog';
 import type { 
@@ -384,11 +384,6 @@ export default function PiecesJointesIndex({
                 demandeurs={demandeurs}
                 proprietes={proprietes}
                 onSuccess={fetchPieces}
-            />
-
-            <PreviewModal 
-                url={previewUrl} 
-                onClose={() => setPreviewUrl(null)} 
             />
         </>
     );

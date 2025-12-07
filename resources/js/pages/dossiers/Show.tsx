@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/Show.tsx - ✅ VERSION CORRIGÉE
+// resources/js/pages/dossiers/Show.tsx - ✅ VERSION CORRIGÉE OPTION 1
 
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
@@ -24,14 +24,14 @@ import DemandeursIndex from '@/pages/demandeurs/index';
 import ProprietesIndex from '@/pages/proprietes/index';
 import PiecesJointesIndex from '@/pages/PiecesJointes/Index';
 
-// ✅ CORRECTION 1 : Interface PageProps stricte avec permissions NON-optionnelles
+// ✅ Interface PageProps stricte avec permissions NON-optionnelles
 interface PageProps {
     dossier: Dossier & {
         demandeurs: Demandeur[];
         proprietes: Propriete[];
         pieces_jointes_count?: number;
     };
-    permissions: DossierPermissions; // ✅ NON optionnel
+    permissions: DossierPermissions;
     auth: {
         user: {
             id: number;
@@ -48,7 +48,7 @@ export default function Show() {
 
     const proprietes = dossier.proprietes || [];
 
-    // ✅ États pour les dialogues de suppression
+    // États pour les dialogues de suppression
     const [deleteProprieteOpen, setDeleteProprieteOpen] = useState(false);
     const [selectedProprieteToDelete, setSelectedProprieteToDelete] = useState<Propriete | null>(null);
     
@@ -81,7 +81,7 @@ export default function Show() {
         if (flash?.error) toast.error(flash.error);
     }, [flash?.message, flash?.success, flash?.error]);
 
-    // ✅ GESTIONNAIRES DE FERMETURE
+    // Gestionnaires de fermeture
     const closeAllDialogs = useCallback(() => {
         setLinkDemandeurOpen(false);
         setLinkProprieteOpen(false);
@@ -229,7 +229,17 @@ export default function Show() {
         });
     }, [dissociateData, isDissociating]);
 
-    // ✅ GESTIONNAIRES DE SUPPRESSION
+    // ✅ Typage strict DemandeurWithProperty[]
+    const allDemandeurs = useMemo((): DemandeurWithProperty[] => {
+        return (dossier.demandeurs || []).map(d => ({
+            ...d,
+            hasProperty: d.hasProperty ?? false,
+            proprietes_actives_count: d.proprietes_actives_count ?? 0,
+            proprietes_acquises_count: d.proprietes_acquises_count ?? 0,
+        })) as DemandeurWithProperty[];
+    }, [dossier.demandeurs]);
+
+    // ✅ CORRECTION : Gestionnaire avec dépendance allDemandeurs
     const handleDeleteDemandeur = useCallback((id: number) => {
         const demandeur = allDemandeurs.find(d => d.id === id);
         if (!demandeur) {
@@ -243,7 +253,7 @@ export default function Show() {
             setSelectedDemandeurToDelete(demandeur);
             setDeleteDemandeurOpen(true);
         }, 100);
-    }, [closeAllDialogs]); // ✅ Dépendance à allDemandeurs ajoutée ci-dessous
+    }, [allDemandeurs, closeAllDialogs]);
 
     const handleDeletePropriete = useCallback((id: number) => {
         const propriete = proprietes.find(p => p.id === id);
@@ -280,17 +290,6 @@ export default function Show() {
         }
     };
 
-    // ✅ CORRECTION 2 : Typage strict DemandeurWithProperty[]
-    const allDemandeurs = useMemo((): DemandeurWithProperty[] => {
-        // Enrichir les demandeurs avec hasProperty si non présent
-        return (dossier.demandeurs || []).map(d => ({
-            ...d,
-            hasProperty: d.hasProperty ?? false,
-            proprietes_actives_count: d.proprietes_actives_count ?? 0,
-            proprietes_acquises_count: d.proprietes_acquises_count ?? 0,
-        })) as DemandeurWithProperty[];
-    }, [dossier.demandeurs]);
-
     const isPropertyIncomplete = (prop: Propriete): boolean => {
         return !prop.titre || !prop.contenance || !prop.proprietaire || !prop.nature || !prop.vocation || !prop.situation;
     };
@@ -300,6 +299,7 @@ export default function Show() {
                !dem.lieu_delivrance || !dem.domiciliation || !dem.occupation || !dem.nom_mere;
     };
 
+    // ✅ CORRECTION : Conversion explicite null
     const baseDemandeursForAttachments: BaseDemandeur[] = allDemandeurs.map(d => ({
         id: d.id,
         nom_demandeur: d.nom_demandeur,
@@ -307,10 +307,11 @@ export default function Show() {
         cin: d.cin,
     }));
 
+    // ✅ CORRECTION : Conversion explicite null (solution au problème initial)
     const baseProprietesForAttachments: BasePropriete[] = proprietes.map(p => ({
         id: p.id,
         lot: p.lot,
-        titre: p.titre,
+        titre: p.titre ?? null, // ✅ Convertit undefined en null si présent
     }));
 
     const breadcrumbs: BreadcrumbItem[] = [

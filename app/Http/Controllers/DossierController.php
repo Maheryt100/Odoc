@@ -131,31 +131,28 @@ class DossierController extends Controller
     }
 
     /**
-     * ✅ CORRECTION CRITIQUE : Utiliser apostrophes simples pour PostgreSQL
-     * 
-     * PROBLÈME : PostgreSQL n'accepte que les apostrophes simples 'active'
-     * ERREUR PRÉCÉDENTE : status = "active" (guillemets doubles)
+     * ✅ OPTIMISÉ : Utilisation de withCount au lieu de DB::raw
      */
     public function show($id)
     {
-        // ✅ EAGER LOADING OPTIMISÉ avec SQL PostgreSQL correct
+        // ✅ AMÉLIORATION: Utiliser withCount pour les statistiques
         $dossier = Dossier::with([
-            // ✅ CORRECTION : Apostrophes simples au lieu de guillemets doubles
+            // Demandeurs avec compteurs optimisés
             'demandeurs' => function($q) {
-                $q->select([
-                    'demandeurs.*',
-                    // ✅ CORRECTION CRITIQUE : Utiliser apostrophes simples
-                    DB::raw("(SELECT COUNT(*) FROM demander WHERE demander.id_demandeur = demandeurs.id AND demander.status = 'active') as proprietes_actives_count"),
-                    DB::raw("(SELECT COUNT(*) FROM demander WHERE demander.id_demandeur = demandeurs.id AND demander.status = 'archive') as proprietes_acquises_count")
-                ]);
+                $q->select('demandeurs.*')
+                  ->withCount([
+                      'demandes as proprietes_actives_count' => fn($query) => 
+                          $query->where('status', 'active'),
+                      'demandes as proprietes_acquises_count' => fn($query) => 
+                          $query->where('status', 'archive')
+                  ]);
             },
             
+            // Propriétés avec demandes
             'proprietes' => function($q) {
                 $q->with([
                     'demandes' => function($query) {
-                        // ✅ CORRECTION : Apostrophes simples
-                        $query->where('status', 'active')
-                            ->orWhere('status', 'archive')
+                        $query->whereIn('status', ['active', 'archive'])
                             ->orderBy('status', 'asc')
                             ->orderBy('ordre', 'asc')
                             ->with('demandeur:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin');
@@ -183,13 +180,13 @@ class DossierController extends Controller
             'canGenerateDocuments' => !$dossier->is_closed
         ];
 
-        // ✅ ENRICHIR DEMANDEURS côté serveur
+        // ✅ Enrichir demandeurs côté serveur
         $enrichedDemandeurs = $dossier->demandeurs->map(function($demandeur) {
             $attrs = $demandeur->toArray();
             
-            // ✅ Calculer hasProperty côté serveur
-            $attrs['hasProperty'] = isset($attrs['proprietes_actives_count']) && $attrs['proprietes_actives_count'] > 0
-                                || isset($attrs['proprietes_acquises_count']) && $attrs['proprietes_acquises_count'] > 0;
+            // Calculer hasProperty côté serveur
+            $attrs['hasProperty'] = ($attrs['proprietes_actives_count'] ?? 0) > 0
+                                || ($attrs['proprietes_acquises_count'] ?? 0) > 0;
             
             return $attrs;
         });

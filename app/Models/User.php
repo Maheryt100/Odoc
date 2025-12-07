@@ -9,6 +9,39 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Class User
+ *
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $role
+ * @property int|null $id_district       // <<< CECI CORRIGE L'AVERTISSEMENT
+ * @property bool $status
+ * @property string $password
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * * @property-read \App\Models\District|null $district
+ * @property-read \Illuminate\Database\Eloquent\Collection<\App\Models\UserAccessLog> $accessLogs
+ * @property-read \Illuminate\Database\Eloquent\Collection<\App\Models\UserPermission> $permissions
+ * @property-read \Illuminate\Database\Eloquent\Collection<\App\Models\ActivityLog> $activityLogs
+ * @property-read \Illuminate\Database\Eloquent\Collection<\App\Models\Dossier> $dossiers
+ * @property-read \Illuminate\Database\Eloquent\Collection<\App\Models\Propriete> $proprietes
+ * @property-read \Illuminate\Database\Eloquent\Collection<\App\Models\Demandeur> $demandeurs
+ * * @method static \Illuminate\Database\Eloquent\Builder|User newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|User newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|User query()
+ * @method static \Illuminate\Database\Eloquent\Builder|User active()
+ * @method static \Illuminate\Database\Eloquent\Builder|User inactive()
+ * @method static \Illuminate\Database\Eloquent\Builder|User forDistrict(int $districtId)
+ * @method static \Illuminate\Database\Eloquent\Builder|User superAdmins()
+ * @method static \Illuminate\Database\Eloquent\Builder|User adminDistricts()
+ * @method static \Illuminate\Database\Eloquent\Builder|User userDistricts()
+ * @method static \Illuminate\Database\Eloquent\Builder|User centralUsers()
+ * @method static \Illuminate\Database\Eloquent\Builder|User districtUsers()
+ * * @mixin \Illuminate\Database\Eloquent\Builder
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;

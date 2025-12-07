@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Rules\ValidCIN;
+use App\Http\Requests\StoreDemandeurRequest;
 
 class DemandeurProprieteController extends Controller
 {
@@ -31,103 +32,52 @@ class DemandeurProprieteController extends Controller
 
     /**
      * 1. NOUVEAU LOT : Enregistrer
+     * ✅ AMÉLIORATION: Utilisation de Form Request
      */
-    public function store(Request $request)
+    public function store(StoreDemandeurRequest $request)
     {
-        $demandeurs = json_decode($request->demandeurs_json, true);
+        // ✅ Données déjà validées par StoreDemandeurRequest
+        $validated = $request->validated();
         
-        if (!$demandeurs || !is_array($demandeurs) || count($demandeurs) === 0) {
-            return back()->withErrors(['demandeurs' => 'Au moins un demandeur est requis']);
-        }
-
-        Log::info('Nouveau lot - données reçues', [
-            'propriete' => $request->except('demandeurs_json'),
-            'demandeurs_count' => count($demandeurs),
-        ]);
-        
-        $request->validate([
-            'lot' => 'required|string|max:15',
-            'nature' => 'required|in:Urbaine,Suburbaine,Rurale',
-            'vocation' => 'required|in:Edilitaire,Agricole,Forestière,Touristique',
-            'type_operation' => 'required|in:morcellement,immatriculation',
-            'id_dossier' => 'required|numeric|exists:dossiers,id',
-        ]);
-        
-        foreach ($demandeurs as $index => $demandeur) {
-            $num = $index + 1;
-            $demandeur = array_map(fn($v) => $v === '' ? null : $v, $demandeur);
-            
-            if (empty($demandeur['titre_demandeur'])) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: Le titre est obligatoire"]);
-            }
-            if (empty($demandeur['nom_demandeur'])) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: Le nom est obligatoire"]);
-            }
-            if (empty($demandeur['prenom_demandeur'])) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: Le prénom est obligatoire"]);
-            }
-            if (empty($demandeur['date_naissance'])) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: La date de naissance est obligatoire"]);
-            }
-            if (empty($demandeur['cin'])) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: Le CIN est obligatoire"]);
-            }
-            if (!preg_match('/^\d{12}$/', $demandeur['cin'])) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: Le CIN doit contenir 12 chiffres"]);
-            }
-            
-            $cinDuplicates = array_filter($demandeurs, fn($d, $idx) => 
-                $idx !== $index && ($d['cin'] ?? '') === $demandeur['cin']
-            , ARRAY_FILTER_USE_BOTH);
-            
-            if (count($cinDuplicates) > 0) {
-                return back()->withErrors(['demandeurs' => "Demandeur $num: Ce CIN est utilisé plusieurs fois dans le formulaire"]);
-            }
-            
-            $demandeurs[$index] = $demandeur;
-        }
-
         DB::beginTransaction();
         
         try {
             $id_user = Auth::id();
             
-            $proprieteData = [
-                'lot' => $request->lot,
-                'propriete_mere' => $request->propriete_mere ?: null,
-                'titre_mere' => $request->titre_mere ?: null,
-                'titre' => $request->titre ?: null,
-                'proprietaire' => $request->proprietaire ?: null,
-                'contenance' => $request->contenance ?: null,
-                'charge' => $request->charge ?: null,
-                'situation' => $request->situation ?: null,
-                'nature' => $request->nature,
-                'vocation' => $request->vocation,
-                'numero_FN' => $request->numero_FN ?: null,
-                'numero_requisition' => $request->numero_requisition ?: null,
-                'date_requisition' => $request->date_requisition ?: null,
-                'date_inscription' => $request->date_inscription ?: null,
-                'dep_vol' => $request->dep_vol ?: null,
-                'numero_dep_vol' => $request->numero_dep_vol ?: null,
-                'type_operation' => $request->type_operation,
-                'id_dossier' => $request->id_dossier,
-                'id_user' => $id_user,
-            ];
+            // 1. Créer la propriété
+            $proprieteData = array_merge(
+                $request->only([
+                    'lot', 'propriete_mere', 'titre_mere', 'titre', 'proprietaire',
+                    'contenance', 'charge', 'situation', 'nature', 'vocation',
+                    'numero_FN', 'numero_requisition', 'date_requisition',
+                    'date_inscription', 'dep_vol', 'numero_dep_vol', 'type_operation'
+                ]),
+                [
+                    'id_dossier' => $validated['id_dossier'],
+                    'id_user' => $id_user,
+                ]
+            );
 
-            Log::info('Création propriété', $proprieteData);
+            // ✅ AMÉLIORATION: Convertir chaînes vides en null
+            $proprieteData = $this->convertEmptyToNull($proprieteData);
+
+            Log::info('Création propriété', ['data' => $proprieteData]);
             $propriete = Propriete::create($proprieteData);
 
+            // 2. Traiter les demandeurs
             $demandeursTraites = [];
             
-            foreach ($demandeurs as $index => $demandeurData) {
+            foreach ($validated['demandeurs'] as $index => $demandeurData) {
                 $num = $index + 1;
                 Log::info("👤 Traitement demandeur $num", [
                     'cin' => $demandeurData['cin'],
                     'nom' => $demandeurData['nom_demandeur'],
                 ]);
 
-                $cleanData = array_map(fn($v) => ($v === '' || $v === null) ? null : $v, $demandeurData);
+                // ✅ Convertir chaînes vides en null
+                $cleanData = $this->convertEmptyToNull($demandeurData);
 
+                // Vérifier si demandeur existe
                 $demandeurExistant = Demandeur::where('cin', $cleanData['cin'])->first();
                 
                 if ($demandeurExistant) {
@@ -136,30 +86,9 @@ class DemandeurProprieteController extends Controller
                         'cin' => $demandeurExistant->cin
                     ]);
                     
-                    $demandeurExistant->update([
-                        'titre_demandeur' => $cleanData['titre_demandeur'],
-                        'nom_demandeur' => $cleanData['nom_demandeur'],
-                        'prenom_demandeur' => $cleanData['prenom_demandeur'],
-                        'date_naissance' => $cleanData['date_naissance'],
-                        'lieu_naissance' => $cleanData['lieu_naissance'] ?? $demandeurExistant->lieu_naissance,
-                        'sexe' => $cleanData['sexe'] ?? $demandeurExistant->sexe,
-                        'occupation' => $cleanData['occupation'] ?? $demandeurExistant->occupation,
-                        'nom_pere' => $cleanData['nom_pere'] ?? $demandeurExistant->nom_pere,
-                        'nom_mere' => $cleanData['nom_mere'] ?? $demandeurExistant->nom_mere,
-                        'date_delivrance' => $cleanData['date_delivrance'] ?? $demandeurExistant->date_delivrance,
-                        'lieu_delivrance' => $cleanData['lieu_delivrance'] ?? $demandeurExistant->lieu_delivrance,
-                        'date_delivrance_duplicata' => $cleanData['date_delivrance_duplicata'] ?? $demandeurExistant->date_delivrance_duplicata,
-                        'lieu_delivrance_duplicata' => $cleanData['lieu_delivrance_duplicata'] ?? $demandeurExistant->lieu_delivrance_duplicata,
-                        'domiciliation' => $cleanData['domiciliation'] ?? $demandeurExistant->domiciliation,
-                        'nationalite' => $cleanData['nationalite'] ?? $demandeurExistant->nationalite,
-                        'situation_familiale' => $cleanData['situation_familiale'] ?? $demandeurExistant->situation_familiale,
-                        'regime_matrimoniale' => $cleanData['regime_matrimoniale'] ?? $demandeurExistant->regime_matrimoniale,
-                        'date_mariage' => $cleanData['date_mariage'] ?? $demandeurExistant->date_mariage,
-                        'lieu_mariage' => $cleanData['lieu_mariage'] ?? $demandeurExistant->lieu_mariage,
-                        'marie_a' => $cleanData['marie_a'] ?? $demandeurExistant->marie_a,
-                        'telephone' => $cleanData['telephone'] ?? $demandeurExistant->telephone,
-                    ]);
-                    
+                    // ✅ Mise à jour sélective (garde les valeurs existantes si nouvelles sont null)
+                    $updateData = array_filter($cleanData, fn($v) => $v !== null);
+                    $demandeurExistant->update($updateData);
                     $demandeur = $demandeurExistant;
                     
                 } else {
@@ -168,31 +97,12 @@ class DemandeurProprieteController extends Controller
                         'nom' => $cleanData['nom_demandeur']
                     ]);
                     
-                    $demandeur = Demandeur::create([
-                        'titre_demandeur' => $cleanData['titre_demandeur'],
-                        'nom_demandeur' => $cleanData['nom_demandeur'],
-                        'prenom_demandeur' => $cleanData['prenom_demandeur'],
-                        'date_naissance' => $cleanData['date_naissance'],
-                        'cin' => $cleanData['cin'],
-                        'lieu_naissance' => $cleanData['lieu_naissance'],
-                        'sexe' => $cleanData['sexe'],
-                        'occupation' => $cleanData['occupation'],
-                        'nom_pere' => $cleanData['nom_pere'],
-                        'nom_mere' => $cleanData['nom_mere'],
-                        'date_delivrance' => $cleanData['date_delivrance'],
-                        'lieu_delivrance' => $cleanData['lieu_delivrance'],
-                        'date_delivrance_duplicata' => $cleanData['date_delivrance_duplicata'],
-                        'lieu_delivrance_duplicata' => $cleanData['lieu_delivrance_duplicata'],
-                        'domiciliation' => $cleanData['domiciliation'],
+                    $demandeur = Demandeur::create(array_merge($cleanData, [
+                        'id_user' => $id_user,
                         'nationalite' => $cleanData['nationalite'] ?? 'Malagasy',
                         'situation_familiale' => $cleanData['situation_familiale'] ?? 'Non spécifiée',
                         'regime_matrimoniale' => $cleanData['regime_matrimoniale'] ?? 'Non spécifié',
-                        'date_mariage' => $cleanData['date_mariage'],
-                        'lieu_mariage' => $cleanData['lieu_mariage'],
-                        'marie_a' => $cleanData['marie_a'],
-                        'telephone' => $cleanData['telephone'],
-                        'id_user' => $id_user,
-                    ]);
+                    ]));
                 }
 
                 Log::info("Demandeur traité", [
@@ -200,11 +110,13 @@ class DemandeurProprieteController extends Controller
                     'action' => $demandeurExistant ? 'mis à jour' : 'créé'
                 ]);
 
+                // 3. Ajouter au dossier
                 Contenir::firstOrCreate([
                     'id_demandeur' => $demandeur->id,
-                    'id_dossier' => $request->id_dossier,
+                    'id_dossier' => $validated['id_dossier'],
                 ]);
 
+                // 4. Créer la liaison (si pas déjà existante)
                 $liaisonExistante = Demander::where('id_demandeur', $demandeur->id)
                     ->where('id_propriete', $propriete->id)
                     ->exists();
@@ -214,9 +126,10 @@ class DemandeurProprieteController extends Controller
                         'id_demandeur' => $demandeur->id,
                         'id_propriete' => $propriete->id,
                         'id_user' => $id_user,
-                        'status' => 'active',
-                        'status_consort' => count($demandeurs) > 1,
-                        'total_prix' => 0, // ✅ L'Observer calculera automatiquement
+                        'status' => Demander::STATUS_ACTIVE,
+                        'status_consort' => count($validated['demandeurs']) > 1,
+                        // ordre sera calculé automatiquement par le boot() du modèle
+                        // total_prix sera calculé par l'Observer
                     ]);
                 }
                 
@@ -231,11 +144,11 @@ class DemandeurProprieteController extends Controller
                 'demandeurs' => $demandeursTraites
             ]);
             
-            $message = count($demandeurs) > 1 
-                ? count($demandeurs) . ' demandeurs liés à la propriété avec succès'
+            $message = count($validated['demandeurs']) > 1 
+                ? count($validated['demandeurs']) . ' demandeurs liés à la propriété avec succès'
                 : 'Demandeur et propriété créés avec succès';
             
-            return Redirect::route('dossiers.show', $request->id_dossier)
+            return Redirect::route('dossiers.show', $validated['id_dossier'])
                 ->with('success', $message);
                 
         } catch (\Exception $e) {
@@ -271,6 +184,7 @@ class DemandeurProprieteController extends Controller
         return "Impossible d'effectuer l'action '{$action}' : la propriété Lot {$propriete->lot} est archivée (acquise).";
     }
 
+
     /**
      * LIER EXISTANT : Afficher le formulaire
      */
@@ -280,9 +194,9 @@ class DemandeurProprieteController extends Controller
         
         if ($id_propriete) {
             $propriete = Propriete::findOrFail($id_propriete);
-            if ($this->isPropertyArchived($propriete)) {
+            if ($propriete->is_archived) {
                 return Redirect::route('dossiers.show', $dossier->id)
-                    ->with('error', $this->getBlockedActionMessage($propriete, 'liaison'));
+                    ->with('error', "❌ Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
         }
         
@@ -342,6 +256,7 @@ class DemandeurProprieteController extends Controller
         ]);
     }
 
+
     /**
      * LIER EXISTANT : Enregistrer
      */
@@ -358,9 +273,10 @@ class DemandeurProprieteController extends Controller
             $id_user = Auth::id();
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            if ($this->isPropertyArchived($propriete)) {
+            // ✅ Vérification métier
+            if ($propriete->is_archived) {
                 DB::rollBack();
-                return back()->with('error', $this->getBlockedActionMessage($propriete, 'liaison'));
+                return back()->with('error', "❌ Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
             
             if ($request->mode === 'nouveau') {
@@ -372,31 +288,22 @@ class DemandeurProprieteController extends Controller
                     'cin' => 'required|string|size:12|unique:demandeurs,cin',
                 ]);
                 
-                $demandeur = Demandeur::create([
-                    'titre_demandeur' => $request->titre_demandeur,
-                    'nom_demandeur' => $request->nom_demandeur,
-                    'prenom_demandeur' => $request->prenom_demandeur,
-                    'date_naissance' => $request->date_naissance,
-                    'lieu_naissance' => $request->lieu_naissance,
-                    'sexe' => $request->sexe,
-                    'occupation' => $request->occupation,
-                    'nom_pere' => $request->nom_pere,
-                    'nom_mere' => $request->nom_mere,
-                    'cin' => $request->cin,
-                    'date_delivrance' => $request->date_delivrance,
-                    'lieu_delivrance' => $request->lieu_delivrance,
-                    'date_delivrance_duplicata' => $request->date_delivrance_duplicata,
-                    'lieu_delivrance_duplicata' => $request->lieu_delivrance_duplicata,
-                    'domiciliation' => $request->domiciliation,
-                    'nationalite' => $request->nationalite ?? 'Malagasy',
-                    'situation_familiale' => $request->situation_familiale ?? 'Non spécifiée',
-                    'regime_matrimoniale' => $request->regime_matrimoniale ?? 'Non spécifié',
-                    'date_mariage' => $request->date_mariage,
-                    'lieu_mariage' => $request->lieu_mariage,
-                    'marie_a' => $request->marie_a,
-                    'telephone' => $request->telephone,
+                $demandeurData = $this->convertEmptyToNull($request->only([
+                    'titre_demandeur', 'nom_demandeur', 'prenom_demandeur',
+                    'date_naissance', 'lieu_naissance', 'sexe', 'occupation',
+                    'nom_pere', 'nom_mere', 'cin', 'date_delivrance',
+                    'lieu_delivrance', 'date_delivrance_duplicata',
+                    'lieu_delivrance_duplicata', 'domiciliation', 'nationalite',
+                    'situation_familiale', 'regime_matrimoniale', 'date_mariage',
+                    'lieu_mariage', 'marie_a', 'telephone'
+                ]));
+                
+                $demandeur = Demandeur::create(array_merge($demandeurData, [
                     'id_user' => $id_user,
-                ]);
+                    'nationalite' => $demandeurData['nationalite'] ?? 'Malagasy',
+                    'situation_familiale' => $demandeurData['situation_familiale'] ?? 'Non spécifiée',
+                    'regime_matrimoniale' => $demandeurData['regime_matrimoniale'] ?? 'Non spécifié',
+                ]));
                 
                 Contenir::create([
                     'id_demandeur' => $demandeur->id,
@@ -409,6 +316,7 @@ class DemandeurProprieteController extends Controller
                 $id_demandeur = $request->id_demandeur;
             }
 
+            // Vérifier si déjà lié
             $existingLink = Demander::where('id_demandeur', $id_demandeur)
                 ->where('id_propriete', $request->id_propriete)
                 ->exists();
@@ -417,18 +325,15 @@ class DemandeurProprieteController extends Controller
                 return back()->withErrors(['error' => 'Ce demandeur est déjà lié à cette propriété']);
             }
 
-            $demandeursCount = Demander::where('id_propriete', $request->id_propriete)->count();
-            
+            // Créer la liaison
             Demander::create([
                 'id_demandeur' => $id_demandeur,
                 'id_propriete' => $request->id_propriete,
                 'id_user' => $id_user,
-                'status' => 'active',
-                'status_consort' => $demandeursCount > 0,
-                'total_prix' => 0, // ✅ Observer calculera
+                'status' => Demander::STATUS_ACTIVE,
+                // ordre calculé automatiquement par boot()
+                // total_prix calculé par Observer
             ]);
-
-            // ✅ SUPPRIMÉ : Propriete::update(['status' => true])
 
             DB::commit();
 
@@ -450,9 +355,9 @@ class DemandeurProprieteController extends Controller
         
         if ($id_propriete) {
             $propriete = Propriete::findOrFail($id_propriete);
-            if ($this->isPropertyArchived($propriete)) {
+            if ($propriete->is_archived) {
                 return Redirect::route('dossiers.show', $dossier->id)
-                    ->with('error', $this->getBlockedActionMessage($propriete, 'ajout'));
+                    ->with('error', "❌ Impossible d'ajouter : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
         }
         
@@ -479,9 +384,10 @@ class DemandeurProprieteController extends Controller
             $id_user = Auth::id();
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            if ($this->isPropertyArchived($propriete)) {
+            // ✅ Vérification métier
+            if ($propriete->is_archived) {
                 DB::rollBack();
-                return back()->withErrors(['error' => $this->getBlockedActionMessage($propriete, 'ajout')]);
+                return back()->withErrors(['error' => "❌ Impossible d'ajouter : la propriété Lot {$propriete->lot} est archivée (acquise)."]);
             }
 
             if ($request->mode === 'existant') {
@@ -516,31 +422,22 @@ class DemandeurProprieteController extends Controller
                     'cin' => ['required', new ValidCIN, 'unique:demandeurs,cin']
                 ]);
                 
-                $demandeur = Demandeur::create([
-                    'titre_demandeur' => $request->titre_demandeur,
-                    'nom_demandeur' => $request->nom_demandeur,
-                    'prenom_demandeur' => $request->prenom_demandeur,
-                    'date_naissance' => $request->date_naissance,
-                    'lieu_naissance' => $request->lieu_naissance,
-                    'sexe' => $request->sexe,
-                    'occupation' => $request->occupation,
-                    'nom_pere' => $request->nom_pere,
-                    'nom_mere' => $request->nom_mere,
-                    'cin' => $request->cin,
-                    'date_delivrance' => $request->date_delivrance,
-                    'lieu_delivrance' => $request->lieu_delivrance,
-                    'date_delivrance_duplicata' => $request->date_delivrance_duplicata,
-                    'lieu_delivrance_duplicata' => $request->lieu_delivrance_duplicata,
-                    'domiciliation' => $request->domiciliation,
-                    'nationalite' => $request->nationalite ?? 'Malagasy',
-                    'situation_familiale' => $request->situation_familiale ?? 'Non spécifiée',
-                    'regime_matrimoniale' => $request->regime_matrimoniale ?? 'Non spécifié',
-                    'date_mariage' => $request->date_mariage,
-                    'lieu_mariage' => $request->lieu_mariage,
-                    'marie_a' => $request->marie_a,
-                    'telephone' => $request->telephone,
+                $demandeurData = $this->convertEmptyToNull($request->only([
+                    'titre_demandeur', 'nom_demandeur', 'prenom_demandeur',
+                    'date_naissance', 'lieu_naissance', 'sexe', 'occupation',
+                    'nom_pere', 'nom_mere', 'cin', 'date_delivrance',
+                    'lieu_delivrance', 'date_delivrance_duplicata',
+                    'lieu_delivrance_duplicata', 'domiciliation', 'nationalite',
+                    'situation_familiale', 'regime_matrimoniale', 'date_mariage',
+                    'lieu_mariage', 'marie_a', 'telephone'
+                ]));
+                
+                $demandeur = Demandeur::create(array_merge($demandeurData, [
                     'id_user' => $id_user,
-                ]);
+                    'nationalite' => $demandeurData['nationalite'] ?? 'Malagasy',
+                    'situation_familiale' => $demandeurData['situation_familiale'] ?? 'Non spécifiée',
+                    'regime_matrimoniale' => $demandeurData['regime_matrimoniale'] ?? 'Non spécifié',
+                ]));
                 
                 Contenir::create([
                     'id_demandeur' => $demandeur->id,
@@ -548,18 +445,15 @@ class DemandeurProprieteController extends Controller
                 ]);
             }
 
-            $demandeursCount = Demander::where('id_propriete', $request->id_propriete)->count();
-            
+            // Créer la liaison
             Demander::create([
                 'id_demandeur' => $demandeur->id,
                 'id_propriete' => $request->id_propriete,
                 'id_user' => $id_user,
-                'status' => 'active',
-                'status_consort' => $demandeursCount > 0,
-                'total_prix' => 0, // ✅ Observer calculera
+                'status' => Demander::STATUS_ACTIVE,
+                // ordre calculé automatiquement
+                // total_prix calculé par Observer
             ]);
-
-            // ✅ SUPPRIMÉ : Propriete::update(['status' => true])
 
             DB::commit();
             
@@ -587,9 +481,10 @@ class DemandeurProprieteController extends Controller
         try {
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            if ($this->isPropertyArchived($propriete)) {
+            // ✅ Vérification métier
+            if ($propriete->is_archived) {
                 DB::rollBack();
-                return back()->with('error', $this->getBlockedActionMessage($propriete, 'dissociation'));
+                return back()->with('error', "❌ Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
             
             $deleted = Demander::where('id_demandeur', $request->id_demandeur)
@@ -600,8 +495,6 @@ class DemandeurProprieteController extends Controller
                 return back()->withErrors(['error' => 'Liaison introuvable']);
             }
 
-            // ✅ SUPPRIMÉ : Plus de gestion de propriete.status
-
             DB::commit();
             
             return back()->with('success', 'Demandeur dissocié avec succès');
@@ -610,5 +503,13 @@ class DemandeurProprieteController extends Controller
             DB::rollBack();
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
+    }
+ 
+    /**
+     * ✅ HELPER : Convertir chaînes vides en null
+     */
+    private function convertEmptyToNull(array $data): array
+    {
+        return array_map(fn($v) => ($v === '' || $v === null) ? null : $v, $data);
     }
 }

@@ -1,4 +1,5 @@
 // pages/DemandeursProprietes/NouveauLot.tsx
+// ✅ VERSION REDESIGNÉE - Style moderne cohérent avec users/Index.tsx
 
 import { useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -6,9 +7,10 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast, Toaster } from 'sonner';
-import { Save, Plus } from 'lucide-react';
+import { Save, Plus, ArrowLeft, LandPlot, Users, Sparkles, CheckCircle2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import type { BreadcrumbItem, Dossier } from '@/types';
 
 import ProprieteCreate, { 
@@ -84,8 +86,6 @@ export default function NouveauLot() {
     };
 
     // ========== GESTION DES DEMANDEURS ==========
-
-    
     const addDemandeur = () => {
         setDemandeurs([...demandeurs, { ...emptyDemandeur }]);
     };
@@ -100,7 +100,6 @@ export default function NouveauLot() {
     };
 
     const updateDemandeur = (index: number, field: keyof DemandeurFormData, value: string) => {
-        // ✅ FIX : Créer une nouvelle copie profonde
         setDemandeurs(prev => {
             const newDemandeurs = prev.map((d, i) => {
                 if (i === index) {
@@ -111,7 +110,8 @@ export default function NouveauLot() {
             return newDemandeurs;
         });
     };
-    // ========== VALIDATION AMÉLIORÉE ==========
+
+    // ========== VALIDATION ==========
     const validateProprietes = (): boolean => {
         for (let i = 0; i < proprietes.length; i++) {
             const p = proprietes[i];
@@ -140,7 +140,6 @@ export default function NouveauLot() {
         for (let i = 0; i < demandeurs.length; i++) {
             const d = demandeurs[i];
             
-            // ✅ Validation stricte avec trim() pour éviter les espaces
             if (!d.titre_demandeur?.trim()) {
                 toast.error(`Demandeur ${i + 1}: Le titre de civilité est obligatoire`);
                 return false;
@@ -158,7 +157,6 @@ export default function NouveauLot() {
                 return false;
             }
             
-            // ✅ Validation CIN améliorée
             if (!d.cin) {
                 toast.error(`Demandeur ${i + 1}: Le CIN est obligatoire`);
                 return false;
@@ -168,7 +166,6 @@ export default function NouveauLot() {
                 return false;
             }
             
-            // ✅ Vérifier les doublons de CIN
             const cinDuplicates = demandeurs.filter((dem, idx) => idx !== i && dem.cin === d.cin);
             if (cinDuplicates.length > 0) {
                 toast.error(`Demandeur ${i + 1}: Ce CIN est utilisé plusieurs fois`);
@@ -182,7 +179,6 @@ export default function NouveauLot() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation selon le mode
         if (creationMode === 'lots-only' || creationMode === 'lot-demandeur') {
             if (!validateProprietes()) return;
         }
@@ -193,7 +189,6 @@ export default function NouveauLot() {
 
         setProcessing(true);
 
-        // Soumission selon le mode
         if (creationMode === 'lot-demandeur') {
             router.post(route('nouveau-lot.store'), {
                 id_dossier: dossier.id,
@@ -247,7 +242,6 @@ export default function NouveauLot() {
             });
         }
     };
-
     
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dossiers', href: route('dossiers') },
@@ -260,161 +254,305 @@ export default function NouveauLot() {
             <Head title="Nouvelle Entrée" />
             <Toaster position="top-right" richColors />
 
-            <div className="container mx-auto p-6 max-w-7xl">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold">Nouvelle Entrée</h1>
-                    <p className="text-muted-foreground">Dossier: {dossier.nom_dossier}</p>
+            <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
+                {/* ✅ HEADER MODERNE */}
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                            Nouvelle Entrée
+                        </h1>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                            <span className="font-medium">{dossier.nom_dossier}</span>
+                            <span className="text-gray-400">•</span>
+                            <span>{dossier.commune}</span>
+                        </div>
+                    </div>
+                    
+                    <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => router.visit(route('dossiers.show', dossier.id))}
+                        className="shadow-sm hover:shadow-md transition-all"
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Retour au dossier
+                    </Button>
                 </div>
 
-                <div className="space-y-6">
-                    {/* MODE DE CRÉATION */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Choisir le type de création</CardTitle>
-                            <CardDescription>Sélectionnez ce que vous souhaitez créer</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <RadioGroup value={creationMode} onValueChange={(value) => setCreationMode(value as CreationMode)}>
-                                <div className="grid gap-4 md:grid-cols-3">
-                                    <div className={`flex items-start space-x-3 p-4 border-2 rounded-lg cursor-pointer transition ${
-                                        creationMode === 'lot-demandeur' ? 'border-primary bg-primary/5' : 'border-border'
-                                    }`} onClick={() => setCreationMode('lot-demandeur')}>
-                                        <RadioGroupItem value="lot-demandeur" id="lot-demandeur" />
-                                        <div className="flex-1">
-                                            <Label htmlFor="lot-demandeur" className="font-semibold cursor-pointer">
-                                                Lot + Demandeur(s)
-                                            </Label>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                Créer une propriété avec un ou plusieurs demandeurs
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className={`flex items-start space-x-3 p-4 border-2 rounded-lg cursor-pointer transition ${
-                                        creationMode === 'lots-only' ? 'border-primary bg-primary/5' : 'border-border'
-                                    }`} onClick={() => setCreationMode('lots-only')}>
-                                        <RadioGroupItem value="lots-only" id="lots-only" />
-                                        <div className="flex-1">
-                                            <Label htmlFor="lots-only" className="font-semibold cursor-pointer">
-                                                Lot(s) seulement
-                                            </Label>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                 Créer un ou plusieurs propriétés en une fois
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className={`flex items-start space-x-3 p-4 border-2 rounded-lg cursor-pointer transition ${
-                                        creationMode === 'demandeurs-only' ? 'border-primary bg-primary/5' : 'border-border'
-                                    }`} onClick={() => setCreationMode('demandeurs-only')}>
-                                        <RadioGroupItem value="demandeurs-only" id="demandeurs-only" />
-                                        <div className="flex-1">
-                                            <Label htmlFor="demandeurs-only" className="font-semibold cursor-pointer">
-                                                Demandeur(s) seulement
-                                            </Label>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                 Créer un ou plusieurs demandeurs en une fois
-                                            </p>
-                                        </div>
-                                    </div>
+                {/* ✅ CARTES DE STATISTIQUES */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                        <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Propriété(s)</CardTitle>
+                                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                    <LandPlot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                                 </div>
-                            </RadioGroup>
+                            </CardHeader>
+                        </div>
+                        <CardContent className="pt-4">
+                            <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                                {proprietes.length}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                {creationMode === 'lots-only' || creationMode === 'lot-demandeur' 
+                                    ? 'À créer' 
+                                    : 'Non applicable'}
+                            </p>
                         </CardContent>
                     </Card>
 
-                    {/* SECTION PROPRIÉTÉS */}
-                    {(creationMode === 'lots-only' || creationMode === 'lot-demandeur') && (
-                        <Card>
+                    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Demandeur(s)</CardTitle>
+                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                                    <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                            </CardHeader>
+                        </div>
+                        <CardContent className="pt-4">
+                            <div className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                                {demandeurs.length}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                {creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur' 
+                                    ? 'À créer' 
+                                    : 'Non applicable'}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Mode Création</CardTitle>
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                            </CardHeader>
+                        </div>
+                        <CardContent className="pt-4">
+                            <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs">
+                                {creationMode === 'lot-demandeur' && 'Lot + Demandeur(s)'}
+                                {creationMode === 'lots-only' && 'Lot(s) seulement'}
+                                {creationMode === 'demandeurs-only' && 'Demandeur(s) seulement'}
+                            </Badge>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* ✅ MODE DE CRÉATION */}
+                <Card className="border-0 shadow-lg">
+                    <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b">
+                        <CardHeader>
+                            <CardTitle className="text-xl flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-purple-600" />
+                                Choisir le type de création
+                            </CardTitle>
+                            <CardDescription>
+                                Sélectionnez ce que vous souhaitez créer dans ce dossier
+                            </CardDescription>
+                        </CardHeader>
+                    </div>
+                    <CardContent className="pt-6">
+                        <RadioGroup value={creationMode} onValueChange={(value) => setCreationMode(value as CreationMode)}>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {/* Option 1 */}
+                                <div 
+                                    className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                                        creationMode === 'lot-demandeur' 
+                                            ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 shadow-lg' 
+                                            : 'border-border hover:border-violet-300 hover:bg-violet-50/50 dark:hover:bg-violet-950/10'
+                                    }`} 
+                                    onClick={() => setCreationMode('lot-demandeur')}
+                                >
+                                    <RadioGroupItem value="lot-demandeur" id="lot-demandeur" className="mt-1" />
+                                    <div className="flex-1 space-y-2">
+                                        <Label htmlFor="lot-demandeur" className="font-semibold cursor-pointer text-base flex items-center gap-2">
+                                            <CheckCircle2 className="h-4 w-4 text-violet-600" />
+                                            Lot + Demandeur(s)
+                                        </Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Créer une propriété avec un ou plusieurs demandeurs associés
+                                        </p>
+                                        <Badge variant="outline" className="text-xs">
+                                            Recommandé
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                {/* Option 2 */}
+                                <div 
+                                    className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                                        creationMode === 'lots-only' 
+                                            ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 shadow-lg' 
+                                            : 'border-border hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10'
+                                    }`} 
+                                    onClick={() => setCreationMode('lots-only')}
+                                >
+                                    <RadioGroupItem value="lots-only" id="lots-only" className="mt-1" />
+                                    <div className="flex-1 space-y-2">
+                                        <Label htmlFor="lots-only" className="font-semibold cursor-pointer text-base flex items-center gap-2">
+                                            <LandPlot className="h-4 w-4 text-emerald-600" />
+                                            Lot(s) seulement
+                                        </Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Créer une ou plusieurs propriétés en une fois
+                                        </p>
+                                        <Badge variant="outline" className="text-xs">
+                                            Création rapide
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                {/* Option 3 */}
+                                <div 
+                                    className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                                        creationMode === 'demandeurs-only' 
+                                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 shadow-lg' 
+                                            : 'border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/10'
+                                    }`} 
+                                    onClick={() => setCreationMode('demandeurs-only')}
+                                >
+                                    <RadioGroupItem value="demandeurs-only" id="demandeurs-only" className="mt-1" />
+                                    <div className="flex-1 space-y-2">
+                                        <Label htmlFor="demandeurs-only" className="font-semibold cursor-pointer text-base flex items-center gap-2">
+                                            <Users className="h-4 w-4 text-blue-600" />
+                                            Demandeur(s) seulement
+                                        </Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Créer un ou plusieurs demandeurs en une fois
+                                        </p>
+                                        <Badge variant="outline" className="text-xs">
+                                            Base de données
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+                        </RadioGroup>
+                    </CardContent>
+                </Card>
+
+                {/* ✅ SECTION PROPRIÉTÉS */}
+                {(creationMode === 'lots-only' || creationMode === 'lot-demandeur') && (
+                    <Card className="border-0 shadow-lg">
+                        <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20 border-b">
                             <CardHeader>
                                 <div className="flex justify-between items-center">
-                                    <div>
-                                        <CardTitle>
-                                            {creationMode === 'lot-demandeur' ? '1. ' : ''}
-                                            Propriété{proprietes.length > 1 ? 's' : ''} ({proprietes.length})
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Champs obligatoires: Lot, Type d'opération, Nature, Vocation
-                                        </CardDescription>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                            <LandPlot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl">
+                                                {creationMode === 'lot-demandeur' ? '1. ' : ''}
+                                                Propriété{proprietes.length > 1 ? 's' : ''}
+                                            </CardTitle>
+                                            <CardDescription className="mt-1">
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {proprietes.length} propriété{proprietes.length > 1 ? 's' : ''}
+                                                </Badge>
+                                                <span className="ml-2">Champs obligatoires: Lot, Type d'opération, Nature, Vocation</span>
+                                            </CardDescription>
+                                        </div>
                                     </div>
                                     {creationMode === 'lots-only' && (
-                                        <Button type="button" onClick={addPropriete} size="sm">
-                                            <Plus className="mr-2 h-4 w-4" />
+                                        <Button type="button" onClick={addPropriete} size="sm" className="gap-2 shadow-md">
+                                            <Plus className="h-4 w-4" />
                                             Ajouter un lot
                                         </Button>
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent className="space-y-8">
-                                {proprietes.map((propriete, index) => (
-                                    <ProprieteCreate
-                                        key={index}
-                                        data={propriete}
-                                        onChange={(field, value) => updatePropriete(index, field, value)}
-                                        onRemove={creationMode === 'lots-only' ? () => removePropriete(index) : undefined}
-                                        index={index}
-                                        showRemoveButton={creationMode === 'lots-only' && proprietes.length > 1}
-                                        selectedCharges={selectedChargesByPropriete[index] || []}
-                                        onChargeChange={(charge, checked) => handleChargeChange(index, charge, checked)}
-                                    />
-                                ))}
-                            </CardContent>
-                        </Card>
-                    )}
+                        </div>
+                        <CardContent className="p-6 space-y-8">
+                            {proprietes.map((propriete, index) => (
+                                <ProprieteCreate
+                                    key={index}
+                                    data={propriete}
+                                    onChange={(field, value) => updatePropriete(index, field, value)}
+                                    onRemove={creationMode === 'lots-only' ? () => removePropriete(index) : undefined}
+                                    index={index}
+                                    showRemoveButton={creationMode === 'lots-only' && proprietes.length > 1}
+                                    selectedCharges={selectedChargesByPropriete[index] || []}
+                                    onChargeChange={(charge, checked) => handleChargeChange(index, charge, checked)}
+                                />
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
 
-                    {/* SECTION DEMANDEURS */}
-                    {(creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur') && (
-                        <Card>
+                {/* ✅ SECTION DEMANDEURS */}
+                {(creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur') && (
+                    <Card className="border-0 shadow-lg">
+                        <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 border-b">
                             <CardHeader>
                                 <div className="flex justify-between items-center">
-                                    <div>
-                                        <CardTitle>
-                                            {creationMode === 'lot-demandeur' ? '2. ' : ''}
-                                            Demandeurs ({demandeurs.length})
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Champs obligatoires: Titre, Nom, Prénom, Date de naissance, CIN (12 chiffres)
-                                        </CardDescription>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                                            <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl">
+                                                {creationMode === 'lot-demandeur' ? '2. ' : ''}
+                                                Demandeurs
+                                            </CardTitle>
+                                            <CardDescription className="mt-1">
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {demandeurs.length} demandeur{demandeurs.length > 1 ? 's' : ''}
+                                                </Badge>
+                                                <span className="ml-2">Champs obligatoires: Titre, Nom, Prénom, Date de naissance, CIN (12 chiffres)</span>
+                                            </CardDescription>
+                                        </div>
                                     </div>
-                                    <Button type="button" onClick={addDemandeur} size="sm">
-                                        <Plus className="mr-2 h-4 w-4" />
+                                    <Button type="button" onClick={addDemandeur} size="sm" className="gap-2 shadow-md">
+                                        <Plus className="h-4 w-4" />
                                         Ajouter un demandeur
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent className="space-y-8">
-                                {demandeurs.map((demandeur, index) => (
+                        </div>
+                        <CardContent className="p-6 space-y-8">
+                            {demandeurs.map((demandeur, index) => (
                                 <DemandeurCreate
-                                    key={index} // ✅ IMPORTANT : ajouter une key stable
+                                    key={index}
                                     data={demandeur}
                                     onChange={(field, value) => updateDemandeur(index, field, value)}
                                     onRemove={demandeurs.length > 1 ? () => removeDemandeur(index) : undefined}
-                                    index={index} // ✅ IMPORTANT : passer l'index
+                                    index={index}
                                     showRemoveButton={demandeurs.length > 1}
                                 />
                             ))}
-                            </CardContent>
-                        </Card>
-                    )}
+                        </CardContent>
+                    </Card>
+                )}
 
-                    {/* BOUTONS DE SOUMISSION */}
-                    <div className="flex gap-4 justify-end">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => router.visit(route('dossiers.show', dossier.id))}
-                            disabled={processing}
-                        >
-                            Annuler
-                        </Button>
-                        <Button type="button" onClick={handleSubmit} disabled={processing}>
-                            <Save className="mr-2 h-4 w-4" />
-                            {processing ? 'Enregistrement...' : 
-                                creationMode === 'lot-demandeur' ? 'Créer le lot et demandeur(s)' :
-                                creationMode === 'lots-only' ? `Créer ${proprietes.length} propriété(s)` :
-                                `Créer ${demandeurs.length} demandeur(s)`
-                            }
-                        </Button>
-                    </div>
+                {/* ✅ ACTIONS */}
+                <div className="flex gap-4 justify-end pb-6">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => router.visit(route('dossiers.show', dossier.id))}
+                        disabled={processing}
+                        size="lg"
+                    >
+                        Annuler
+                    </Button>
+                    <Button 
+                        type="button" 
+                        onClick={handleSubmit} 
+                        disabled={processing}
+                        size="lg"
+                        className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+                    >
+                        <Save className="h-5 w-5" />
+                        {processing ? 'Enregistrement...' : 
+                            creationMode === 'lot-demandeur' ? 'Créer le lot et demandeur(s)' :
+                            creationMode === 'lots-only' ? `Créer ${proprietes.length} propriété(s)` :
+                            `Créer ${demandeurs.length} demandeur(s)`
+                        }
+                    </Button>
                 </div>
             </div>
         </AppLayout>

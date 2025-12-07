@@ -1,5 +1,5 @@
 // ============================================
-// 📦 pages/dossiers/types.ts - VERSION COMPLÈTE
+// 📦 pages/dossiers/types.ts
 // ============================================
 
 // ✅ Réexporter les types centraux

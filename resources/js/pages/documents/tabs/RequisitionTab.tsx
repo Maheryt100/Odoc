@@ -52,7 +52,9 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
     const validationMessage = getValidationMessage();
 
     // ✅ Formater la contenance
-    const formatContenance = (contenance: number): string => {
+    const formatContenance = (contenance: number | null): string => {
+        if (!contenance) return "-";
+
         const hectares = Math.floor(contenance / 10000);
         const reste = contenance % 10000;
         const ares = Math.floor(reste / 100);

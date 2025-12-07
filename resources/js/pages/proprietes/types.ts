@@ -1,5 +1,5 @@
 // ============================================
-// 📦 pages/proprietes/types.ts - VERSION FINALE
+// 📦 pages/proprietes/types.ts - VERSION SIMPLIFIÉE
 // ============================================
 
 import type { Dossier, Demandeur, Nature, Vocation, TypeOperation, Propriete } from '@/types';
@@ -30,26 +30,25 @@ export interface ProprieteFormData {
 
 /**
  * Props du composant de formulaire de propriété
- * ✅ CORRECTION : Type-safe onChange handler
  */
 export interface ProprieteFormProps {
     data: ProprieteFormData;
-    onChange: (field: keyof ProprieteFormData, value: string) => void; // ✅ Simplifié
+    onChange: (field: keyof ProprieteFormData, value: string) => void;
     onRemove?: () => void;
     index?: number;
     showRemoveButton?: boolean;
     selectedCharges?: string[];
     onChargeChange?: (charge: string, checked: boolean) => void;
+    
 }
 
 /**
  * Props pour la page de mise à jour
- * ✅ CORRECTION : Index signature ajoutée
  */
 export interface ProprieteUpdatePageProps {
     propriete: ProprieteWithDetails;
     dossier: Dossier;
-    [key: string]: unknown; // ✅ AJOUTÉ
+    [key: string]: unknown;
 }
 
 /**
