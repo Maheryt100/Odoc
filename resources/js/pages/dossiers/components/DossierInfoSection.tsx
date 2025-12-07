@@ -1,16 +1,16 @@
-// resources/js/pages/dossiers/components/DossierInfoSection.tsx - VERSION REFACTORISÉE
+// resources/js/pages/dossiers/components/DossierInfoSection.tsx - ✅ VERSION REDESIGNÉE
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-    Lock, LockOpen, Pencil, LandPlot, FileOutput, FileText,
+    Lock, LockOpen, Pencil, LandPlot,
     MapPin, Calendar, Building2, Hash, User, Clock, AlertCircle
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DossierInfoSectionProps } from '../types';
-import { formatDate, getDurationInDays, getDaysSince, getDisabledDocumentButtonTooltip } from '../helpers';
+import { formatDate, getDurationInDays, getDaysSince } from '../helpers';
 
 export default function DossierInfoSection({ 
     dossier, 
@@ -23,19 +23,11 @@ export default function DossierInfoSection({
     const duration = getDurationInDays(dossier.date_descente_debut, dossier.date_descente_fin);
     const daysSinceOpening = getDaysSince(dossier.date_ouverture);
 
-    // ✅ Obtenir le tooltip pour le bouton documents désactivé
-    const documentButtonTooltip = !permissions.canGenerateDocuments 
-        ? getDisabledDocumentButtonTooltip(dossier, { 
-            role: 'user_district', // Ce sera passé dynamiquement via les props
-            id_district: dossier.id_district 
-          })
-        : '';
-
     return (
         <div className="space-y-6">
             {/* ✅ Alerte si dossier fermé */}
             {dossier.is_closed && (
-                <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg shadow-md">
                     <div className="flex items-start gap-3">
                         <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
                         <div className="flex-1">
@@ -64,9 +56,9 @@ export default function DossierInfoSection({
                                         variant="default"
                                         size="sm"
                                         onClick={onCloseToggle}
-                                        className="bg-green-600 hover:bg-green-700 shrink-0"
+                                        className="bg-green-600 hover:bg-green-700 shrink-0 gap-2 shadow-md"
                                     >
-                                        <LockOpen className="mr-2 h-4 w-4" />
+                                        <LockOpen className="h-4 w-4" />
                                         Rouvrir
                                     </Button>
                                 )}
@@ -107,7 +99,7 @@ export default function DossierInfoSection({
                             </div>
                         </div>
 
-                        {/* ✅ Boutons d'action avec gestion des permissions */}
+                        {/* ✅ Boutons d'action - Seulement Fermer/Rouvrir, Nouvelle entrée et Modifier */}
                         <div className="flex flex-wrap gap-2">
                             {/* Bouton Fermer/Rouvrir */}
                             {permissions.canClose && (
@@ -116,18 +108,18 @@ export default function DossierInfoSection({
                                     size="sm"
                                     onClick={onCloseToggle}
                                     className={dossier.is_closed 
-                                        ? "bg-green-600 hover:bg-green-700" 
-                                        : "bg-orange-600 hover:bg-orange-700"
+                                        ? "bg-green-600 hover:bg-green-700 gap-2 shadow-md" 
+                                        : "bg-orange-600 hover:bg-orange-700 gap-2 shadow-md"
                                     }
                                 >
                                     {dossier.is_closed ? (
                                         <>
-                                            <LockOpen className="mr-2 h-4 w-4" />
+                                            <LockOpen className="h-4 w-4" />
                                             Rouvrir le dossier
                                         </>
                                     ) : (
                                         <>
-                                            <Lock className="mr-2 h-4 w-4" />
+                                            <Lock className="h-4 w-4" />
                                             Fermer le dossier
                                         </>
                                     )}
@@ -136,9 +128,9 @@ export default function DossierInfoSection({
 
                             {/* Nouvelle entrée - seulement si ouvert */}
                             {!dossier.is_closed && (
-                                <Button asChild size="sm">
+                                <Button asChild size="sm" className="gap-2 shadow-md">
                                     <Link href={`/nouveau-lot/${dossier.id}`}>
-                                        <LandPlot className="mr-2 h-4 w-4" />
+                                        <LandPlot className="h-4 w-4" />
                                         Nouvelle entrée
                                     </Link>
                                 </Button>
@@ -146,9 +138,9 @@ export default function DossierInfoSection({
 
                             {/* Modifier */}
                             {permissions.canEdit ? (
-                                <Button asChild variant="outline" size="sm">
+                                <Button asChild variant="outline" size="sm" className="gap-2 shadow-md">
                                     <Link href={`/dossiers/${dossier.id}/edit`}>
-                                        <Pencil className="mr-2 h-4 w-4" />
+                                        <Pencil className="h-4 w-4" />
                                         Modifier
                                     </Link>
                                 </Button>
@@ -161,8 +153,9 @@ export default function DossierInfoSection({
                                                     variant="outline" 
                                                     size="sm"
                                                     disabled
+                                                    className="gap-2"
                                                 >
-                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                    <Pencil className="h-4 w-4" />
                                                     Modifier
                                                 </Button>
                                             </span>
@@ -173,44 +166,6 @@ export default function DossierInfoSection({
                                     </Tooltip>
                                 </TooltipProvider>
                             )}
-                            
-                            {/* ✅ Documents - avec tooltip si désactivé */}
-                            {permissions.canGenerateDocuments ? (
-                                <Button asChild size="sm" variant="outline">
-                                    <Link href={`/documents/generate/${dossier.id}`}>
-                                        <FileOutput className="mr-2 h-4 w-4" />
-                                        Documents
-                                    </Link>
-                                </Button>
-                            ) : (
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <span>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline"
-                                                    disabled
-                                                >
-                                                    <FileOutput className="mr-2 h-4 w-4" />
-                                                    Documents
-                                                </Button>
-                                            </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs">
-                                            <p>{documentButtonTooltip}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            )}
-                            
-                            {/* Résumé - toujours accessible */}
-                            <Button asChild size="sm" variant="outline">
-                                <Link href={`/demandes/resume/${dossier.id}`}>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    Résumé
-                                </Link>
-                            </Button>
                         </div>
                     </div>
                 </div>

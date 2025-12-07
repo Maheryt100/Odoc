@@ -1,5 +1,7 @@
 // pages/Statistics/types.ts
 
+import { Auth } from '@/types';
+
 export interface StatisticsFilters {
     period: string;
     date_from: string | null;
@@ -110,7 +112,6 @@ export interface Stats {
     performance: PerformanceStats;
 }
 
-// ✅ Ajout de superficie dans les distributions
 export interface ChartData {
     evolution_complete: Array<{
         month: string;
@@ -126,12 +127,12 @@ export interface ChartData {
     repartition_nature: Array<{
         name: string;
         value: number;
-        superficie: number;  // ✅ Ajouté
+        superficie: number;
     }>;
     repartition_vocation: Array<{
         name: string;
         value: number;
-        superficie: number;  // ✅ Ajouté
+        superficie: number;
     }>;
     top_communes: Array<{
         commune: string;
@@ -154,7 +155,9 @@ export interface ChartData {
     };
 }
 
+// ✅ Type principal avec auth
 export interface StatisticsProps {
+    auth: Auth;  // ✅ Ajouté
     stats: Stats;
     charts: ChartData;
     filters: StatisticsFilters;

@@ -11,8 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 /**
- * Contrôleur des statistiques avec filtres complets
- * ✅ CORRECTION : Gestion complète des filtres période + district
+ * ✅ AMÉLIORÉ : Filtre "all" par défaut + validation renforcée
  */
 class StatisticsController extends Controller
 {
@@ -20,9 +19,6 @@ class StatisticsController extends Controller
         private StatisticsService $statisticsService
     ) {}
 
-    /**
-     * Page principale des statistiques avec filtres
-     */
     public function index(Request $request)
     {
         /** @var User $user */
@@ -36,27 +32,26 @@ class StatisticsController extends Controller
             'district_id' => 'nullable|integer|exists:districts,id',
         ]);
         
-        // ✅ Récupération des filtres avec valeurs par défaut
-        $period = $validated['period'] ?? 'month';
+        // ✅ CHANGEMENT : Période par défaut = "all" (Tout)
+        $period = $validated['period'] ?? 'all';
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
         $districtId = $validated['district_id'] ?? null;
 
-        // ✅ VALIDATION : Si l'utilisateur n'est pas super admin, forcer son district
+        // ✅ Validation : Utilisateur non super admin ne peut voir que son district
         if (!$user->canAccessAllDistricts() && $districtId !== null && $districtId != $user->id_district) {
             return back()->with('error', 'Vous ne pouvez pas voir les statistiques d\'un autre district.');
         }
 
-        // ✅ Appliquer le filtre district si nécessaire
+        // ✅ Appliquer le contexte district si nécessaire
         if ($districtId && $user->canAccessAllDistricts()) {
-            // Super admin avec district sélectionné : simuler le contexte
             $this->setDistrictContext($districtId);
         }
 
-        // Déterminer les dates selon la période
+        // Calculer les dates selon la période
         $dates = $this->statisticsService->getPeriodDates($period, $dateFrom, $dateTo);
 
-        // ✅ NOUVEAU : Ajouter les filtres aux dates pour le cache
+        // ✅ Ajouter les métadonnées pour le cache
         $dates['period'] = $period;
         $dates['district_id'] = $districtId ?? $user->id_district;
 
@@ -79,32 +74,28 @@ class StatisticsController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : Simuler le contexte d'un district pour le calcul des stats
-     * Utilisé quand un super admin filtre par district
+     * ✅ Simuler temporairement le contexte d'un district
      */
     private function setDistrictContext(int $districtId): void
     {
-        // Injecter temporairement le district dans l'utilisateur
-        // Ceci affecte les Traits\QueryFilterTrait dans les services
         $user = Auth::user();
         $originalDistrict = $user->id_district;
         $user->id_district = $districtId;
         
-        // Important : restaurer après la requête
+        // Restaurer après la requête
         app()->terminating(function() use ($user, $originalDistrict) {
             $user->id_district = $originalDistrict;
         });
     }
 
     /**
-     * Export PDF des statistiques
+     * Export PDF
      */
     public function exportPDF(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
         
-        // Validation
         $validated = $request->validate([
             'period' => 'nullable|in:today,week,month,year,all,custom',
             'date_from' => 'nullable|date',
@@ -112,12 +103,12 @@ class StatisticsController extends Controller
             'district_id' => 'nullable|integer|exists:districts,id',
         ]);
         
-        $period = $validated['period'] ?? 'month';
+        $period = $validated['period'] ?? 'all';
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
         $districtId = $validated['district_id'] ?? null;
         
-        // ✅ Validation des permissions
+        // Validation permissions
         if (!$user->canAccessAllDistricts() && $districtId !== null && $districtId != $user->id_district) {
             return back()->with('error', 'Vous ne pouvez pas exporter les statistiques d\'un autre district.');
         }
@@ -130,11 +121,10 @@ class StatisticsController extends Controller
             $this->setDistrictContext($districtId);
         }
         
-        // Récupérer les données
         $stats = $this->statisticsService->getAllStats($dates);
         $charts = $this->statisticsService->getAllCharts($dates);
         
-        // TODO: Générer le PDF avec Snappy ou DomPDF
+        // TODO: Implémenter génération PDF
         return response()->json([
             'message' => 'Export PDF à implémenter',
             'data' => [
@@ -145,7 +135,7 @@ class StatisticsController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : API pour récupérer les stats via AJAX (pour refresh partiel)
+     * ✅ API pour refresh partiel (AJAX)
      */
     public function refresh(Request $request)
     {
@@ -166,7 +156,7 @@ class StatisticsController extends Controller
         $districtId = $validated['district_id'] ?? null;
         $type = $validated['type'] ?? 'all';
         
-        // Validation permissions
+        // Validation
         if (!$user->canAccessAllDistricts() && $districtId !== null && $districtId != $user->id_district) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -193,7 +183,7 @@ class StatisticsController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : Endpoint pour les statistiques du cache
+     * Stats du cache (admin only)
      */
     public function cacheStats()
     {
@@ -210,7 +200,7 @@ class StatisticsController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : Endpoint pour préchauffer le cache
+     * Préchauffer le cache (admin only)
      */
     public function warmUpCache()
     {

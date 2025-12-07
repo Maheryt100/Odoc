@@ -1,11 +1,148 @@
-// pages/proprietes/helpers.ts
-// ✅ Fonctions utilitaires pour les propriétés
+// pages/proprietes/helpers.ts - ✅ VERSION COMPLÈTE
 
-import type { ProprieteFormData, ProprieteWithDetails } from './types';
+import type { Propriete } from '@/types';
+import type { 
+    FiltreStatutProprieteType, 
+    TriProprieteType,
+    ProprieteFormData,
+    ProprieteWithDetails 
+} from './types';
+
+// ============================================
+// 🔍 FILTRAGE ET RECHERCHE
+// ============================================
 
 /**
- * ✅ SOLUTION : Convertir une date ISO en format YYYY-MM-DD pour input[type="date"]
- * Gère tous les formats de dates (ISO, timestamp, objets Date)
+ * Vérifier si propriété a des demandeurs actifs
+ */
+export const hasActiveDemandeurs = (prop: Propriete): boolean => {
+    if (prop.demandes && Array.isArray(prop.demandes) && prop.demandes.length > 0) {
+        return prop.demandes.some(d => d.status === 'active');
+    }
+    return false;
+};
+
+/**
+ * Vérifier si propriété est acquise (archivée)
+ */
+export const isPropertyArchived = (prop: Propriete): boolean => {
+    if (prop.is_archived === true) {
+        return true;
+    }
+    
+    if (prop.demandes && Array.isArray(prop.demandes) && prop.demandes.length > 0) {
+        const activeDemandes = prop.demandes.filter(d => d.status === 'active');
+        const archivedDemandes = prop.demandes.filter(d => d.status === 'archive');
+        
+        return activeDemandes.length === 0 && archivedDemandes.length > 0;
+    }
+    
+    return false;
+};
+
+/**
+ * Filtrer propriétés par statut
+ */
+export const filterProprietesByStatus = (
+    proprietes: Propriete[],
+    filtre: FiltreStatutProprieteType
+): Propriete[] => {
+    if (filtre === 'tous') return proprietes;
+    
+    return proprietes.filter(prop => {
+        switch (filtre) {
+            case 'actives':
+                return hasActiveDemandeurs(prop) && !isPropertyArchived(prop);
+            case 'acquises':
+                return isPropertyArchived(prop);
+            case 'sans_demandeur':
+                return !prop.demandes || prop.demandes.length === 0;
+            default:
+                return true;
+        }
+    });
+};
+
+/**
+ * Recherche dans propriété
+ */
+export const matchesSearch = (prop: Propriete, search: string): boolean => {
+    const searchLower = search.toLowerCase();
+    return (
+        prop.lot?.toLowerCase().includes(searchLower) ||
+        prop.titre?.toLowerCase().includes(searchLower) ||
+        prop.nature?.toLowerCase().includes(searchLower) ||
+        prop.proprietaire?.toLowerCase().includes(searchLower) ||
+        prop.situation?.toLowerCase().includes(searchLower) ||
+        prop.dep_vol?.toLowerCase().includes(searchLower) ||
+        prop.dep_vol_complet?.toLowerCase().includes(searchLower)
+    );
+};
+
+/**
+ * Trier propriétés
+ */
+export const sortProprietes = (
+    proprietes: Propriete[],
+    tri: TriProprieteType,
+    ordre: 'asc' | 'desc'
+): Propriete[] => {
+    const sorted = [...proprietes].sort((a, b) => {
+        let comparison = 0;
+        
+        switch (tri) {
+            case 'date':
+                comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+                break;
+            case 'lot':
+                comparison = (a.lot || '').localeCompare(b.lot || '');
+                break;
+            case 'contenance':
+                comparison = (a.contenance || 0) - (b.contenance || 0);
+                break;
+            case 'statut':
+                // Incomplets d'abord, puis acquis, puis actifs, puis vides
+                const getStatutScore = (prop: Propriete) => {
+                    if (isPropertyArchived(prop)) return 2;
+                    if (hasActiveDemandeurs(prop)) return 3;
+                    if (!prop.demandes || prop.demandes.length === 0) return 1;
+                    return 4;
+                };
+                comparison = getStatutScore(a) - getStatutScore(b);
+                break;
+        }
+        
+        return ordre === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+};
+
+/**
+ * Obtenir la classe CSS pour la ligne
+ */
+export const getRowClassName = (prop: Propriete, isIncomplete: boolean): string => {
+    const archived = isPropertyArchived(prop);
+    const hasActive = hasActiveDemandeurs(prop);
+    
+    if (archived) {
+        return 'hover:bg-green-50/50 dark:hover:bg-green-900/20 bg-green-50/30 dark:bg-green-900/10 cursor-pointer transition-colors';
+    }
+    if (isIncomplete) {
+        return 'hover:bg-red-50/50 dark:hover:bg-red-950/20 bg-red-50/30 dark:bg-red-950/10 cursor-pointer transition-colors';
+    }
+    if (hasActive) {
+        return 'hover:bg-muted/30 cursor-pointer transition-colors';
+    }
+    return 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20 bg-amber-50/30 dark:bg-amber-950/10 cursor-pointer transition-colors';
+};
+
+// ============================================
+// 📅 FORMATAGE DES DATES
+// ============================================
+
+/**
+ * Convertir une date ISO en format YYYY-MM-DD pour input[type="date"]
  */
 export function formatDateForInput(dateValue: string | Date | null | undefined): string {
     if (!dateValue) return '';
@@ -13,12 +150,10 @@ export function formatDateForInput(dateValue: string | Date | null | undefined):
     try {
         const date = new Date(dateValue);
         
-        // Vérifier si la date est valide
         if (isNaN(date.getTime())) {
             return '';
         }
         
-        // Format YYYY-MM-DD requis par input[type="date"]
         return date.toISOString().split('T')[0];
     } catch (error) {
         console.error('Erreur formatage date:', error, dateValue);
@@ -27,7 +162,7 @@ export function formatDateForInput(dateValue: string | Date | null | undefined):
 }
 
 /**
- * ✅ Convertir une date ISO en format DD-MM-YYYY pour affichage
+ * Convertir une date ISO en format DD-MM-YYYY pour affichage
  */
 export function formatDateForDisplay(dateValue: string | Date | null | undefined): string {
     if (!dateValue) return '-';
@@ -50,9 +185,12 @@ export function formatDateForDisplay(dateValue: string | Date | null | undefined
     }
 }
 
+// ============================================
+// 🔄 CONVERSION DE DONNÉES
+// ============================================
+
 /**
  * Convertir une propriété du serveur en données de formulaire
- * ✅ CORRIGE le problème des dates vides
  */
 export function proprieteToFormData(propriete: ProprieteWithDetails, dossierId?: number): ProprieteFormData {
     return {
@@ -69,7 +207,6 @@ export function proprieteToFormData(propriete: ProprieteWithDetails, dossierId?:
         charge: propriete.charge || '',
         numero_FN: propriete.numero_FN || '',
         numero_requisition: propriete.numero_requisition || '',
-        // ✅ CORRECTION CRITIQUE : Utiliser formatDateForInput
         date_requisition: formatDateForInput(propriete.date_requisition),
         date_inscription: formatDateForInput(propriete.date_inscription),
         dep_vol: propriete.dep_vol || '',
@@ -85,6 +222,10 @@ export function parseSelectedCharges(chargeString: string | null | undefined): s
     if (!chargeString) return [];
     return chargeString.split(',').map(c => c.trim()).filter(Boolean);
 }
+
+// ============================================
+// 🎨 FORMATAGE POUR AFFICHAGE
+// ============================================
 
 /**
  * Formater le dep/vol complet
@@ -111,10 +252,14 @@ export function formatContenance(contenance?: number): string {
     return `${new Intl.NumberFormat('fr-FR').format(contenance)} m²`;
 }
 
+// ============================================
+// ✅ VALIDATION ET VÉRIFICATION
+// ============================================
+
 /**
  * Vérifier si une propriété est incomplète
  */
-export function isPropertyIncomplete(propriete: ProprieteWithDetails): boolean {
+export function isPropertyIncomplete(propriete: Propriete): boolean {
     return !propriete.titre 
         || !propriete.contenance 
         || !propriete.proprietaire 
@@ -126,12 +271,12 @@ export function isPropertyIncomplete(propriete: ProprieteWithDetails): boolean {
 /**
  * Obtenir le label de statut d'une propriété
  */
-export function getPropertyStatusLabel(propriete: ProprieteWithDetails): string {
+export function getPropertyStatusLabel(propriete: Propriete): string {
     if (propriete.status_label) return propriete.status_label;
     
-    if (propriete.is_empty) return 'Vide';
-    if (propriete.is_archived) return 'Acquise';
-    if (propriete.has_active_demandes) return 'Active';
+    if (!propriete.demandes || propriete.demandes.length === 0) return 'Sans demandeur';
+    if (isPropertyArchived(propriete)) return 'Acquise';
+    if (hasActiveDemandeurs(propriete)) return 'Active';
     
     return 'Inconnu';
 }
@@ -139,18 +284,19 @@ export function getPropertyStatusLabel(propriete: ProprieteWithDetails): string 
 /**
  * Obtenir la classe CSS selon le statut de la propriété
  */
-export function getPropertyRowClass(propriete: ProprieteWithDetails): string {
+export function getPropertyRowClass(propriete: Propriete): string {
     const baseClass = 'cursor-pointer transition-colors';
+    const isIncomplete = isPropertyIncomplete(propriete);
     
-    if (propriete.is_archived) {
+    if (isPropertyArchived(propriete)) {
         return `${baseClass} hover:bg-green-50/50 dark:hover:bg-green-900/20 bg-green-50/30 dark:bg-green-900/10`;
     }
     
-    if (isPropertyIncomplete(propriete)) {
+    if (isIncomplete) {
         return `${baseClass} hover:bg-red-50/50 dark:hover:bg-red-950/20 bg-red-50/30 dark:bg-red-950/10`;
     }
     
-    if (propriete.has_active_demandes) {
+    if (hasActiveDemandeurs(propriete)) {
         return `${baseClass} hover:bg-muted/30`;
     }
     

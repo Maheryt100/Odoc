@@ -33,12 +33,8 @@ export function InteractivePieChart({ data, title, description, onSegmentClick }
     };
     
     const exportAsImage = () => {
-        // À implémenter avec html2canvas ou svg-to-png
         console.log('Export image:', title);
-        // Exemple simple :
-        // const svg = document.querySelector('.recharts-surface');
-        // const canvas = document.createElement('canvas');
-        // ... conversion SVG -> Canvas -> PNG
+        // TODO: Implémenter avec html2canvas
     };
     
     const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -128,7 +124,7 @@ export function InteractivePieChart({ data, title, description, onSegmentClick }
                 </CardContent>
             </Card>
             
-            {/* Dialog de détail au clic */}
+            {/* Dialog de détail */}
             <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
                 <DialogContent>
                     <DialogHeader>
@@ -178,7 +174,6 @@ export function InteractivePieChart({ data, title, description, onSegmentClick }
                             <Button 
                                 className="w-full" 
                                 onClick={() => {
-                                    // Naviguer vers la liste filtrée
                                     window.location.href = `/proprietes?vocation=${selectedSegment.name}`;
                                 }}
                             >
@@ -189,133 +184,5 @@ export function InteractivePieChart({ data, title, description, onSegmentClick }
                 </DialogContent>
             </Dialog>
         </>
-    );
-}
-
-// ============================================================
-
-// Statistics/components/charts/ComparisonChart.tsx
-import { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-
-interface ComparisonData {
-    month: string;
-    current: number;
-    previous: number;
-    difference: number;
-    percentChange: number;
-}
-
-interface Props {
-    title: string;
-    description?: string;
-}
-
-export function ComparisonChart({ title, description }: Props) {
-    const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
-    
-    // Données fictives - À remplacer par de vraies données
-    const data: ComparisonData[] = [
-        { month: 'Jan', current: 45, previous: 38, difference: 7, percentChange: 18.4 },
-        { month: 'Fev', current: 52, previous: 42, difference: 10, percentChange: 23.8 },
-        { month: 'Mar', current: 48, previous: 45, difference: 3, percentChange: 6.7 },
-        { month: 'Avr', current: 61, previous: 48, difference: 13, percentChange: 27.1 },
-        { month: 'Mai', current: 55, previous: 52, difference: 3, percentChange: 5.8 },
-        { month: 'Jun', current: 67, previous: 55, difference: 12, percentChange: 21.8 },
-    ];
-    
-    const getTrendIcon = (change: number) => {
-        if (change > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
-        if (change < 0) return <TrendingDown className="h-4 w-4 text-red-500" />;
-        return <Minus className="h-4 w-4 text-gray-500" />;
-    };
-    
-    return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle>{title}</CardTitle>
-                        {description && <CardDescription>{description}</CardDescription>}
-                    </div>
-                    <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
-                        <SelectTrigger className="w-40">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="month">Mensuel</SelectItem>
-                            <SelectItem value="quarter">Trimestriel</SelectItem>
-                            <SelectItem value="year">Annuel</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip 
-                            contentStyle={{ 
-                                backgroundColor: 'hsl(var(--background))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '6px'
-                            }}
-                        />
-                        <Legend />
-                        <Line 
-                            type="monotone" 
-                            dataKey="current" 
-                            stroke="#3b82f6" 
-                            strokeWidth={3}
-                            name="Cette année"
-                            dot={{ fill: '#3b82f6', r: 5 }}
-                        />
-                        <Line 
-                            type="monotone" 
-                            dataKey="previous" 
-                            stroke="#94a3b8" 
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            name="Année précédente"
-                            dot={{ fill: '#94a3b8', r: 3 }}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-                
-                {/* Tableau de comparaison */}
-                <div className="mt-6 space-y-2">
-                    <h4 className="text-sm font-medium mb-3">Évolution par rapport à l'année précédente</h4>
-                    {data.map((item) => (
-                        <div 
-                            key={item.month}
-                            className="flex items-center justify-between p-2 rounded hover:bg-muted transition-colors"
-                        >
-                            <span className="text-sm font-medium">{item.month}</span>
-                            <div className="flex items-center gap-4">
-                                <span className="text-sm text-muted-foreground">
-                                    {item.current} vs {item.previous}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                    {getTrendIcon(item.difference)}
-                                    <span className={`text-sm font-medium ${
-                                        item.difference > 0 ? 'text-green-600' :
-                                        item.difference < 0 ? 'text-red-600' :
-                                        'text-gray-600'
-                                    }`}>
-                                        {item.difference > 0 ? '+' : ''}{item.percentChange.toFixed(1)}%
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
     );
 }

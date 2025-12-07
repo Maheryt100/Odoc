@@ -1,5 +1,5 @@
-// pages/proprietes/validation.ts
-// ✅ Logique de validation pour les propriétés
+// pages/proprietes/validation.ts - ✅ VERSION FINALE
+// Logique de validation pour les propriétés
 
 import type { ProprieteFormData } from './types';
 import { toast } from 'sonner';

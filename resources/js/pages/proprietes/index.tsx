@@ -1,42 +1,24 @@
-// pages/proprietes/index.tsx - ✅ VERSION CORRIGÉE FINALE
+// pages/proprietes/index.tsx - ✅ VERSION FINALE AVEC SYSTÈME COMPLET
 
 import { useMemo, useState } from 'react';
-import { Link } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Archive, ArchiveRestore, LandPlot } from 'lucide-react';
+import { LandPlot } from 'lucide-react';
 import type { Propriete, Dossier, Demandeur } from '@/types';
 import ProprieteDetailDialog from '@/pages/proprietes/components/ProprieteDetailDialog';
 import DemandeurDetailDialog from '@/pages/demandeurs/components/DemandeurDetailDialog';
-
-// ✅ Interface pour propriété avec calculs
-interface ProprieteWithComputed extends Propriete {
-    _computed?: {
-        isIncomplete: boolean;
-        hasDemandeurs: boolean;
-        isArchived: boolean;
-    };
-}
-
-interface ProprietesIndexProps {
-    proprietes: Propriete[];
-    dossier: Dossier;
-    demandeurs: Demandeur[];
-    onDeletePropriete: (id: number) => void;
-    onArchivePropriete: (id: number) => void;
-    onUnarchivePropriete: (id: number) => void;
-    isPropertyIncomplete: (prop: Propriete) => boolean;
-    onLinkDemandeur?: (propriete: Propriete) => void;
-    onDissociate: (
-        demandeurId: number,
-        proprieteId: number,
-        demandeurNom: string,
-        proprieteLot: string,
-        type: 'from-demandeur' | 'from-propriete'
-    ) => void;
-}
+import ProprieteFilters from './components/ProprieteFilters';
+import ProprieteTable from './components/ProprieteTable';
+import type { 
+    ProprietesIndexProps,
+    ProprieteWithDetails,
+    FiltreStatutProprieteType,
+    TriProprieteType
+} from './types';
+import {
+    filterProprietesByStatus,
+    sortProprietes,
+    matchesSearch,
+} from './helpers';
 
 export default function ProprietesIndex({
     proprietes,
@@ -49,53 +31,49 @@ export default function ProprietesIndex({
     onLinkDemandeur,
     onDissociate
 }: ProprietesIndexProps) {
+    // STATE
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
-
+    const [filtreStatut, setFiltreStatut] = useState<FiltreStatutProprieteType>('tous');
+    const [recherche, setRecherche] = useState('');
+    const [tri, setTri] = useState<TriProprieteType>('date');
+    const [ordre, setOrdre] = useState<'asc' | 'desc'>('desc');
+    
     const [selectedPropriete, setSelectedPropriete] = useState<Propriete | null>(null);
     const [showProprieteDetail, setShowProprieteDetail] = useState(false);
     const [selectedDemandeur, setSelectedDemandeur] = useState<Demandeur | null>(null);
     const [showDemandeurDetail, setShowDemandeurDetail] = useState(false);
 
-    /**
-     * ✅ CORRECTION FINALE : Vérifier les demandeurs ACTIFS uniquement
-     */
-    const hasLinkedDemandeurs = (prop: Propriete): boolean => {
-        if (prop.demandes && Array.isArray(prop.demandes) && prop.demandes.length > 0) {
-            return prop.demandes.some(d => d.status === 'active');
-        }
-        return false;
-    };
+    const itemsPerPage = 10;
 
-    /**
-     * ✅ CORRECTION FINALE : Détecter si acquise
-     * LOGIQUE : PropriÃ©tÃ© ACQUISE = AU MOINS 1 demande archivée ET AUCUNE demande active
-     */
-    const isPropertyArchived = (prop: Propriete): boolean => {
-        // Priorité 1: Utiliser is_archived calculé côté serveur
-        if (prop.is_archived === true) {
-            return true;
+    // FILTRAGE ET TRI
+    const proprietesFiltrees = useMemo(() => {
+        let filtered = filterProprietesByStatus(proprietes, filtreStatut);
+        
+        if (recherche) {
+            filtered = filtered.filter(p => matchesSearch(p, recherche));
         }
         
-        // Priorité 2: Calculer via les demandes
-        if (prop.demandes && Array.isArray(prop.demandes) && prop.demandes.length > 0) {
-            const activeDemandes = prop.demandes.filter(d => d.status === 'active');
-            const archivedDemandes = prop.demandes.filter(d => d.status === 'archive');
-            
-            return activeDemandes.length === 0 && archivedDemandes.length > 0;
-        }
+        filtered = sortProprietes(filtered, tri, ordre);
         
-        return false;
-    };
+        return filtered;
+    }, [proprietes, filtreStatut, recherche, tri, ordre]);
 
-    /**
-     * ✅ Vérifier si propriété est vide
-     */
-    const isPropertyEmpty = (prop: Propriete): boolean => {
-        return !prop.demandes || prop.demandes.length === 0;
-    };
+    // CALCUL DES PROPRIÉTÉS AVEC _computed
+    const processedProprietes = useMemo(() => {
+        if (!proprietesFiltrees || !Array.isArray(proprietesFiltrees)) {
+            return [];
+        }
+        return proprietesFiltrees.map((prop: Propriete): ProprieteWithDetails => ({
+            ...prop,
+            _computed: {
+                isIncomplete: isPropertyIncomplete(prop),
+                hasDemandeurs: prop.demandes ? prop.demandes.some(d => d.status === 'active') : false,
+                isArchived: prop.is_archived || false,
+            }
+        }));
+    }, [proprietesFiltrees, isPropertyIncomplete]);
 
-    // Handlers
+    // HANDLERS - DIALOGUES
     const handleSelectPropriete = (propriete: Propriete) => {
         setShowDemandeurDetail(false);
         setTimeout(() => {
@@ -135,69 +113,35 @@ export default function ProprietesIndex({
         }
     };
 
-    // ✅ Calcul des propriétés avec _computed
-    const processedProprietes = useMemo(() => {
-        if (!proprietes || !Array.isArray(proprietes)) {
-            return [];
-        }
-        return proprietes.map((prop: Propriete): ProprieteWithComputed => ({
-            ...prop,
-            _computed: {
-                isIncomplete: isPropertyIncomplete(prop),
-                hasDemandeurs: hasLinkedDemandeurs(prop),
-                isArchived: isPropertyArchived(prop),
-            }
-        }));
-    }, [proprietes]);
-
-    const paginatedProprietes = useMemo(() => {
-        if (!processedProprietes || processedProprietes.length === 0) {
-            return [];
-        }
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return processedProprietes.slice(startIndex, endIndex);
-    }, [processedProprietes, currentPage]);
-
-    const totalPages = Math.ceil(processedProprietes.length / itemsPerPage);
-
-    const Pagination = () => {
-        if (totalPages <= 1) return null;
-        return (
-            <div className="flex justify-center items-center gap-2 mt-6 pb-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                >
-                    Précédent
-                </Button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                    >
-                        {page}
-                    </Button>
-                ))}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                >
-                    Suivant
-                </Button>
-            </div>
-        );
+    // HANDLERS - FILTRES
+    const handleFiltreStatutChange = (newFiltre: FiltreStatutProprieteType) => {
+        setFiltreStatut(newFiltre);
+        setCurrentPage(1);
     };
 
+    const handleRechercheChange = (newRecherche: string) => {
+        setRecherche(newRecherche);
+        setCurrentPage(1);
+    };
+
+    const handleTriChange = (newTri: TriProprieteType) => {
+        setTri(newTri);
+        setCurrentPage(1);
+    };
+
+    const handleOrdreToggle = () => {
+        setOrdre(prev => prev === 'asc' ? 'desc' : 'asc');
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+
+    // RENDER
     return (
         <>
             <Card className="border-0 shadow-lg">
+                {/* Header */}
                 <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20 p-6 border-b">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -207,7 +151,8 @@ export default function ProprietesIndex({
                             <div>
                                 <h2 className="text-xl font-bold">Propriétés</h2>
                                 <p className="text-sm text-muted-foreground">
-                                    {proprietes.length} propriété{proprietes.length > 1 ? 's' : ''} enregistrée{proprietes.length > 1 ? 's' : ''}
+                                    {proprietesFiltrees.length} propriété{proprietesFiltrees.length > 1 ? 's' : ''}
+                                    {proprietesFiltrees.length !== proprietes.length && ` sur ${proprietes.length}`}
                                 </p>
                             </div>
                         </div>
@@ -230,144 +175,37 @@ export default function ProprietesIndex({
                     </div>
                 </div>
 
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted/30 border-b">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lot</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Titre</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dep/Vol</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contenance</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nature</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
-                                    <th className="px-6 py-4 w-[50px]"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {proprietes.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
-                                            <LandPlot className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-                                            <p className="font-medium text-muted-foreground">Aucune propriété enregistrée</p>
-                                            <p className="text-sm text-muted-foreground/70 mt-1">Commencez par ajouter une propriété au dossier</p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    (paginatedProprietes || []).map((propriete: ProprieteWithComputed) => {
-                                        const { isIncomplete, hasDemandeurs, isArchived } = propriete._computed || {
-                                            isIncomplete: false,
-                                            hasDemandeurs: false,
-                                            isArchived: false
-                                        };
-                                        
-                                        // Classes CSS selon statut
-                                        const rowClass = isArchived
-                                            ? 'hover:bg-green-50/50 dark:hover:bg-green-900/20 bg-green-50/30 dark:bg-green-900/10 cursor-pointer transition-colors'
-                                            : isIncomplete 
-                                                ? 'hover:bg-red-50/50 dark:hover:bg-red-950/20 bg-red-50/30 dark:bg-red-950/10 cursor-pointer transition-colors'
-                                                : hasDemandeurs
-                                                    ? 'hover:bg-muted/30 cursor-pointer transition-colors'
-                                                    : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20 bg-amber-50/30 dark:bg-amber-950/10 cursor-pointer transition-colors';
-                                        
-                                        return (
-                                            <tr 
-                                                key={propriete.id} 
-                                                className={rowClass} 
-                                                onClick={() => handleSelectPropriete(propriete)}
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium">{propriete.lot}</span>
-                                                        {isIncomplete && <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
-                                                        {isArchived && <Archive className="h-4 w-4 text-green-600 flex-shrink-0" />}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted-foreground">
-                                                    {propriete.titre ? `TNº${propriete.titre}` : '-'}
-                                                </td>
-                                                <td className="px-6 py-4 font-mono text-sm text-muted-foreground">
-                                                    {propriete.dep_vol_complet || propriete.dep_vol || '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted-foreground">
-                                                    {propriete.contenance ? `${propriete.contenance} m²` : '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted-foreground capitalize">
-                                                    {propriete.nature || '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        {isArchived ? (
-                                                            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-400">
-                                                                <Archive className="mr-1 h-3 w-3" />
-                                                                Acquise
-                                                            </Badge>
-                                                        ) : hasDemandeurs ? (
-                                                            <Badge variant="default" className="text-xs">
-                                                                Avec demandeur
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="secondary" className="text-xs">
-                                                                Sans demandeur
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <Ellipsis className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => handleSelectPropriete(propriete)}>
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                Voir détails
-                                                            </DropdownMenuItem>
-                                                            {!dossier.is_closed && (
-                                                                <>
-                                                                    <DropdownMenuItem asChild>
-                                                                        <Link href={route('proprietes.edit', propriete.id)} className="flex items-center">
-                                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                                            Modifier
-                                                                        </Link>
-                                                                    </DropdownMenuItem>
-                                                                    {!isArchived && (
-                                                                        <DropdownMenuItem onClick={() => onLinkDemandeur?.(propriete)}>
-                                                                            <Link2 className="mr-2 h-4 w-4" />
-                                                                            Lier un demandeur
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    <DropdownMenuSeparator />
-                                                                    {isArchived ? (
-                                                                        <DropdownMenuItem className="text-blue-600" onClick={() => onUnarchivePropriete(propriete.id)}>
-                                                                            <ArchiveRestore className="mr-2 h-4 w-4" />
-                                                                            Désarchiver
-                                                                        </DropdownMenuItem>
-                                                                    ) : (
-                                                                        <DropdownMenuItem className="text-green-600" onClick={() => onArchivePropriete(propriete.id)}>
-                                                                            <Archive className="mr-2 h-4 w-4" />
-                                                                            Archiver (acquise)
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    <DropdownMenuItem className="text-red-500" onClick={() => onDeletePropriete(propriete.id)}>
-                                                                        <Trash className="mr-2 h-4 w-4" />
-                                                                        Supprimer
-                                                                    </DropdownMenuItem>
-                                                                </>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    <Pagination />
+                <CardContent className="p-6">
+                    {/* Filtres */}
+                    <ProprieteFilters
+                        filtreStatut={filtreStatut}
+                        onFiltreStatutChange={handleFiltreStatutChange}
+                        recherche={recherche}
+                        onRechercheChange={handleRechercheChange}
+                        tri={tri}
+                        onTriChange={handleTriChange}
+                        ordre={ordre}
+                        onOrdreToggle={handleOrdreToggle}
+                        totalProprietes={proprietes.length}
+                        totalFiltres={proprietesFiltrees.length}
+                    />
+
+                    {/* Tableau */}
+                    <ProprieteTable
+                        proprietes={processedProprietes}
+                        dossier={dossier}
+                        demandeurs={demandeurs}
+                        onDeletePropriete={onDeletePropriete}
+                        onArchivePropriete={onArchivePropriete}
+                        onUnarchivePropriete={onUnarchivePropriete}
+                        isPropertyIncomplete={isPropertyIncomplete}
+                        onLinkDemandeur={onLinkDemandeur}
+                        onSelectPropriete={handleSelectPropriete}
+                        onDissociate={onDissociate}
+                        currentPage={currentPage}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={handlePageChange}
+                    />
                 </CardContent>
             </Card>
 

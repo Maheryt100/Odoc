@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/Show.tsx - ✅ VERSION CORRIGÉE OPTION 1
+// resources/js/pages/dossiers/Show.tsx - ✅ VERSION REDESIGNÉE FINALE
 
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileOutput, FileText } from 'lucide-react';
 import type { BreadcrumbItem, Demandeur, Propriete, SharedData } from '@/types';
 import type { BaseDemandeur, BasePropriete } from '@/pages/PiecesJointes/pieces-jointes';
 import type { Dossier, DossierPermissions } from './types';
@@ -23,8 +23,9 @@ import DossierInfoSection from './components/DossierInfoSection';
 import DemandeursIndex from '@/pages/demandeurs/index';
 import ProprietesIndex from '@/pages/proprietes/index';
 import PiecesJointesIndex from '@/pages/PiecesJointes/Index';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getDisabledDocumentButtonTooltip } from './helpers';
 
-// ✅ Interface PageProps stricte avec permissions NON-optionnelles
 interface PageProps {
     dossier: Dossier & {
         demandeurs: Demandeur[];
@@ -229,7 +230,6 @@ export default function Show() {
         });
     }, [dissociateData, isDissociating]);
 
-    // ✅ Typage strict DemandeurWithProperty[]
     const allDemandeurs = useMemo((): DemandeurWithProperty[] => {
         return (dossier.demandeurs || []).map(d => ({
             ...d,
@@ -239,7 +239,6 @@ export default function Show() {
         })) as DemandeurWithProperty[];
     }, [dossier.demandeurs]);
 
-    // ✅ CORRECTION : Gestionnaire avec dépendance allDemandeurs
     const handleDeleteDemandeur = useCallback((id: number) => {
         const demandeur = allDemandeurs.find(d => d.id === id);
         if (!demandeur) {
@@ -299,7 +298,6 @@ export default function Show() {
                !dem.lieu_delivrance || !dem.domiciliation || !dem.occupation || !dem.nom_mere;
     };
 
-    // ✅ CORRECTION : Conversion explicite null
     const baseDemandeursForAttachments: BaseDemandeur[] = allDemandeurs.map(d => ({
         id: d.id,
         nom_demandeur: d.nom_demandeur,
@@ -307,17 +305,24 @@ export default function Show() {
         cin: d.cin,
     }));
 
-    // ✅ CORRECTION : Conversion explicite null (solution au problème initial)
     const baseProprietesForAttachments: BasePropriete[] = proprietes.map(p => ({
         id: p.id,
         lot: p.lot,
-        titre: p.titre ?? null, // ✅ Convertit undefined en null si présent
+        titre: p.titre ?? null,
     }));
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dossiers', href: route('dossiers') },
         { title: dossier.nom_dossier, href: '#' }
     ];
+
+    // ✅ Tooltip pour documents désactivé
+    const documentButtonTooltip = !permissions.canGenerateDocuments 
+        ? getDisabledDocumentButtonTooltip(dossier, { 
+            role: auth.user.role,
+            id_district: auth.user.id_district 
+          })
+        : '';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -326,20 +331,73 @@ export default function Show() {
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
                 
-                <div className="flex items-center gap-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                        className="gap-2"
-                    >
-                        <Link href={route('dossiers')}>
-                            <ArrowLeft className="h-4 w-4" />
-                            Retour à la liste
-                        </Link>
-                    </Button>
+                {/* ✅ HEADER MODERNE - Style Generate.tsx */}
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                            Informations du dossier
+                        </h1>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                            <span className="font-medium">{dossier.nom_dossier}</span>
+                            <span className="text-gray-400">•</span>
+                            <span>{dossier.commune}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="gap-2 shadow-sm hover:shadow-md transition-all"
+                        >
+                            <Link href={route('dossiers')}>
+                                <ArrowLeft className="h-4 w-4" />
+                                Retour à la liste
+                            </Link>
+                        </Button>
+
+                        {/* ✅ Documents - avec tooltip si désactivé */}
+                        {permissions.canGenerateDocuments ? (
+                            <Button asChild size="sm" className="gap-2 shadow-md">
+                                <Link href={`/documents/generate/${dossier.id}`}>
+                                    <FileOutput className="h-4 w-4" />
+                                    Documents
+                                </Link>
+                            </Button>
+                        ) : (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span>
+                                            <Button 
+                                                size="sm"
+                                                disabled
+                                                className="gap-2"
+                                            >
+                                                <FileOutput className="h-4 w-4" />
+                                                Documents
+                                            </Button>
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                        <p>{documentButtonTooltip}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                        
+                        {/* Résumé - toujours accessible */}
+                        <Button asChild size="sm" variant="outline" className="gap-2 shadow-md">
+                            <Link href={`/demandes/resume/${dossier.id}`}>
+                                <FileText className="h-4 w-4" />
+                                Résumé
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
+                {/* Section Info */}
                 <DossierInfoSection
                     dossier={dossier}
                     demandeursCount={allDemandeurs.length}

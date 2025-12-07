@@ -1,5 +1,5 @@
 // pages/DemandeursProprietes/NouveauLot.tsx
-// ✅ VERSION REDESIGNÉE - Style moderne cohérent avec users/Index.tsx
+// ✅ VERSION REDESIGNÉE FINALE - Boutons en haut ET en bas, pas de double conteneur
 
 import { useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -358,7 +358,6 @@ export default function NouveauLot() {
                     <CardContent className="pt-6">
                         <RadioGroup value={creationMode} onValueChange={(value) => setCreationMode(value as CreationMode)}>
                             <div className="grid gap-4 md:grid-cols-3">
-                                {/* Option 1 */}
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lot-demandeur' 
@@ -382,7 +381,6 @@ export default function NouveauLot() {
                                     </div>
                                 </div>
 
-                                {/* Option 2 */}
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lots-only' 
@@ -406,7 +404,6 @@ export default function NouveauLot() {
                                     </div>
                                 </div>
 
-                                {/* Option 3 */}
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'demandeurs-only' 
@@ -446,14 +443,14 @@ export default function NouveauLot() {
                                         </div>
                                         <div>
                                             <CardTitle className="text-xl">
-                                                {creationMode === 'lot-demandeur' ? '1. ' : ''}
+                                                {creationMode === 'lot-demandeur' ? '' : ''}
                                                 Propriété{proprietes.length > 1 ? 's' : ''}
                                             </CardTitle>
                                             <CardDescription className="mt-1">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {proprietes.length} propriété{proprietes.length > 1 ? 's' : ''}
                                                 </Badge>
-                                                <span className="ml-2">Champs obligatoires: Lot, Type d'opération, Nature, Vocation</span>
+                                                
                                             </CardDescription>
                                         </div>
                                     </div>
@@ -468,17 +465,34 @@ export default function NouveauLot() {
                         </div>
                         <CardContent className="p-6 space-y-8">
                             {proprietes.map((propriete, index) => (
-                                <ProprieteCreate
-                                    key={index}
-                                    data={propriete}
-                                    onChange={(field, value) => updatePropriete(index, field, value)}
-                                    onRemove={creationMode === 'lots-only' ? () => removePropriete(index) : undefined}
-                                    index={index}
-                                    showRemoveButton={creationMode === 'lots-only' && proprietes.length > 1}
-                                    selectedCharges={selectedChargesByPropriete[index] || []}
-                                    onChargeChange={(charge, checked) => handleChargeChange(index, charge, checked)}
-                                />
+                                <div key={index} className="pb-8 border-b last:border-b-0 last:pb-0">
+                                    <ProprieteCreate
+                                        data={propriete}
+                                        onChange={(field, value) => updatePropriete(index, field, value)}
+                                        onRemove={creationMode === 'lots-only' ? () => removePropriete(index) : undefined}
+                                        index={index}
+                                        showRemoveButton={creationMode === 'lots-only' && proprietes.length > 1}
+                                        selectedCharges={selectedChargesByPropriete[index] || []}
+                                        onChargeChange={(charge, checked) => handleChargeChange(index, charge, checked)}
+                                    />
+                                </div>
                             ))}
+
+                            {/* ✅ BOUTON EN BAS */}
+                            {creationMode === 'lots-only' && (
+                                <div className="flex justify-center pt-4">
+                                    <Button 
+                                        type="button" 
+                                        onClick={addPropriete} 
+                                        variant="outline"
+                                        size="lg"
+                                        className="gap-2 shadow-md hover:shadow-lg transition-all"
+                                    >
+                                        <Plus className="h-5 w-5" />
+                                        Ajouter une autre propriété
+                                    </Button>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -495,14 +509,14 @@ export default function NouveauLot() {
                                         </div>
                                         <div>
                                             <CardTitle className="text-xl">
-                                                {creationMode === 'lot-demandeur' ? '2. ' : ''}
+                                                {creationMode === 'lot-demandeur' ? '' : ''}
                                                 Demandeurs
                                             </CardTitle>
                                             <CardDescription className="mt-1">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {demandeurs.length} demandeur{demandeurs.length > 1 ? 's' : ''}
                                                 </Badge>
-                                                <span className="ml-2">Champs obligatoires: Titre, Nom, Prénom, Date de naissance, CIN (12 chiffres)</span>
+                                                
                                             </CardDescription>
                                         </div>
                                     </div>
@@ -515,15 +529,30 @@ export default function NouveauLot() {
                         </div>
                         <CardContent className="p-6 space-y-8">
                             {demandeurs.map((demandeur, index) => (
-                                <DemandeurCreate
-                                    key={index}
-                                    data={demandeur}
-                                    onChange={(field, value) => updateDemandeur(index, field, value)}
-                                    onRemove={demandeurs.length > 1 ? () => removeDemandeur(index) : undefined}
-                                    index={index}
-                                    showRemoveButton={demandeurs.length > 1}
-                                />
+                                <div key={index} className="pb-8 border-b last:border-b-0 last:pb-0">
+                                    <DemandeurCreate
+                                        data={demandeur}
+                                        onChange={(field, value) => updateDemandeur(index, field, value)}
+                                        onRemove={demandeurs.length > 1 ? () => removeDemandeur(index) : undefined}
+                                        index={index}
+                                        showRemoveButton={demandeurs.length > 1}
+                                    />
+                                </div>
                             ))}
+
+                            {/* ✅ BOUTON EN BAS */}
+                            <div className="flex justify-center pt-4">
+                                <Button 
+                                    type="button" 
+                                    onClick={addDemandeur} 
+                                    variant="outline"
+                                    size="lg"
+                                    className="gap-2 shadow-md hover:shadow-lg transition-all"
+                                >
+                                    <Plus className="h-5 w-5" />
+                                    Ajouter un autre demandeur
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 )}

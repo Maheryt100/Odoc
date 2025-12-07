@@ -48,7 +48,7 @@ class DossierObserver
         // Invalider le cache du district concerné
         $this->cache->forgetDistrictCache($dossier->id_district);
         
-        Log::info("🗑️ Cache invalidé suite à modification Dossier", [
+        Log::info("Cache invalidé suite à modification Dossier", [
             'dossier_id' => $dossier->id,
             'district_id' => $dossier->id_district,
         ]);

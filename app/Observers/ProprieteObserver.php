@@ -69,7 +69,7 @@ class ProprieteObserver
         if ($propriete->dossier) {
             $this->cache->forgetDistrictCache($propriete->dossier->id_district);
             
-            Log::info("🗑️ Cache invalidé suite à modification Propriete", [
+            Log::info("Cache invalidé suite à modification Propriete", [
                 'propriete_id' => $propriete->id,
                 'district_id' => $propriete->dossier->id_district,
             ]);

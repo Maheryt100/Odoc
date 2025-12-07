@@ -1,6 +1,5 @@
-// ============================================
-// 📦 pages/proprietes/create.tsx - VERSION CORRIGÉE
-// ============================================
+// pages/proprietes/create.tsx
+// ✅ VERSION REDESIGNÉE - Style moderne cohérent
 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Trash2, FileText, MapPin, Calendar, Layers, Shield } from 'lucide-react';
-import type { TypeOperation, Nature, Vocation } from '@/types'; // ✅ Import types
+import { Badge } from '@/components/ui/badge';
 
 import type { ProprieteFormProps, ProprieteFormData } from '@/pages/proprietes/types';
 import { CHARGE_OPTIONS, EMPTY_PROPRIETE } from '@/pages/proprietes/types';
@@ -26,37 +25,50 @@ export default function ProprieteCreate({
     onChargeChange
 }: ProprieteFormProps) {
     return (
-        <div className="border-0 rounded-lg shadow-lg p-6 space-y-8 bg-card">
+        <div className="space-y-8">
+            {/* ✅ HEADER avec badge numéro */}
             {showRemoveButton && onRemove && (
-                <div className="flex justify-between items-center pb-4 border-b">
-                    <h3 className="text-xl font-semibold text-foreground">
-                        Propriété {typeof index !== 'undefined' ? index + 1 : ''}
-                    </h3>
+                <div className="flex justify-between items-center pb-6 border-b-2 border-violet-200 dark:border-violet-800">
+                    <div className="flex items-center gap-3">
+                        <Badge className="bg-gradient-to-r from-violet-600 to-purple-600 text-white text-base px-3 py-1">
+                            #{typeof index !== 'undefined' ? index + 1 : ''}
+                        </Badge>
+                        <h3 className="text-xl font-bold">
+                            Propriété {typeof index !== 'undefined' ? index + 1 : ''}
+                        </h3>
+                    </div>
                     <Button
                         type="button"
                         variant="destructive"
                         size="sm"
                         onClick={onRemove}
-                        className="h-9"
+                        className="h-9 gap-2 shadow-md"
                     >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                         Retirer
                     </Button>
                 </div>
             )}
 
-            {/* Section Type d'opération */}
+            {/* ✅ SECTION TYPE D'OPÉRATION - Style bleu */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 pb-3 border-b-2 border-blue-100 dark:border-blue-900">
-                    <FileText className="h-4 w-4" />
-                    <span>Type d'opération</span>
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-blue-200 dark:border-blue-800">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                            Type d'opération
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Choisir le type de procédure</p>
+                    </div>
                 </div>
 
                 <div className="space-y-2">
                     <Label className="text-sm font-medium text-red-600">Type d'opération *</Label>
                     <Select
                         value={data.type_operation}
-                        onValueChange={(value: string) => onChange('type_operation', value)} // ✅ Simplifié
+                        onValueChange={(value: string) => onChange('type_operation', value)}
                     >
                         <SelectTrigger className="w-full md:w-[280px] h-11">
                             <SelectValue />
@@ -69,11 +81,18 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* Section Identification du lot */}
+            {/* ✅ SECTION IDENTIFICATION DU LOT - Style vert */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-green-600 dark:text-green-400 pb-3 border-b-2 border-green-100 dark:border-green-900">
-                    <Layers className="h-4 w-4" />
-                    <span>Identification du lot</span>
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-green-200 dark:border-green-800">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                        <Layers className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-green-900 dark:text-green-100">
+                            Identification du lot
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Informations de base du terrain</p>
+                    </div>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-3">
@@ -91,7 +110,7 @@ export default function ProprieteCreate({
                         <Label className="text-sm font-medium text-red-600">Nature *</Label>
                         <Select 
                             value={data.nature} 
-                            onValueChange={(value: string) => onChange('nature', value)} // ✅ Simplifié
+                            onValueChange={(value: string) => onChange('nature', value)}
                         >
                             <SelectTrigger className="h-11">
                                 <SelectValue placeholder="Sélectionner" />
@@ -107,7 +126,7 @@ export default function ProprieteCreate({
                         <Label className="text-sm font-medium text-red-600">Vocation *</Label>
                         <Select 
                             value={data.vocation} 
-                            onValueChange={(value: string) => onChange('vocation', value)} // ✅ Simplifié
+                            onValueChange={(value: string) => onChange('vocation', value)}
                         >
                             <SelectTrigger className="h-11">
                                 <SelectValue placeholder="Sélectionner" />
@@ -123,11 +142,18 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* Section Propriétaire & Titres */}
+            {/* ✅ SECTION PROPRIÉTAIRE & TITRES - Style violet */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-purple-600 dark:text-purple-400 pb-3 border-b-2 border-purple-100 dark:border-purple-900">
-                    <Shield className="h-4 w-4" />
-                    <span>Propriétaire & Titres</span>
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-purple-200 dark:border-purple-800">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+                            Propriétaire & Titres
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Références et propriétaire actuel</p>
+                    </div>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">
@@ -174,11 +200,18 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* Section Détails & Références */}
+            {/* ✅ SECTION DÉTAILS & RÉFÉRENCES - Style indigo */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 pb-3 border-b-2 border-indigo-100 dark:border-indigo-900">
-                    <FileText className="h-4 w-4" />
-                    <span>Détails & Références</span>
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-200 dark:border-indigo-800">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                        <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100">
+                            Détails & Références
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Contenance et numéros administratifs</p>
+                    </div>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-4">
@@ -213,9 +246,9 @@ export default function ProprieteCreate({
                             />
                         </div>
                     )}
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                         <Label className="text-sm font-medium">Charges</Label>
-                        <div className="space-y-2 mt-2 p-3 border rounded-md bg-muted/30">
+                        <div className="space-y-2 p-4 border-2 rounded-lg bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 border-indigo-200 dark:border-indigo-800">
                             {CHARGE_OPTIONS.map((charge) => (
                                 <div key={charge} className="flex items-center space-x-2">
                                     <Checkbox
@@ -227,7 +260,7 @@ export default function ProprieteCreate({
                                     />
                                     <label 
                                         htmlFor={`charge-${charge}-${index || 0}`} 
-                                        className="text-sm cursor-pointer"
+                                        className="text-sm cursor-pointer font-medium"
                                     >
                                         {charge}
                                     </label>
@@ -238,15 +271,22 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* Section Localisation & Dates */}
+            {/* ✅ SECTION LOCALISATION & DATES - Style orange */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-orange-600 dark:text-orange-400 pb-3 border-b-2 border-orange-100 dark:border-orange-900">
-                    <MapPin className="h-4 w-4" />
-                    <span>Localisation & Dates</span>
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                        <MapPin className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
+                            Localisation & Dates
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Situation géographique et dates administratives</p>
+                    </div>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-5">
-                    <div className="space-y-2 md:col-span-2">
+                <div className="grid gap-6 md:grid-cols-3">
+                    <div className="space-y-2 md:col-span-3">
                         <Label className="text-sm font-medium">Situation (sise à)</Label>
                         <Input
                             value={data.situation}
@@ -256,8 +296,8 @@ export default function ProprieteCreate({
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium">
-                            <Calendar className="inline h-3 w-3 mr-1" />
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                            <Calendar className="h-3 w-3" />
                             Date inscription
                         </Label>
                         <Input
@@ -268,8 +308,8 @@ export default function ProprieteCreate({
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium">
-                            <Calendar className="inline h-3 w-3 mr-1" />
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                            <Calendar className="h-3 w-3" />
                             Date requisition
                         </Label>
                         <Input

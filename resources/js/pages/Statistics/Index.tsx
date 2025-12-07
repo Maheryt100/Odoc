@@ -47,7 +47,7 @@ export default function StatisticsIndex({ stats, charts, filters, districts, aut
                 
                 {/* ✅ NOUVEAU : Indicateur de connexion WebSocket */}
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    {/* <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                             <Radio 
                                 className={`h-4 w-4 ${isConnected ? 'text-green-500 animate-pulse' : 'text-gray-400'}`}
@@ -62,7 +62,7 @@ export default function StatisticsIndex({ stats, charts, filters, districts, aut
                                 {updateCount} {updateCount > 1 ? 'mises à jour' : 'mise à jour'}
                             </Badge>
                         )}
-                    </div>
+                    </div> */}
                 </div>
                 
                 {/* ✅ NOUVEAU : Alerte de mise à jour disponible */}
