@@ -1,4 +1,4 @@
-// Statistics/Index.tsx
+// Statistics/Index.tsx - ✅ VERSION REDESIGNÉE
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Radio, RefreshCw } from 'lucide-react';
+import { Radio, RefreshCw, BarChart3 } from 'lucide-react';
 import { StatisticsHeader } from './components/StatisticsHeader';
 import { StatisticsFilters } from './components/StatisticsFilters';
 import { OverviewTab } from './components/tabs/OverviewTab';
@@ -22,15 +22,12 @@ import type { StatisticsProps } from './types';
 export default function StatisticsIndex({ stats, charts, filters, districts, auth }: StatisticsProps) {
     const [showUpdateAlert, setShowUpdateAlert] = useState(false);
     
-    // ✅ NOUVEAU : Hook temps réel
+    // ✅ Hook temps réel
     const { lastUpdate, isConnected, updateCount, forceRefresh } = useRealtimeStatistics({
         districtId: auth.user.id_district,
-        autoRefresh: false, // Manuel pour que l'utilisateur contrôle
+        autoRefresh: false,
         onUpdate: (update) => {
-            // Afficher une alerte quand une mise à jour arrive
             setShowUpdateAlert(true);
-            
-            // Masquer après 10 secondes
             setTimeout(() => setShowUpdateAlert(false), 10000);
         }
     });
@@ -43,51 +40,51 @@ export default function StatisticsIndex({ stats, charts, filters, districts, aut
             <Head title="Statistiques" />
 
             <div className="flex flex-col gap-6 p-6">
-                <StatisticsHeader filters={filters} />
-                
-                {/* ✅ NOUVEAU : Indicateur de connexion WebSocket */}
-                <div className="flex items-center justify-between">
-                    {/* <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <Radio 
-                                className={`h-4 w-4 ${isConnected ? 'text-green-500 animate-pulse' : 'text-gray-400'}`}
-                            />
-                            <span className="text-sm text-muted-foreground">
-                                {isConnected ? 'Temps réel activé' : 'Hors ligne'}
-                            </span>
-                        </div>
-                        
-                        {updateCount > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                                {updateCount} {updateCount > 1 ? 'mises à jour' : 'mise à jour'}
-                            </Badge>
-                        )}
-                    </div> */}
+                {/* ✅ Header moderne - Cyan/Sky */}
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent flex items-center gap-3">
+                        <BarChart3 className="h-8 w-8 text-cyan-600" />
+                        Statistiques et Analyses
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Tableau de bord analytique complet avec suivi en temps réel
+                    </p>
                 </div>
                 
-                {/* ✅ NOUVEAU : Alerte de mise à jour disponible */}
+                {/* ✅ Indicateur de connexion WebSocket */}
+                <div className="flex items-center justify-between">
+                    {/* Section désactivée temporairement */}
+                </div>
+                
+                {/* ✅ Alerte de mise à jour disponible */}
                 {showUpdateAlert && lastUpdate && (
-                    <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                        <Radio className="h-4 w-4 text-blue-500" />
-                        <AlertDescription className="flex items-center justify-between">
-                            <div>
-                                <span className="font-medium">Nouvelles données disponibles !</span>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    {lastUpdate.type === 'dossier' && 'Un dossier a été modifié'}
-                                    {lastUpdate.type === 'propriete' && 'Une propriété a été modifiée'}
-                                    {lastUpdate.type === 'demandeur' && 'Un demandeur a été modifié'}
-                                    {lastUpdate.type === 'demande' && 'Une demande a été modifiée'}
-                                </p>
+                    <Alert className="border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20 border-0 shadow-md">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg shrink-0">
+                                <Radio className="h-4 w-4 text-cyan-600 dark:text-cyan-400 animate-pulse" />
                             </div>
-                            <Button 
-                                size="sm" 
-                                onClick={forceRefresh}
-                                className="ml-4"
-                            >
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Actualiser
-                            </Button>
-                        </AlertDescription>
+                            <AlertDescription className="flex-1 text-sm text-cyan-900 dark:text-cyan-100">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <span className="font-semibold">Nouvelles données disponibles !</span>
+                                        <p className="text-cyan-700 dark:text-cyan-300 mt-1">
+                                            {lastUpdate.type === 'dossier' && 'Un dossier a été modifié'}
+                                            {lastUpdate.type === 'propriete' && 'Une propriété a été modifiée'}
+                                            {lastUpdate.type === 'demandeur' && 'Un demandeur a été modifié'}
+                                            {lastUpdate.type === 'demande' && 'Une demande a été modifiée'}
+                                        </p>
+                                    </div>
+                                    <Button 
+                                        size="sm" 
+                                        onClick={forceRefresh}
+                                        className="ml-4 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-700 hover:to-sky-700"
+                                    >
+                                        <RefreshCw className="h-4 w-4 mr-2" />
+                                        Actualiser
+                                    </Button>
+                                </div>
+                            </AlertDescription>
+                        </div>
                     </Alert>
                 )}
                 

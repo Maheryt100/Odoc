@@ -1,10 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Statistics;
+
 
 use Carbon\Carbon;
 use App\Models\Dossier;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
+
 
 /**
  * Service de gestion des périodes pour les statistiques
@@ -12,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class PeriodService
 {
-    use Traits\QueryFilterTrait;
+    use QueryFilterTrait;
     
     /**
      * Obtenir les dates de début et fin selon la période sélectionnée

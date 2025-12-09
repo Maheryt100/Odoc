@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Dossier;
-use App\Http\Controllers\Dashboard\Services\StatisticsCacheService;
+use App\Http\Controllers\Dashboard\Services\Statistics\StatisticsCacheService;
 use Illuminate\Support\Facades\Log;
 
 

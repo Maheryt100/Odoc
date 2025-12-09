@@ -1,4 +1,4 @@
-// documents/Generate.tsx - VERSION FINALE OPTIMISÉE
+// documents/Generate.tsx - VERSION FINALE OPTIMISÉE AVEC BOUTON RÉSUMÉ
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
 import React, { useState } from 'react';
@@ -13,7 +13,8 @@ import {
     FileText, 
     FileCheck, 
     FileOutput, 
-    Sparkles
+    Sparkles,
+    List
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { BreadcrumbItem, Demandeur, Dossier } from '@/types';
@@ -48,35 +49,34 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
             <Toaster position="top-right" richColors />
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* Header redesigné */}
+                {/* Header redesigné avec bouton Résumé */}
                 <div className="flex items-center justify-between">
-
-                    {/* GAUCHE : Titre + infos */}
-                    <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                            Génération de documents
-                        </h1>
-
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="font-medium">{dossier.nom_dossier}</span>
-                            <span className="text-gray-400">•</span>
-                            <span>{dossier.commune}</span>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                                Génération de documents
+                            </h1>
+                            <div className="flex items-center gap-3 mt-2 text-muted-foreground">
+                                <span className="font-medium">{dossier.nom_dossier}</span>
+                                <span className="text-gray-400">•</span>
+                                <span>{dossier.commune}</span>
+                            </div>
                         </div>
                     </div>
-
-                    {/* DROITE : Bouton retour */}
-                    <Button 
-                        variant="outline" 
-                        size="sm"
-                        asChild
-                        className="shadow-sm hover:shadow-md transition-all"
-                    >
-                        <Link href={route('dossiers.show', dossier.id)}>
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Retour au dossier
-                        </Link>
-                    </Button>
-
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href={route('dossiers.show', dossier.id)}>
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Retour
+                            </Link>
+                        </Button>
+                        <Button size="sm" asChild className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg">
+                            <Link href={route('demandes.resume', dossier.id)}>
+                                <List className="h-4 w-4 mr-2" />
+                                Résumé demandes
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
 
@@ -120,25 +120,20 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
                 </div>
 
                 {/* Alerte informative redesignée */}
-                <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                    <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <div className="flex-1">
-                            <AlertDescription className="text-blue-900 dark:text-blue-100">
-                                <div className="space-y-2">
-                                    <p className="font-semibold flex items-center gap-2">
-                                        <Sparkles className="h-4 w-4" />
-                                        Système de génération unique
-                                    </p>
-                                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                                        Chaque document n'est généré qu'une seule fois. Si le document existe déjà, 
-                                        il sera automatiquement téléchargé depuis les archives avec un compteur de téléchargements.
-                                    </p>
-                                </div>
-                            </AlertDescription>
-                        </div>
+                        <AlertDescription className="text-sm text-blue-900 dark:text-blue-100">
+                            <span className="font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Système de génération unique
+                            </span>
+                            <span className="text-blue-700 dark:text-blue-300">
+                                — Chaque document n'est généré qu'une fois, les suivants sont téléchargés depuis les archives
+                            </span>
+                        </AlertDescription>
                     </div>
                 </Alert>
 

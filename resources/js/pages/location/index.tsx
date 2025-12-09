@@ -1,4 +1,4 @@
-// resources/js/pages/location/index.tsx
+// resources/js/pages/location/index.tsx - ✅ VERSION REDESIGNÉE
 
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
@@ -6,6 +6,7 @@ import type { BreadcrumbItem, District, User } from '@/types';
 import { useForm } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
+import { MapPin } from 'lucide-react';
 
 // Import des composants
 import LocationStatsCards from './components/LocationStatsCards';
@@ -146,28 +147,29 @@ export default function LocationIndex({ provinces, auth }: LocationPageProps) {
             <Toaster position="top-right" richColors />
             
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* En-tête */}
-                <div className="flex flex-col gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Gestion des Localisations</h1>
-                        <p className="text-muted-foreground mt-1">
-                            Vue hiérarchique des provinces, régions et districts avec leurs tarifications
-                        </p>
-                    </div>
-
-                    {/* Statistiques */}
-                    <LocationStatsCards
-                        totalDistricts={stats.totalDistricts}
-                        districtsWithPrices={stats.districtsWithPrices}
-                    />
-
-                    {/* Recherche */}
-                    <LocationSearchBar
-                        search={search}
-                        onSearchChange={setSearch}
-                        isSuperAdmin={isSuperAdmin}
-                    />
+                {/* ✅ HEADER MODERNE - Orange/Amber */}
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-3">
+                        <MapPin className="h-8 w-8 text-orange-600" />
+                        Gestion des Localisations
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Vue hiérarchique des provinces, régions et districts avec leurs tarifications
+                    </p>
                 </div>
+
+                {/* ✅ Statistiques redesignées */}
+                <LocationStatsCards
+                    totalDistricts={stats.totalDistricts}
+                    districtsWithPrices={stats.districtsWithPrices}
+                />
+
+                {/* ✅ Recherche */}
+                <LocationSearchBar
+                    search={search}
+                    onSearchChange={setSearch}
+                    isSuperAdmin={isSuperAdmin}
+                />
 
                 {/* Hiérarchie */}
                 <LocationHierarchy

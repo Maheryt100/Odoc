@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Statistics;
 
 use App\Models\Propriete;
 use App\Models\Dossier;
@@ -8,27 +8,81 @@ use App\Models\Demandeur;
 use App\Models\Demander;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
 /**
- * Service de calcul des statistiques numériques
- * Responsabilité : Calculer toutes les métriques et KPIs
- * 
- * ✅ CORRECTIONS v2.0 :
- * - Exclusion des demandeurs avec sexe NULL/vide dans les calculs démographiques
- * - Optimisation des requêtes avec une seule query pour les stats par genre
- * - Gestion correcte des âges moyens avec validation des données
+ * ✅ v6.0 : Fix colonnes Demandeur basé sur le vrai schéma DB
  */
 class StatisticsCalculator
 {
-    use Traits\QueryFilterTrait;
+    use QueryFilterTrait;
     
     public function __construct(
         private PeriodService $periodService
     ) {}
     
     /**
-     * Vue d'ensemble générale
+     * ✅ FIX : Champs RÉELS de la table demandeurs
      */
+    private const DEMANDEUR_STRING_FIELDS = [
+        'titre_demandeur',
+        'nom_demandeur',
+        'prenom_demandeur',
+        'cin',
+        'domiciliation',
+        'sexe',
+        'lieu_naissance',
+        'occupation', // ✅ Selon votre modèle
+        'situation_familiale',
+        'regime_matrimoniale',
+        'nationalite',
+        'nom_pere',
+        'nom_mere',
+        'marie_a',
+        'telephone',
+        'lieu_delivrance',
+        'lieu_delivrance_duplicata',
+        'lieu_mariage',
+    ];
+    
+    private const DEMANDEUR_DATE_FIELDS = [
+        'date_naissance',
+        'date_delivrance',
+        'date_delivrance_duplicata',
+        'date_mariage',
+    ];
+    
+    /**
+     * ✅ Champs Propriete (inchangés)
+     */
+    private const PROPRIETE_STRING_FIELDS = [
+        'lot',
+        'titre',
+        'titre_mere',
+        'proprietaire',
+        'nature',
+        'vocation',
+        'situation',
+        'type_operation',
+        'charge',
+        'numero_FN',
+        'numero_requisition',
+        'dep_vol',
+        'numero_dep_vol',
+        'propriete_mere',
+    ];
+    
+    private const PROPRIETE_NUMERIC_FIELDS = [
+        'contenance',
+    ];
+    
+    private const PROPRIETE_DATE_FIELDS = [
+        'date_requisition',
+        'date_inscription',
+    ];
+    
+    // ... (toutes les autres méthodes restent identiques)
+    
     public function getOverviewStats(array $dates): array
     {
         $query = $this->baseQuery();
@@ -48,9 +102,6 @@ class StatisticsCalculator
         ];
     }
     
-    /**
-     * Statistiques des dossiers
-     */
     public function getDossiersStats(array $dates): array
     {
         $query = $this->baseQuery();
@@ -76,9 +127,6 @@ class StatisticsCalculator
         ];
     }
     
-    /**
-     * Statistiques des propriétés avec superficies détaillées
-     */
     public function getProprietesStats(array $dates): array
     {
         $user = $this->getAuthUser();
@@ -130,9 +178,6 @@ class StatisticsCalculator
         ];
     }
     
-    /**
-     * Statistiques des demandeurs
-     */
     public function getDemandeursStats(array $dates): array
     {
         $user = $this->getAuthUser();
@@ -156,7 +201,6 @@ class StatisticsCalculator
             })
             ->count();
         
-        // ✅ FIX: Calcul correct de l'âge moyen
         $ageMoyen = $this->calculateAverageAge();
         
         return [
@@ -168,21 +212,17 @@ class StatisticsCalculator
         ];
     }
     
-    /**
-     * ✅ CORRECTION MAJEURE : Statistiques démographiques avec exclusion des données invalides
-     */
     public function getDemographicsStats(array $dates): array
     {
         $user = $this->getAuthUser();
         
-        // ✅ AMÉLIORATION : Query de base avec filtres AVANT comptage
         $baseQuery = Demandeur::query()
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                 $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
             })
             ->whereNotNull('sexe')
             ->where('sexe', '!=', '')
-            ->whereIn('sexe', ['Homme', 'Femme']); // ✅ Uniquement H/F valides
+            ->whereIn('sexe', ['Homme', 'Femme']);
         
         $totalHommes = (clone $baseQuery)->where('sexe', 'Homme')->count();
         $totalFemmes = (clone $baseQuery)->where('sexe', 'Femme')->count();
@@ -198,13 +238,14 @@ class StatisticsCalculator
             ->whereHas('proprietes')
             ->count();
         
-        // ✅ OPTIMISATION : Une seule requête pour actifs/acquis par genre
         $statsParGenre = $this->getGenderStatsOptimized();
         
         $hommesActifs = $statsParGenre['Homme']['actifs'] ?? 0;
         $femmesActifs = $statsParGenre['Femme']['actifs'] ?? 0;
         $hommesAcquis = $statsParGenre['Homme']['acquis'] ?? 0;
         $femmesAcquis = $statsParGenre['Femme']['acquis'] ?? 0;
+        $hommesSansPropriete = $statsParGenre['Homme']['sans_propriete'] ?? 0;
+        $femmesSansPropriete = $statsParGenre['Femme']['sans_propriete'] ?? 0;
         
         return [
             'total_hommes' => $totalHommes,
@@ -217,14 +258,13 @@ class StatisticsCalculator
             'femmes_actifs' => $femmesActifs,
             'hommes_acquis' => $hommesAcquis,
             'femmes_acquis' => $femmesAcquis,
+            'hommes_sans_propriete' => $hommesSansPropriete,
+            'femmes_sans_propriete' => $femmesSansPropriete,
             'age_moyen' => round($this->calculateAverageAge(), 1),
             'tranches_age' => $this->calculateAgeBrackets(),
         ];
     }
     
-    /**
-     * Statistiques financières séparées actifs/archivés
-     */
     public function getFinancialsStats(array $dates): array
     {
         $user = $this->getAuthUser();
@@ -268,9 +308,6 @@ class StatisticsCalculator
         ];
     }
     
-    /**
-     * Statistiques géographiques
-     */
     public function getGeographicStats(array $dates): array
     {
         $user = $this->getAuthUser();
@@ -289,17 +326,11 @@ class StatisticsCalculator
         ];
     }
     
-    /**
-     * Statistiques de performance
-     */
     public function getPerformanceStats(array $dates): array
     {
         $query = $this->baseQuery();
         
-        $dossiersComplets = (clone $query)
-            ->whereHas('demandeurs')
-            ->whereHas('proprietes')
-            ->count();
+        $completionData = $this->calculateFieldCompletion();
         
         $total = (clone $query)->count();
         
@@ -323,19 +354,162 @@ class StatisticsCalculator
             ->count();
         
         return [
-            'taux_completion' => $total > 0 ? round(($dossiersComplets / $total) * 100, 1) : 0,
+            'taux_completion' => $completionData['taux'],
+            'dossiers_complets' => $completionData['complets'],
+            'dossiers_incomplets' => $completionData['incomplets'],
+            'proprietes_incompletes' => $completionData['proprietes_incompletes'],
+            'demandeurs_incomplets' => $completionData['demandeurs_incomplets'],
+            'details_incomplets' => $completionData['details'],
             'temps_moyen_traitement' => $tempsMoyen,
             'dossiers_en_retard' => $enRetard,
         ];
     }
     
     // ========================================
-    // MÉTHODES PRIVÉES UTILITAIRES
+    // MÉTHODES DE COMPLÉTION
     // ========================================
     
+    private function calculateFieldCompletion(): array
+    {
+        $user = $this->getAuthUser();
+        $query = $this->baseQuery();
+        
+        $totalDossiers = $query->count();
+        
+        if ($totalDossiers === 0) {
+            return [
+                'taux' => 0,
+                'complets' => 0,
+                'incomplets' => 0,
+                'proprietes_incompletes' => 0,
+                'demandeurs_incomplets' => 0,
+                'details' => [
+                    'dossiers_vides' => 0,
+                    'dossiers_avec_demandeurs_incomplets' => 0,
+                    'dossiers_avec_proprietes_incompletes' => 0,
+                ]
+            ];
+        }
+        
+        $demandeursIncomplets = $this->countIncompleteDemandeurs();
+        $proprietesIncompletes = $this->countIncompleteProprietes();
+        
+        $dossiersAvecDemandeursIncomplets = Dossier::query()
+            ->when(!$user->canAccessAllDistricts(), fn($q) => $q->where('id_district', $user->id_district))
+            ->whereHas('demandeurs', function($q) {
+                $q->where(function($subq) {
+                    $this->addIncompleteConditions($subq, 'demandeurs');
+                });
+            })
+            ->pluck('id');
+        
+        $dossiersAvecProprietesIncompletes = Dossier::query()
+            ->when(!$user->canAccessAllDistricts(), fn($q) => $q->where('id_district', $user->id_district))
+            ->whereHas('proprietes', function($q) {
+                $q->where(function($subq) {
+                    $this->addIncompleteConditions($subq, 'proprietes');
+                });
+            })
+            ->pluck('id');
+        
+        $dossiersVides = (clone $query)
+            ->where(function($q) {
+                $q->doesntHave('demandeurs')
+                  ->orDoesntHave('proprietes');
+            })
+            ->count();
+        
+        $dossiersIncomplets = $dossiersAvecDemandeursIncomplets
+            ->merge($dossiersAvecProprietesIncompletes)
+            ->unique()
+            ->count();
+        
+        $dossiersIncomplets += $dossiersVides;
+        
+        $dossiersComplets = $totalDossiers - $dossiersIncomplets;
+        
+        $taux = $totalDossiers > 0 
+            ? round(($dossiersComplets / $totalDossiers) * 100, 1) 
+            : 0;
+        
+        return [
+            'taux' => $taux,
+            'complets' => max(0, $dossiersComplets),
+            'incomplets' => $dossiersIncomplets,
+            'proprietes_incompletes' => $proprietesIncompletes,
+            'demandeurs_incomplets' => $demandeursIncomplets,
+            'details' => [
+                'dossiers_vides' => $dossiersVides,
+                'dossiers_avec_demandeurs_incomplets' => $dossiersAvecDemandeursIncomplets->count(),
+                'dossiers_avec_proprietes_incompletes' => $dossiersAvecProprietesIncompletes->count(),
+            ]
+        ];
+    }
+    
     /**
-     * ✅ FIX MAJEUR : Calculer l'âge moyen avec exclusion des données invalides
+     * ✅ FIX v6.0 : Conditions PostgreSQL avec champs RÉELS
      */
+    private function addIncompleteConditions($query, string $table): void
+    {
+        if ($table === 'demandeurs') {
+            // Champs string
+            foreach (self::DEMANDEUR_STRING_FIELDS as $field) {
+                $query->orWhereNull($field)
+                      ->orWhere($field, '=', '');
+            }
+            
+            // Champs date - IS NULL uniquement
+            foreach (self::DEMANDEUR_DATE_FIELDS as $field) {
+                $query->orWhereNull($field);
+            }
+        } else {
+            // Champs string
+            foreach (self::PROPRIETE_STRING_FIELDS as $field) {
+                $query->orWhereNull($field)
+                      ->orWhere($field, '=', '');
+            }
+            
+            // Champs date
+            foreach (self::PROPRIETE_DATE_FIELDS as $field) {
+                $query->orWhereNull($field);
+            }
+            
+            // Champs numériques
+            foreach (self::PROPRIETE_NUMERIC_FIELDS as $field) {
+                $query->orWhereNull($field)
+                      ->orWhere($field, '<=', 0);
+            }
+        }
+    }
+    
+    private function countIncompleteDemandeurs(): int
+    {
+        $user = $this->getAuthUser();
+        
+        return Demandeur::query()
+            ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
+                $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
+            })
+            ->where(function($q) {
+                $this->addIncompleteConditions($q, 'demandeurs');
+            })
+            ->count();
+    }
+    
+    private function countIncompleteProprietes(): int
+    {
+        $user = $this->getAuthUser();
+        
+        return Propriete::query()
+            ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
+                $q->whereHas('dossier', fn($q2) => $q2->where('id_district', $user->id_district));
+            })
+            ->where(function($q) {
+                $this->addIncompleteConditions($q, 'proprietes');
+            })
+            ->count();
+    }
+    
     private function calculateAverageAge(): float
     {
         $user = $this->getAuthUser();
@@ -350,22 +524,18 @@ class StatisticsCalculator
                 });
             })
             ->whereNotNull('date_naissance')
-            ->whereNotNull('sexe')           // ✅ AJOUT : Exclure sexe NULL
-            ->where('sexe', '!=', '')        // ✅ AJOUT : Exclure sexe vide
-            ->whereIn('sexe', ['Homme', 'Femme']) // ✅ AJOUT : Uniquement H/F valides
+            ->whereNotNull('sexe')
+            ->where('sexe', '!=', '')
+            ->whereIn('sexe', ['Homme', 'Femme'])
             ->selectRaw('
                 AVG(DATE_PART(\'year\', AGE(CURRENT_DATE, date_naissance))) as age_moyen,
                 COUNT(*) as count
             ')
             ->first();
         
-        // ✅ Retourner 0 si aucune donnée valide
         return ($result && $result->count > 0) ? (float) $result->age_moyen : 0.0;
     }
     
-    /**
-     * ✅ NOUVEAU : Calculer les tranches d'âge avec exclusion des invalides
-     */
     private function calculateAgeBrackets(): array
     {
         $user = $this->getAuthUser();
@@ -389,9 +559,9 @@ class StatisticsCalculator
                     });
                 })
                 ->whereNotNull('date_naissance')
-                ->whereNotNull('sexe')           // ✅ AJOUT
-                ->where('sexe', '!=', '')        // ✅ AJOUT
-                ->whereIn('sexe', ['Homme', 'Femme']) // ✅ AJOUT
+                ->whereNotNull('sexe')
+                ->where('sexe', '!=', '')
+                ->whereIn('sexe', ['Homme', 'Femme'])
                 ->whereRaw("DATE_PART('year', AGE(CURRENT_DATE, date_naissance)) BETWEEN ? AND ?", [$min, $max])
                 ->count();
         }
@@ -399,9 +569,6 @@ class StatisticsCalculator
         return $tranches;
     }
     
-    /**
-     * ✅ OPTIMISATION MAJEURE : Stats par genre en une seule requête
-     */
     private function getGenderStatsOptimized(): array
     {
         $user = $this->getAuthUser();
@@ -437,7 +604,13 @@ class StatisticsCalculator
                         WHERE d2.id_demandeur = demandeurs.id 
                         AND d2.status = ?
                     ) THEN demandeurs.id 
-                END) as acquis
+                END) as acquis,
+                COUNT(DISTINCT CASE 
+                    WHEN NOT EXISTS(
+                        SELECT 1 FROM demander d 
+                        WHERE d.id_demandeur = demandeurs.id
+                    ) THEN demandeurs.id 
+                END) as sans_propriete
             ', [
                 Demander::STATUS_ACTIVE,
                 Demander::STATUS_ARCHIVE,
@@ -451,17 +624,16 @@ class StatisticsCalculator
             'Homme' => [
                 'actifs' => $results->get('Homme')->actifs ?? 0,
                 'acquis' => $results->get('Homme')->acquis ?? 0,
+                'sans_propriete' => $results->get('Homme')->sans_propriete ?? 0,
             ],
             'Femme' => [
                 'actifs' => $results->get('Femme')->actifs ?? 0,
                 'acquis' => $results->get('Femme')->acquis ?? 0,
+                'sans_propriete' => $results->get('Femme')->sans_propriete ?? 0,
             ],
         ];
     }
     
-    /**
-     * Obtenir les revenus par vocation (ancienne méthode conservée)
-     */
     private function getRevenueByVocation(string $status): array
     {
         $user = $this->getAuthUser();

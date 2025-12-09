@@ -1,10 +1,10 @@
-// users/Index.tsx
+// users/Index.tsx - ✅ VERSION REDESIGNÉE
 import { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserPlus, Users as UsersIcon, ArrowLeft } from 'lucide-react';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { UserPlus, Users as UsersIcon } from 'lucide-react';
 
 // Types et config
 import { UsersIndexProps, User } from './types';
@@ -43,9 +43,6 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
         return () => clearTimeout(timer);
     }, [search, selectedRole, selectedDistrict, selectedStatus]);
 
-    /**
-     * Effectue la recherche avec les filtres actuels
-     */
     const performSearch = () => {
         const params = buildSearchParams({
             search,
@@ -62,9 +59,6 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
         });
     };
 
-    /**
-     * Réinitialise tous les filtres
-     */
     const handleClearFilters = () => {
         const clearedFilters = clearAllFilters();
         setSearch(clearedFilters.search || '');
@@ -73,9 +67,6 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
         setSelectedStatus(clearedFilters.status || '');
     };
 
-    /**
-     * Gère le changement de statut d'un utilisateur
-     */
     const handleToggleStatus = (user: User) => {
         router.post(`/users/${user.id}/toggle-status`, {}, {
             onSuccess: () => {
@@ -84,9 +75,6 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
         });
     };
 
-    /**
-     * Gère la suppression d'un utilisateur
-     */
     const handleDelete = (user: User) => {
         router.delete(`/users/${user.id}`, {
             onSuccess: () => {
@@ -95,9 +83,6 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
         });
     };
 
-    /**
-     * Change de page dans la pagination
-     */
     const handlePageChange = (page: number) => {
         const params = buildSearchParams({
             search,
@@ -124,12 +109,12 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
             <Head title="Gestion des utilisateurs" />
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* En-tête avec bouton retour */}
+                {/* ✅ En-tête moderne - Rose/Pink */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                       
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-3">
+                                <UsersIcon className="h-8 w-8 text-rose-600" />
                                 Gestion des utilisateurs
                             </h1>
                             <p className="text-muted-foreground mt-1">
@@ -137,12 +122,12 @@ export default function UsersIndex({ users, stats, districts, filters, roles }: 
                             </p>
                         </div>
                     </div>
-                    <Link href="/users/create">
-                        <Button size="lg" className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all">
+                    <Button size="lg" asChild className="gap-2 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all">
+                        <Link href="/users/create">
                             <UserPlus className="h-5 w-5" />
                             Nouvel utilisateur
-                        </Button>
-                    </Link>
+                        </Link>
+                    </Button>
                 </div>
 
                 {/* Cartes de statistiques */}

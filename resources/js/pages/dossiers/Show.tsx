@@ -331,37 +331,41 @@ export default function Show() {
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
                 
-                {/* ✅ HEADER MODERNE - Style Generate.tsx */}
+                {/* ✅ HEADER MODERNE - Style uniforme avec Generate et Resume */}
                 <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                            Informations du dossier
-                        </h1>
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="font-medium">{dossier.nom_dossier}</span>
-                            <span className="text-gray-400">•</span>
-                            <span>{dossier.commune}</span>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                                Informations du dossier
+                            </h1>
+                            <div className="flex items-center gap-3 mt-2 text-muted-foreground">
+                                <span className="font-medium">{dossier.nom_dossier}</span>
+                                <span className="text-gray-400">•</span>
+                                <span>{dossier.commune}</span>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                            className="gap-2 shadow-sm hover:shadow-md transition-all"
-                        >
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" size="sm" asChild>
                             <Link href={route('dossiers')}>
-                                <ArrowLeft className="h-4 w-4" />
-                                Retour à la liste
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Retour
+                            </Link>
+                        </Button>
+
+                        {/* ✅ Résumé - gradient emerald/teal */}
+                        <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
+                            <Link href={route('demandes.resume', dossier.id)}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Résumé demandes
                             </Link>
                         </Button>
 
                         {/* ✅ Documents - avec tooltip si désactivé */}
                         {permissions.canGenerateDocuments ? (
-                            <Button asChild size="sm" className="gap-2 shadow-md">
-                                <Link href={`/documents/generate/${dossier.id}`}>
-                                    <FileOutput className="h-4 w-4" />
+                            <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
+                                <Link href={route('documents.generate', dossier.id)}>
+                                    <FileOutput className="h-4 w-4 mr-2" />
                                     Documents
                                 </Link>
                             </Button>
@@ -386,14 +390,6 @@ export default function Show() {
                                 </Tooltip>
                             </TooltipProvider>
                         )}
-                        
-                        {/* Résumé - toujours accessible */}
-                        <Button asChild size="sm" variant="outline" className="gap-2 shadow-md">
-                            <Link href={`/demandes/resume/${dossier.id}`}>
-                                <FileText className="h-4 w-4" />
-                                Résumé
-                            </Link>
-                        </Button>
                     </div>
                 </div>
 

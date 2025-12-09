@@ -33,14 +33,10 @@ export function ChartsSection({ charts }: Props) {
         { name: 'Acquises', value: charts.proprietes_status?.acquises || 0, color: '#3b82f6' },
     ].filter(item => item.value > 0);
 
-    // Préparer les données d'évolution
-    const evolutionData = (charts.evolution_mensuelle && charts.evolution_mensuelle.length > 0)
-        ? charts.evolution_mensuelle 
-        : charts.dossiers_timeline ?? [];
+    // ✅ AMÉLIORATION : Utiliser evolution_complete avec dossiers, propriétés, demandeurs
+    const evolutionData = charts.evolution_complete ?? charts.evolution_mensuelle ?? charts.dossiers_timeline ?? [];
 
     const revenuData = charts.revenus_par_vocation ?? [];
-    
-    // ✅ Données de performance trimestrielle
     const performanceData = charts.performance_trimestrielle ?? [];
 
     // Formattage du montant pour le tooltip
@@ -48,7 +44,7 @@ export function ChartsSection({ charts }: Props) {
         return `${value.toLocaleString('fr-FR')} Ar`;
     };
 
-    // ✅ Custom Tooltip pour le graphique de performance
+    // Custom Tooltip pour le graphique de performance
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
@@ -93,36 +89,62 @@ export function ChartsSection({ charts }: Props) {
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Onglet Évolution */}
+                {/* ✅ AMÉLIORATION : Onglet Évolution avec 3 lignes */}
                 <TabsContent value="evolution" className="space-y-6">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <TrendingUp className="h-5 w-5" />
-                                Évolution mensuelle
+                                Évolution mensuelle complète
                             </CardTitle>
                             <CardDescription>
-                                Activité sur les 12 derniers mois
+                                Dossiers, propriétés et demandeurs sur les 12 derniers mois
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             {evolutionData && evolutionData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={300}>
                                     <RechartsLine data={evolutionData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                         <XAxis 
                                             dataKey="month" 
                                             tick={{ fontSize: 12 }}
                                         />
-                                        <YAxis />
-                                        <Tooltip />
+                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <Tooltip 
+                                            contentStyle={{ 
+                                                backgroundColor: 'white',
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: '6px'
+                                            }}
+                                        />
                                         <Legend />
                                         <Line 
                                             type="monotone" 
-                                            dataKey="count" 
+                                            dataKey="dossiers" 
                                             stroke="#3b82f6" 
                                             strokeWidth={2}
                                             name="Dossiers"
+                                            dot={{ fill: '#3b82f6', r: 4 }}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="proprietes" 
+                                            stroke="#10b981" 
+                                            strokeWidth={2}
+                                            name="Propriétés"
+                                            dot={{ fill: '#10b981', r: 4 }}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="demandeurs" 
+                                            stroke="#8b5cf6" 
+                                            strokeWidth={2}
+                                            name="Demandeurs"
+                                            dot={{ fill: '#8b5cf6', r: 4 }}
+                                            activeDot={{ r: 6 }}
                                         />
                                     </RechartsLine>
                                 </ResponsiveContainer>
@@ -234,7 +256,7 @@ export function ChartsSection({ charts }: Props) {
                     </div>
                 </TabsContent>
 
-                {/* ✅ Onglet Performance - IMPLÉMENTÉ */}
+                {/* Onglet Performance */}
                 <TabsContent value="performance" className="space-y-6">
                     <Card>
                         <CardHeader>

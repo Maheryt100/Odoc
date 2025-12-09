@@ -27,7 +27,7 @@ export function AppSidebar() {
     const mainNavItems: NavItem[] = [
         {
             title: 'Dashboard',
-            href: '/dashboard',
+            href: '/dashboard', // ✅ Reste /dashboard (compatible avec route('dashboard'))
             icon: LayoutGrid,
         },
         {
@@ -37,7 +37,7 @@ export function AppSidebar() {
         },
         {
             title: 'Statistiques',
-            href: '/statistiques',
+            href: '/statistiques', // ✅ Changé de /statistiques (compatible avec route('statistiques.index'))
             icon: BarChart3,
         },
     ];

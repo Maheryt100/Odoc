@@ -280,7 +280,7 @@ export default function NouveauLot() {
                 </div>
 
                 {/* ✅ CARTES DE STATISTIQUES */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
                         <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -340,7 +340,7 @@ export default function NouveauLot() {
                             </Badge>
                         </CardContent>
                     </Card>
-                </div>
+                </div> */}
 
                 {/* ✅ MODE DE CRÉATION */}
                 <Card className="border-0 shadow-lg">

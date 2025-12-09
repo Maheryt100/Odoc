@@ -1,4 +1,4 @@
-// admin/activity-logs/Index.tsx
+// admin/activity-logs/Index.tsx - ✅ VERSION REDESIGNÉE
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -37,9 +37,6 @@ export default function ActivityLogsIndex({
     // État de chargement
     const [isSearching, setIsSearching] = useState(false);
 
-    /**
-     * Effectue la recherche avec les filtres actuels
-     */
     const handleFilter = () => {
         setIsSearching(true);
         
@@ -59,9 +56,6 @@ export default function ActivityLogsIndex({
         });
     };
 
-    /**
-     * Réinitialise tous les filtres
-     */
     const handleClearFilters = () => {
         const clearedFilters = clearAllFilters();
         setSearch(clearedFilters.search || '');
@@ -74,9 +68,6 @@ export default function ActivityLogsIndex({
         router.get('/admin/activity-logs');
     };
 
-    /**
-     * Change de page dans la pagination
-     */
     const handlePageChange = (page: number) => {
         const params = buildSearchParams({
             search,
@@ -112,27 +103,30 @@ export default function ActivityLogsIndex({
             <Head title="Logs d'activité" />
 
             <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
-                {/* En-tête */}
+                {/* ✅ En-tête moderne - Slate/Gray */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                            Logs d'Activité
-                        </h1>
-                        <p className="text-muted-foreground mt-1">
-                            Suivi complet des actions effectuées dans le système
-                        </p>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent flex items-center gap-3">
+                                <ActivityIcon className="h-8 w-8 text-slate-600" />
+                                Logs d'Activité
+                            </h1>
+                            <p className="text-muted-foreground mt-1">
+                                Suivi complet des actions effectuées dans le système
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
-                        <Link href="/admin/activity-logs/document-stats">
-                            <Button variant="outline" className="gap-2">
+                    <div className="flex gap-3">
+                        <Button variant="outline" asChild className="gap-2 shadow-sm hover:shadow-md transition-all">
+                            <Link href="/admin/activity-logs/document-stats">
                                 <FileText className="h-4 w-4" />
                                 Stats Documents
-                            </Button>
-                        </Link>
+                            </Link>
+                        </Button>
                         <Button
                             variant="outline"
                             onClick={() => router.get('/admin/activity-logs/export', filters)}
-                            className="gap-2"
+                            className="gap-2 shadow-sm hover:shadow-md transition-all"
                         >
                             <Download className="h-4 w-4" />
                             Exporter CSV

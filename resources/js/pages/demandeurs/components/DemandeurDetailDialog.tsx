@@ -1,6 +1,5 @@
-// components/DemandeurDetailDialog.tsx
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -185,6 +184,14 @@ export default function DemandeurDetailDialog({
         }
     };
 
+    // ✅ CORRECTION : URL correcte selon votre route Laravel
+    const handleEdit = () => {
+        onOpenChange(false);
+        setTimeout(() => {
+            window.location.href = `/demandeurs/${dossierId}/${demandeur.id}/edit`;
+        }, 100);
+    };
+
     const InfoItem = ({ icon: Icon, label, value, valueClass = '' }: any) => {
         if (!value || value === '-') return null;
         return (
@@ -244,21 +251,6 @@ export default function DemandeurDetailDialog({
                                 )}
                             </div>
                         </div>
-                        
-                        {!dossierClosed && (
-                            <Button 
-                                onClick={() => {
-                                    onOpenChange(false);
-                                    setTimeout(() => {
-                                        window.location.href = `/dossiers/${dossierId}/demandeurs/${demandeur.id}/edit`;
-                                    }, 100);
-                                }}
-                                size="sm"
-                            >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Modifier
-                            </Button>
-                        )}
                     </div>
                 </DialogHeader>
 
@@ -289,7 +281,7 @@ export default function DemandeurDetailDialog({
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <User className="h-5 w-5" />
-                                        Informations
+                                        Informations Personnelles
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="grid md:grid-cols-2 gap-3">
@@ -300,25 +292,19 @@ export default function DemandeurDetailDialog({
                                         valueClass="text-lg font-bold text-primary"
                                     />
                                     <InfoItem 
-                                        icon={FileText} 
-                                        label="CIN" 
-                                        value={demandeur.cin}
-                                        valueClass="font-mono text-lg font-semibold"
+                                        icon={User} 
+                                        label="Sexe" 
+                                        value={demandeur.sexe}
                                     />
                                     <InfoItem 
                                         icon={Calendar} 
-                                        label="Naissance" 
+                                        label="Date de Naissance" 
                                         value={`${formatDate(demandeur.date_naissance)}${age ? ` (${age} ans)` : ''}`}
                                     />
                                     <InfoItem 
                                         icon={MapPin} 
-                                        label="Lieu Naissance" 
+                                        label="Lieu de Naissance" 
                                         value={demandeur.lieu_naissance}
-                                    />
-                                    <InfoItem 
-                                        icon={User} 
-                                        label="Sexe" 
-                                        value={demandeur.sexe}
                                     />
                                     <InfoItem 
                                         icon={Flag} 
@@ -332,19 +318,6 @@ export default function DemandeurDetailDialog({
                                     />
                                 </CardContent>
                             </Card>
-
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <Users className="h-5 w-5" />
-                                        Filiation
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <InfoItem icon={Users} label="Père" value={demandeur.nom_pere} />
-                                    <InfoItem icon={Users} label="Mère" value={demandeur.nom_mere} />
-                                </CardContent>
-                            </Card>
                         </TabsContent>
 
                         {/* CIN */}
@@ -353,25 +326,67 @@ export default function DemandeurDetailDialog({
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <FileText className="h-5 w-5" />
-                                        CIN Original
+                                        Informations CIN
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="grid md:grid-cols-2 gap-3">
                                     <InfoItem 
                                         icon={FileText} 
-                                        label="Numéro" 
+                                        label="Numéro CIN" 
                                         value={demandeur.cin}
                                         valueClass="font-mono text-lg font-bold text-primary"
                                     />
                                     <InfoItem 
                                         icon={Calendar} 
-                                        label="Délivrance" 
+                                        label="Date de Délivrance" 
                                         value={formatDate(demandeur.date_delivrance)}
                                     />
                                     <InfoItem 
                                         icon={MapPin} 
-                                        label="Lieu" 
+                                        label="Lieu de Délivrance" 
                                         value={demandeur.lieu_delivrance}
+                                    />
+                                    <InfoItem 
+                                        icon={User} 
+                                        label="Nom" 
+                                        value={demandeur.nom_demandeur}
+                                        valueClass="font-semibold"
+                                    />
+                                    <InfoItem 
+                                        icon={User} 
+                                        label="Prénom(s)" 
+                                        value={demandeur.prenom_demandeur}
+                                        valueClass="font-semibold"
+                                    />
+                                    <InfoItem 
+                                        icon={Calendar} 
+                                        label="Date de Naissance" 
+                                        value={formatDate(demandeur.date_naissance)}
+                                    />
+                                    <InfoItem 
+                                        icon={MapPin} 
+                                        label="Lieu de Naissance" 
+                                        value={demandeur.lieu_naissance}
+                                    />
+                                    <InfoItem 
+                                        icon={MapPinned} 
+                                        label="Domiciliation" 
+                                        value={demandeur.domiciliation}
+                                    />
+                                    <InfoItem 
+                                        icon={Briefcase} 
+                                        label="Profession" 
+                                        value={demandeur.occupation}
+                                    />
+                                    <InfoItem 
+                                        icon={Users} 
+                                        label="Nom du Père" 
+                                        value={demandeur.nom_pere}
+                                    />
+                                    <InfoItem 
+                                        icon={Users} 
+                                        label="Nom de la Mère" 
+                                        value={demandeur.nom_mere}
                                     />
                                 </CardContent>
                             </Card>
@@ -381,18 +396,18 @@ export default function DemandeurDetailDialog({
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2 text-lg text-orange-600">
                                             <FileText className="h-5 w-5" />
-                                            Duplicata
+                                            Duplicata CIN
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid md:grid-cols-2 gap-3">
                                         <InfoItem 
                                             icon={Calendar} 
-                                            label="Délivrance" 
+                                            label="Date de Délivrance" 
                                             value={formatDate(demandeur.date_delivrance_duplicata)}
                                         />
                                         <InfoItem 
                                             icon={MapPin} 
-                                            label="Lieu" 
+                                            label="Lieu de Délivrance" 
                                             value={demandeur.lieu_delivrance_duplicata}
                                         />
                                     </CardContent>
@@ -589,6 +604,16 @@ export default function DemandeurDetailDialog({
                         </TabsContent>
                     </Tabs>
                 </div>
+
+                {/* ✅ FOOTER avec bouton Modifier en bas */}
+                {!dossierClosed && (
+                    <DialogFooter className="pt-4 border-t">
+                        <Button onClick={handleEdit} size="default">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Modifier ce demandeur
+                        </Button>
+                    </DialogFooter>
+                )}
             </DialogContent>
         </Dialog>
     );

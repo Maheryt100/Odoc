@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services\Traits;
+namespace App\Http\Controllers\Dashboard\Services\Shared\Traits;
 
 use App\Models\Dossier;
 use Illuminate\Database\Eloquent\Builder;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Shared;
 
 use App\Models\User;
 use App\Models\ActivityLog;

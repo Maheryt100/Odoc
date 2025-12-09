@@ -4,7 +4,7 @@
 namespace App\Observers;
 use Illuminate\Support\Facades\Log;
 use App\Models\Demandeur;
-use App\Http\Controllers\Dashboard\Services\StatisticsCacheService;
+use App\Http\Controllers\Dashboard\Services\Statistics\StatisticsCacheService;
 
 /**
  * Observer Demandeur : Invalider le cache à chaque modification

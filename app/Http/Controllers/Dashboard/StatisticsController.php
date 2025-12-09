@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Dashboard\Services\StatisticsService;
+use App\Http\Controllers\Dashboard\Services\Statistics\StatisticsService;
 use App\Models\User;
 use App\Models\District;
 use Illuminate\Http\Request;

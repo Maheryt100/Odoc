@@ -1,6 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Statistics;
+
 
 /**
  * Service principal de statistiques avec cache intégré

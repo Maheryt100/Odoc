@@ -1,19 +1,19 @@
 // js/pages/Dashboard/types.ts
 
 export interface KPI {
-    demandeurs_details: { total: number; actifs: number; acquis: number; sans_propriete: number; hommes: number; femmes: number; hommes_actifs: number; femmes_actifs: number; };
     dossiers_ouverts: number;
     dossiers_fermes: number;
     proprietes_acquises: number;
     proprietes_disponibles: number;
     completion: CompletionDetails; 
+    superficie_details: SuperficieDetails;
+    demandeurs_details: DemandeurDetails;
     demandeurs_actifs: number;
     revenus_potentiels: number;
     nouveaux_dossiers: number;
     dossiers_en_retard: number;
     temps_moyen_traitement: number;
     superficie_totale: number;
-    superficie_details: SuperficieDetails; 
     demandeurs_sans_propriete: number;
     documents_generes_aujourdhui: number;
     utilisateurs_actifs_24h: number;
@@ -22,6 +22,14 @@ export interface KPI {
 export interface ProprietesStatus {
     disponibles: number;
     acquises: number;
+}
+
+// ✅ AMÉLIORATION : Type pour l'évolution complète
+export interface EvolutionCompleteItem {
+    month: string;
+    dossiers: number;
+    proprietes: number;
+    demandeurs: number;
 }
 
 export interface EvolutionItem {
@@ -56,7 +64,6 @@ export interface Activity {
     user: string;
 }
 
-// ✅ AJOUT : Interface pour les données de performance trimestrielle
 export interface PerformanceQuarterly {
     quarter: string;
     ouverts: number;
@@ -69,8 +76,9 @@ export interface Charts {
     proprietes_status: ProprietesStatus;
     top_communes: TopCommune[];
     evolution_mensuelle?: EvolutionItem[];
+    evolution_complete?: EvolutionCompleteItem[]; // ✅ AJOUT
     revenus_par_vocation?: RevenuVocation[];
-    performance_trimestrielle?: PerformanceQuarterly[]; // ✅ Maintenant défini
+    performance_trimestrielle?: PerformanceQuarterly[];
 }
 
 export interface DashboardProps {
@@ -95,6 +103,7 @@ export interface SuperficieDetails {
     disponible: number;
 }
 
+// ✅ AMÉLIORATION : Ajout des stats sans propriété par genre
 export interface DemandeurDetails {
     total: number;
     actifs: number;
@@ -104,4 +113,8 @@ export interface DemandeurDetails {
     femmes: number;
     hommes_actifs: number;
     femmes_actifs: number;
+    hommes_acquis: number;
+    femmes_acquis: number;
+    hommes_sans_propriete?: number; // ✅ Optionnel pour compatibilité
+    femmes_sans_propriete?: number; // ✅ Optionnel pour compatibilité
 }

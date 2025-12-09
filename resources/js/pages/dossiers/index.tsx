@@ -1,11 +1,11 @@
-// resources/js/pages/dossiers/index.tsx - ✅ VERSION REDESIGNÉE
+// resources/js/pages/dossiers/index.tsx - ✅ VERSION REDESIGNÉE OPTIMISÉE
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem, SharedData } from '@/types';
 import type { Dossier } from './types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, Search, Calendar, SlidersHorizontal, Eye, Pencil, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, LockOpen, Lock as LockIcon, FileText, FileOutput, Folder } from 'lucide-react';
+import { FolderPlus, Search, Calendar, SlidersHorizontal, Eye, Pencil, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, LockOpen, Lock as LockIcon, FileText, FileOutput, Folder, Info, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { LandPlot, EllipsisVertical, Archive } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { filterDossiers, sortDossiers, calculateDossierPermissions, getDisabledDocumentButtonTooltip } from './helpers';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -113,17 +114,123 @@ export default function Index() {
             <Toaster position="top-right" />
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* ✅ HEADER MODERNE - Style Generate.tsx */}
-                <div className="flex items-center justify-between">
-                    <div className="space-y-2">
+                {/* ✅ HEADER COMPACT ET MODERNE */}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
                             <Folder className="h-8 w-8 text-blue-600" />
                             Liste des dossiers
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground mt-1">
                             {filteredDossiers.length} dossier{filteredDossiers.length > 1 ? 's' : ''} enregistré{filteredDossiers.length > 1 ? 's' : ''}
                         </p>
                     </div>
+
+                    {/* Barre de recherche compacte */}
+                    <div className="relative w-80">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Rechercher un dossier..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 h-10 border-2"
+                        />
+                    </div>
+
+                    {/* Bouton filtres */}
+                    <Popover open={showFilters} onOpenChange={setShowFilters}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="relative gap-2 h-10 shadow-sm">
+                                <SlidersHorizontal className="h-4 w-4" />
+                                Filtres
+                                {hasActiveFilters && (
+                                    <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs" variant="destructive">
+                                        !
+                                    </Badge>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="end">
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="font-semibold mb-3">Filtres avancés</h4>
+                                </div>
+
+                                {/* Filtre par statut */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Statut du dossier</Label>
+                                    <Select value={statusFilter} onValueChange={(value: 'all' | 'open' | 'closed') => setStatusFilter(value)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Tous les dossiers</SelectItem>
+                                            <SelectItem value="open">Dossiers ouverts</SelectItem>
+                                            <SelectItem value="closed">Dossiers fermés</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Filtres par date */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Période de descente</Label>
+                                    <div className="grid gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                type="date"
+                                                value={dateDebut}
+                                                onChange={(e) => setDateDebut(e.target.value)}
+                                                placeholder="Date début"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                type="date"
+                                                value={dateFin}
+                                                onChange={(e) => setDateFin(e.target.value)}
+                                                placeholder="Date fin"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tri */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Trier par</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Select value={sortBy} onValueChange={(value: 'date' | 'nom') => setSortBy(value)}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="date">Date</SelectItem>
+                                                <SelectItem value="nom">Nom</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="asc">↑ A-Z / Ancien</SelectItem>
+                                                <SelectItem value="desc">↓ Z-A / Récent</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {hasActiveFilters && (
+                                    <Button variant="outline" size="sm" onClick={clearFilters} className="w-full">
+                                        <X className="mr-2 h-4 w-4" />
+                                        Réinitialiser les filtres
+                                    </Button>
+                                )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
 
                     <Button size="lg" asChild className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all">
                         <Link href={route('dossiers.create')}>
@@ -133,156 +240,59 @@ export default function Index() {
                     </Button>
                 </div>
 
-                {/* ✅ BARRE DE RECHERCHE ET FILTRES */}
-                <Card className="border-0 shadow-lg">
-                    <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b">
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                                {/* Barre de recherche */}
-                                <div className="relative flex-1 max-w-md">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        type="search"
-                                        placeholder="Rechercher un dossier..."
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        className="pl-10 h-11 border-2"
-                                    />
-                                </div>
-
-                                {/* Bouton filtres */}
-                                <Popover open={showFilters} onOpenChange={setShowFilters}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" className="relative gap-2 h-11 shadow-sm">
-                                            <SlidersHorizontal className="h-4 w-4" />
-                                            Filtres
-                                            {hasActiveFilters && (
-                                                <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs" variant="destructive">
-                                                    !
-                                                </Badge>
-                                            )}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80" align="end">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <h4 className="font-semibold mb-3">Filtres avancés</h4>
-                                            </div>
-
-                                            {/* Filtre par statut */}
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">Statut du dossier</Label>
-                                                <Select value={statusFilter} onValueChange={(value: 'all' | 'open' | 'closed') => setStatusFilter(value)}>
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="all">Tous les dossiers</SelectItem>
-                                                        <SelectItem value="open">Dossiers ouverts</SelectItem>
-                                                        <SelectItem value="closed">Dossiers fermés</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            {/* Filtres par date */}
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">Période de descente</Label>
-                                                <div className="grid gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                        <Input
-                                                            type="date"
-                                                            value={dateDebut}
-                                                            onChange={(e) => setDateDebut(e.target.value)}
-                                                            placeholder="Date début"
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                        <Input
-                                                            type="date"
-                                                            value={dateFin}
-                                                            onChange={(e) => setDateFin(e.target.value)}
-                                                            placeholder="Date fin"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Tri */}
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-medium">Trier par</Label>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <Select value={sortBy} onValueChange={(value: 'date' | 'nom') => setSortBy(value)}>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="date">Date</SelectItem>
-                                                            <SelectItem value="nom">Nom</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="asc">↑ A-Z / Ancien</SelectItem>
-                                                            <SelectItem value="desc">↓ Z-A / Récent</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-
-                                            {hasActiveFilters && (
-                                                <Button variant="outline" size="sm" onClick={clearFilters} className="w-full">
-                                                    <X className="mr-2 h-4 w-4" />
-                                                    Réinitialiser les filtres
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-
-                            {/* Filtres actifs */}
-                            {hasActiveFilters && (
-                                <div className="flex flex-wrap gap-2 mt-3">
-                                    {search && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Recherche: {search}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => setSearch('')} />
-                                        </Badge>
-                                    )}
-                                    {dateDebut && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Début: {dateDebut}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => setDateDebut('')} />
-                                        </Badge>
-                                    )}
-                                    {dateFin && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Fin: {dateFin}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => setDateFin('')} />
-                                        </Badge>
-                                    )}
-                                    {selectedLetter && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Lettre: {selectedLetter}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedLetter(null)} />
-                                        </Badge>
-                                    )}
-                                    {statusFilter !== 'all' && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Statut: {statusFilter === 'open' ? 'Ouvert' : 'Fermé'}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter('all')} />
-                                        </Badge>
-                                    )}
-                                </div>
-                            )}
-                        </CardContent>
+                {/* Filtres actifs compacts */}
+                {hasActiveFilters && (
+                    <div className="flex flex-wrap gap-2">
+                        {search && (
+                            <Badge variant="secondary" className="gap-1">
+                                Recherche: {search}
+                                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearch('')} />
+                            </Badge>
+                        )}
+                        {dateDebut && (
+                            <Badge variant="secondary" className="gap-1">
+                                Début: {dateDebut}
+                                <X className="h-3 w-3 cursor-pointer" onClick={() => setDateDebut('')} />
+                            </Badge>
+                        )}
+                        {dateFin && (
+                            <Badge variant="secondary" className="gap-1">
+                                Fin: {dateFin}
+                                <X className="h-3 w-3 cursor-pointer" onClick={() => setDateFin('')} />
+                            </Badge>
+                        )}
+                        {selectedLetter && (
+                            <Badge variant="secondary" className="gap-1">
+                                Lettre: {selectedLetter}
+                                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedLetter(null)} />
+                            </Badge>
+                        )}
+                        {statusFilter !== 'all' && (
+                            <Badge variant="secondary" className="gap-1">
+                                Statut: {statusFilter === 'open' ? 'Ouvert' : 'Fermé'}
+                                <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter('all')} />
+                            </Badge>
+                        )}
                     </div>
-                </Card>
+                )}
+
+                {/* ✅ ALERTE INFORMATIVE COMPACTE */}
+                <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <AlertDescription className="text-sm text-blue-900 dark:text-blue-100">
+                            <span className="font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Gérez vos dossiers facilement
+                            </span>
+                            <span className="text-blue-700 dark:text-blue-300">
+                                — Consultez, modifiez et générez des documents pour chaque dossier
+                            </span>
+                        </AlertDescription>
+                    </div>
+                </Alert>
 
                 <div className="flex gap-3">
                     {/* Liste des dossiers */}

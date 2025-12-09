@@ -1,11 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Statistics;
+
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+
 
 /**
  * Service de gestion du cache pour les statistiques

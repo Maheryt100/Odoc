@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Shared;
 
+use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 use Illuminate\Support\Facades\Auth;
 
 class AlertService
 {
-    use Traits\QueryFilterTrait;
+    use QueryFilterTrait;
 
     /**
      * Récupérer les alertes système

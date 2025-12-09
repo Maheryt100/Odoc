@@ -131,7 +131,7 @@ class DossierController extends Controller
     }
 
     /**
-     * ✅ OPTIMISÉ : Utilisation de withCount au lieu de DB::raw
+     * 
      */
     public function show($id)
     {

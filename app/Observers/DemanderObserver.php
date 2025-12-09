@@ -4,7 +4,7 @@ namespace App\Observers;
 
 use App\Models\Demander;
 use App\Services\PrixCalculatorService;
-use App\Http\Controllers\Dashboard\Services\StatisticsCacheService;
+use App\Http\Controllers\Dashboard\Services\Statistics\StatisticsCacheService;
 use Illuminate\Support\Facades\Log;
 
 /**

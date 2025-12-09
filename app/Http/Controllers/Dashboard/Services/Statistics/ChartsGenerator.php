@@ -1,11 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Services;
+namespace App\Http\Controllers\Dashboard\Services\Statistics;
+
 
 use App\Models\Propriete;
 use App\Models\Dossier;
 use App\Models\Demandeur;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
+
 
 /**
  * Service de génération des données pour les graphiques
@@ -13,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ChartsGenerator
 {
-    use Traits\QueryFilterTrait;
+    use QueryFilterTrait;
     
     public function __construct(
         private PeriodService $periodService
