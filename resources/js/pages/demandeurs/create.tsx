@@ -1,15 +1,95 @@
-// pages/demandeurs/create.tsx
-// ✅ VERSION REDESIGNÉE FINALE - Labels rouges sans badge "Obligatoire"
-
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
-import { Trash2, Search, AlertCircle, CheckCircle2, User, CreditCard, Calendar, Home, Phone, FileText, Heart } from 'lucide-react';
+import { Trash2, Search, AlertCircle, CheckCircle2, User, CreditCard, Calendar, Home, Phone, FileText, Heart, Info } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+
+// ✅ Composant Alert amélioré pour demandeur existant
+export function DemandeurExistantAlert({ 
+    cinSearchStatus, 
+    searchMessage 
+}: { 
+    cinSearchStatus: 'idle' | 'searching' | 'found' | 'not-found';
+    searchMessage: string;
+}) {
+    if (cinSearchStatus === 'idle' || !searchMessage) return null;
+
+    if (cinSearchStatus === 'found') {
+        return (
+            <Alert className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-300 dark:border-green-700 shadow-md">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <AlertDescription className="ml-2">
+                    <div className="space-y-3">
+                        {/* Header */}
+                        <div className="flex items-center gap-2">
+                            <p className="font-semibold text-green-900 dark:text-green-100 text-base">
+                                ✓ Demandeur existant trouvé
+                            </p>
+                        </div>
+
+                        {/* Message principal */}
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                            Les informations ont été chargées automatiquement depuis la base de données.
+                        </p>
+
+                        {/* Bloc d'informations détaillées */}
+                        <div className="bg-green-100/60 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800 space-y-2">
+                            <div className="flex items-start gap-2">
+                                <Info className="h-4 w-4 text-green-700 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                <div className="space-y-2 text-xs text-green-900 dark:text-green-200">
+                                    <p className="font-semibold">📝 Que pouvez-vous faire ?</p>
+                                    <ul className="space-y-1 pl-4">
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-green-600 dark:text-green-400">•</span>
+                                            <span><strong>Modifier</strong> les informations si nécessaire (ex: changement d'adresse)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-green-600 dark:text-green-400">•</span>
+                                            <span><strong>Garder</strong> les informations telles quelles</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-green-600 dark:text-green-400">•</span>
+                                            <span>Le demandeur sera automatiquement <strong>lié</strong> à cette propriété</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {/* Avertissement */}
+                            <div className="bg-amber-50/80 dark:bg-amber-900/20 p-3 rounded border border-amber-200 dark:border-amber-800 mt-3">
+                                <div className="flex items-start gap-2">
+                                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-amber-900 dark:text-amber-200">
+                                        <strong>Important :</strong> Si vous modifiez les informations, 
+                                        elles seront mises à jour pour <strong>toutes</strong> les propriétés 
+                                        associées à ce demandeur.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
+    // Cas: demandeur non trouvé
+    return (
+        <Alert variant="destructive" className="shadow-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="ml-2">
+                <p className="font-semibold">{searchMessage}</p>
+                <p className="text-xs mt-1">
+                    Un nouveau demandeur sera créé avec les informations saisies.
+                </p>
+            </AlertDescription>
+        </Alert>
+    );
+}
 
 export interface DemandeurFormData {
     titre_demandeur: string;
@@ -101,6 +181,7 @@ export default function DemandeurCreate({
         }
     }, [onChange]);
 
+    // ✅ VERSION FINALE CORRIGÉE
     const searchDemandeurByCin = async (cin: string) => {
         if (isSearching) return;
         
@@ -109,7 +190,12 @@ export default function DemandeurCreate({
         setSearchMessage('Recherche en cours...');
 
         try {
-            const response = await fetch(window.route('api.demandeur.search-by-cin', { cin }), {
+            // ✅ APPEL API RÉEL
+            const url = window.route('api.demandeur.search-by-cin', { cin });
+            console.log('🔍 Recherche CIN:', cin);
+            console.log('📍 URL appelée:', url);
+            
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -117,24 +203,41 @@ export default function DemandeurCreate({
                 },
             });
 
+            console.log('📡 Status réponse:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const result = await response.json();
+            console.log('📦 Données reçues:', result);
 
             if (result.found) {
                 setCinSearchStatus('found');
-                setSearchMessage(result.message);
+                setSearchMessage(result.message || 'Demandeur trouvé');
                 
+                // ✅ Charger TOUTES les données du demandeur
                 const demandeur = result.demandeur;
+                
+                console.log('✅ Chargement des données:', Object.keys(demandeur));
+                
                 Object.keys(demandeur).forEach((key) => {
+                    // Ne pas écraser le CIN déjà saisi
                     if (key !== 'cin') {
-                        onChange(key as keyof DemandeurFormData, demandeur[key] || '');
+                        const value = demandeur[key];
+                        // Convertir null en chaîne vide pour les inputs
+                        onChange(key as keyof DemandeurFormData, value ?? '');
                     }
                 });
+                
+                console.log('✓ Données chargées avec succès');
             } else {
                 setCinSearchStatus('not-found');
                 setSearchMessage(result.message || 'Nouveau demandeur - Remplissez les informations');
+                console.log('ℹ️ Demandeur non trouvé - création d\'un nouveau');
             }
         } catch (error) {
-            console.error('Erreur recherche CIN:', error);
+            console.error('❌ Erreur recherche CIN:', error);
             setCinSearchStatus('idle');
             setSearchMessage('Erreur lors de la recherche');
         } finally {
@@ -147,7 +250,7 @@ export default function DemandeurCreate({
             searchDemandeurByCin(data.cin);
         }
     };
-
+    
     return (
         <div className="space-y-8">
             {/* ✅ HEADER avec badge numéro */}
@@ -247,39 +350,10 @@ export default function DemandeurCreate({
                 </div>
 
                 {cinSearchStatus !== 'idle' && searchMessage && (
-                    <Alert 
-                        variant={cinSearchStatus === 'found' ? 'default' : 'destructive'} 
-                        className={cinSearchStatus === 'found' 
-                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border-green-200 dark:border-green-800' 
-                            : ''}
-                    >
-                        {cinSearchStatus === 'found' ? (
-                            <>
-                                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                <AlertDescription className="ml-2">
-                                    <div className="space-y-2">
-                                        <p className="font-semibold text-green-900 dark:text-green-100">
-                                            ✓ Demandeur existant trouvé
-                                        </p>
-                                        <p className="text-sm text-green-800 dark:text-green-200">
-                                            Les informations ont été chargées automatiquement.
-                                        </p>
-                                        <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
-                                            <p>• Vous pouvez modifier les informations si nécessaire</p>
-                                            <p>• Les modifications seront sauvegardées</p>
-                                        </div>
-                                    </div>
-                                </AlertDescription>
-                            </>
-                        ) : (
-                            <>
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription className="ml-2">
-                                    {searchMessage}
-                                </AlertDescription>
-                            </>
-                        )}
-                    </Alert>
+                    <DemandeurExistantAlert 
+                        cinSearchStatus={cinSearchStatus}
+                        searchMessage={searchMessage}
+                    />
                 )}
             </div>
 
@@ -590,26 +664,6 @@ export default function DemandeurCreate({
                 </div>
             )}
 
-            {/* ✅ INFO PIÈCES JOINTES */}
-            {index === 0 && (
-                <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                    <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <AlertDescription>
-                                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
-                                    Documents justificatifs
-                                </p>
-                                <p className="text-xs text-blue-700 dark:text-blue-400">
-                                    Les pièces jointes (CIN, actes, etc.) pourront être ajoutées après création
-                                </p>
-                            </AlertDescription>
-                        </div>
-                    </div>
-                </Alert>
-            )}
         </div>
     );
 }

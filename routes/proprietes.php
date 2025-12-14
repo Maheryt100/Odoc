@@ -46,8 +46,8 @@ Route::prefix('proprietes')->name('proprietes.')->group(function () {
         'check.dossier.closed:modify',
         ValidateProprieteAction::class . ':modify'
     ])->group(function () {
-        Route::get('/{id}/edit', [ProprieteController::class, 'edit'])
-            ->name('edit');
+        // Route::get('/{id}/edit', [ProprieteController::class, 'edit'])
+        //     ->name('edit');
         Route::put('/{id}', [ProprieteController::class, 'update'])
             ->name('update');
     });

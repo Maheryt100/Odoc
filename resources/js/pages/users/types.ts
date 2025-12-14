@@ -1,12 +1,8 @@
-// ============================================
-// 📦 pages/users/types.ts - RÉEXPORT DU TYPE GLOBAL
-// ============================================
-
-// ✅ CORRECTION CRITIQUE : Réexporter User depuis le fichier central
+// users/types.ts
 export type { User, UserRole, District } from '@/types';
 
 // ============================================
-// 🔍 TYPES SPÉCIFIQUES AU MODULE USERS
+// TYPES SPÉCIFIQUES AU MODULE USERS
 // ============================================
 
 export type UserStatus = 'active' | 'inactive';
@@ -45,7 +41,7 @@ export interface UsersIndexProps {
 }
 
 // ============================================
-// 🔐 PERMISSIONS
+// PERMISSIONS
 // ============================================
 
 export interface UserPermission {

@@ -62,22 +62,7 @@ export function GeographicTab({ geographic }: Props) {
                 </CardContent>
             </Card>
 
-            {/* Carte interactive (placeholder) */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Répartition géographique</CardTitle>
-                    <CardDescription>Visualisation cartographique</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-[400px] flex items-center justify-center bg-muted rounded-lg">
-                        <div className="text-center text-muted-foreground">
-                            <Map className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                            <p>Carte interactive à implémenter</p>
-                            <p className="text-sm mt-2">Intégration possible avec Leaflet ou MapBox</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+         
         </div>
     );
 }

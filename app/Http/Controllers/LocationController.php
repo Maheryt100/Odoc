@@ -7,6 +7,8 @@ use App\Models\Province;
 use App\Models\Region;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
 
 class LocationController extends Controller
 {
@@ -79,12 +81,36 @@ class LocationController extends Controller
         try {
             $district = District::findOrFail($validated['id']);
             
+            $oldPrices = [
+                'edilitaire' => $district->edilitaire,
+                'agricole' => $district->agricole,
+                'forestiere' => $district->forestiere,
+                'touristique' => $district->touristique,
+            ];
+
             $district->update([
                 'edilitaire' => $validated['edilitaire'],
                 'agricole' => $validated['agricole'],
                 'forestiere' => $validated['forestiere'],
                 'touristique' => $validated['touristique'],
             ]);
+
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_DISTRICT,
+                $district->id,
+                [
+                    'action_type' => 'update_prices',
+                    'district_nom' => $district->nom_district,
+                    'old_prices' => $oldPrices,
+                    'new_prices' => [
+                        'edilitaire' => $validated['edilitaire'],
+                        'agricole' => $validated['agricole'],
+                        'forestiere' => $validated['forestiere'],
+                        'touristique' => $validated['touristique'],
+                    ],
+                    'id_district' => $district->id,
+                ]
+            );
             
             return back()->with('message', 
                 'Prix mis à jour avec succès pour le district ' . $district->nom_district
@@ -191,6 +217,7 @@ class LocationController extends Controller
 
         try {
             $updated = 0;
+            $districtIds = [];
             
             foreach ($validated['districts'] as $districtData) {
                 District::where('id', $districtData['id'])
@@ -202,6 +229,16 @@ class LocationController extends Controller
                     ]);
                 $updated++;
             }
+
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_DISTRICT,
+                null,
+                [
+                    'action_type' => 'bulk_update_prices',
+                    'count' => $updated,
+                    'district_ids' => $districtIds,
+                ]
+            );
             
             return back()->with('message', 
                 $updated . ' district(s) mis à jour avec succès'
@@ -226,6 +263,13 @@ class LocationController extends Controller
         try {
             $district = District::findOrFail($validated['id']);
             
+            $oldPrices = [
+                'edilitaire' => $district->edilitaire,
+                'agricole' => $district->agricole,
+                'forestiere' => $district->forestiere,
+                'touristique' => $district->touristique,
+            ];
+
             $district->update([
                 'edilitaire' => 0,
                 'agricole' => 0,
@@ -233,6 +277,17 @@ class LocationController extends Controller
                 'touristique' => 0,
             ]);
             
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_DISTRICT,
+                $district->id,
+                [
+                    'action_type' => 'reset_prices',
+                    'district_nom' => $district->nom_district,
+                    'old_prices' => $oldPrices,
+                    'id_district' => $district->id,
+                ]
+            );
+
             return back()->with('message', 
                 'Prix réinitialisés pour le district ' . $district->nom_district
             );
@@ -247,59 +302,67 @@ class LocationController extends Controller
     /**
      * Exporter les données de localisation au format CSV
      */
-    public function exportLocations()
-    {
-        $provinces = Province::with('regions.districts')->get();
+    // public function exportLocations()
+    // {
+    //     $provinces = Province::with('regions.districts')->get();
         
-        $filename = 'localisations_' . date('Y-m-d_His') . '.csv';
+    //     $filename = 'localisations_' . date('Y-m-d_His') . '.csv';
         
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-            'Pragma' => 'no-cache',
-            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires' => '0'
-        ];
+    //     $headers = [
+    //         'Content-Type' => 'text/csv; charset=UTF-8',
+    //         'Content-Disposition' => "attachment; filename=\"$filename\"",
+    //         'Pragma' => 'no-cache',
+    //         'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+    //         'Expires' => '0'
+    //     ];
 
-        $callback = function() use ($provinces) {
-            $file = fopen('php://output', 'w');
+    //     $callback = function() use ($provinces) {
+    //         $file = fopen('php://output', 'w');
             
-            // UTF-8 BOM pour Excel
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+    //         // UTF-8 BOM pour Excel
+    //         fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             
-            // En-têtes
-            fputcsv($file, [
-                'Province',
-                'Région',
-                'District',
-                'Prix Édilitaire (Ar/m²)',
-                'Prix Agricole (Ar/m²)',
-                'Prix Forestière (Ar/m²)',
-                'Prix Touristique (Ar/m²)',
-                'Prix Complets'
-            ], ';');
+    //         // En-têtes
+    //         fputcsv($file, [
+    //             'Province',
+    //             'Région',
+    //             'District',
+    //             'Prix Édilitaire (Ar/m²)',
+    //             'Prix Agricole (Ar/m²)',
+    //             'Prix Forestière (Ar/m²)',
+    //             'Prix Touristique (Ar/m²)',
+    //             'Prix Complets'
+    //         ], ';');
             
-            // Données
-            foreach ($provinces as $province) {
-                foreach ($province->regions as $region) {
-                    foreach ($region->districts as $district) {
-                        fputcsv($file, [
-                            $province->nom_province,
-                            $region->nom_region,
-                            $district->nom_district,
-                            $district->edilitaire ?? 0,
-                            $district->agricole ?? 0,
-                            $district->forestiere ?? 0,
-                            $district->touristique ?? 0,
-                            $district->hasPricesSet() ? 'Oui' : 'Non'
-                        ], ';');
-                    }
-                }
-            }
+    //         // Données
+    //         foreach ($provinces as $province) {
+    //             foreach ($province->regions as $region) {
+    //                 foreach ($region->districts as $district) {
+    //                     fputcsv($file, [
+    //                         $province->nom_province,
+    //                         $region->nom_region,
+    //                         $district->nom_district,
+    //                         $district->edilitaire ?? 0,
+    //                         $district->agricole ?? 0,
+    //                         $district->forestiere ?? 0,
+    //                         $district->touristique ?? 0,
+    //                         $district->hasPricesSet() ? 'Oui' : 'Non'
+    //                     ], ';');
+    //                 }
+    //             }
+    //         }
             
-            fclose($file);
-        };
+    //         fclose($file);
+    //     };
 
-        return response()->stream($callback, 200, $headers);
-    }
+    //     ActivityLogger::logExport(
+    //         ActivityLog::ENTITY_DISTRICT,
+    //         [
+    //             'action_type' => 'export_locations',
+    //             'exported_at' => now()->toDateTimeString(),
+    //         ]
+    //     );
+
+    //     return response()->stream($callback, 200, $headers);
+    // }
 }

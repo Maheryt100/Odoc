@@ -1,5 +1,5 @@
 // ============================================
-// 📦 types/index.d.ts - VERSION HARMONISÉE FINALE
+// 📦 types/index.d.ts - VERSION CORRIGÉE FINALE
 // ============================================
 
 import { LucideIcon } from 'lucide-react';
@@ -61,6 +61,7 @@ export interface User {
     role: UserRole;
     role_name?: string;
     id_district: number | null;
+    status: boolean;
     avatar?: string;
     email_verified_at: string | null;
     created_at: string;
@@ -146,13 +147,6 @@ export interface Propriete {
     is_empty?: boolean;
     has_active_demandes?: boolean;
     status_label?: 'Vide' | 'Active' | 'Acquise' | 'Inconnu';
-    
-    // ✅ AJOUT: Propriété calculée côté client
-    _computed?: {
-        isIncomplete: boolean;
-        hasDemandeurs: boolean;
-        isArchived: boolean;
-    };
 }
 
 // ============================================
@@ -230,18 +224,17 @@ export interface Demande {
     is_archived?: boolean;
 }
 
-// Alias pour compatibilité
 export type Demander = Demande;
 
 // ============================================
-// 📁 DOSSIER
+// 📁 DOSSIER - ✅ CORRIGÉ
 // ============================================
 
 export interface Dossier {
     id: number;
     nom_dossier: string;
-    numero_ouverture: string | null;
-    numero_ouverture_display?: string;
+    numero_ouverture: number | null; // ✅ TOUJOURS number
+    numero_ouverture_display?: string; // ✅ Pour l'affichage
     date_descente_debut: string;
     date_descente_fin: string;
     date_ouverture: string;
@@ -257,10 +250,10 @@ export interface Dossier {
     created_at: string;
     updated_at: string;
     
-    // Counts
-    demandeurs_count?: number;
-    proprietes_count?: number;
-    pieces_jointes_count?: number;
+    // ✅ Counts toujours définis (0 par défaut)
+    demandeurs_count: number;
+    proprietes_count: number;
+    pieces_jointes_count: number;
     
     // Relations
     closedBy?: User;
@@ -270,8 +263,8 @@ export interface Dossier {
     user?: User;
     
     // Accessors
-    is_closed?: boolean;
-    is_open?: boolean;
+    is_closed: boolean;
+    is_open: boolean;
     can_close?: boolean;
     can_modify?: boolean;
     status_label?: string;
@@ -314,12 +307,12 @@ export interface PageProps {
     proprietes?: Propriete[];
     documents?: Paginated<Demande>;
     districts?: District[];
-    suggested_numero?: string;
+    suggested_numero?: number; // ✅ Toujours number
     [key: string]: unknown;
 }
 
 // ============================================
-// 🌐 GLOBAL DECLARATIONS
+// GLOBAL DECLARATIONS
 // ============================================
 
 declare global {
@@ -329,7 +322,7 @@ declare global {
 }
 
 // ============================================
-// 📦 EXPORTS UTILITAIRES
+// EXPORTS UTILITAIRES
 // ============================================
 
 export type Proprietes = Propriete[];

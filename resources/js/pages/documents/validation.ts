@@ -1,4 +1,4 @@
-// documents/validation.ts
+// documents/validation.ts - VERSION CORRIGÉE
 import { Demandeur } from '@/types';
 import { ProprieteWithDemandeurs, DemandeurLie } from './types';
 
@@ -46,9 +46,13 @@ export const getConsorts = (demandeurs: DemandeurLie[]): DemandeurLie[] => {
 };
 
 /**
- * ✅ NOUVEAU : Vérifier si une propriété a un demandeur principal valide
+ * ✅ CORRIGÉ : Vérifier si une propriété a un demandeur principal valide
+ * Avec accès sécurisé à dossier
  */
-export const hasDemandeurPrincipalValid = (prop: ProprieteWithDemandeurs, allDemandeurs: Demandeur[]): boolean => {
+export const hasDemandeurPrincipalValid = (
+    prop: ProprieteWithDemandeurs, 
+    allDemandeurs: Demandeur[]
+): boolean => {
     const principal = getDemandeurPrincipal(prop.demandeurs_lies || []);
     if (!principal) return false;
     
@@ -57,7 +61,7 @@ export const hasDemandeurPrincipalValid = (prop: ProprieteWithDemandeurs, allDem
 };
 
 /**
- * ✅ AMÉLIORÉ : Obtenir les champs manquants d'une propriété
+ * ✅ Obtenir les champs manquants d'une propriété
  */
 export const getMissingProprieteFields = (prop: ProprieteWithDemandeurs): string[] => {
     const missing: string[] = [];
@@ -102,7 +106,7 @@ export const canGenerateRequisition = (prop: ProprieteWithDemandeurs): boolean =
 };
 
 /**
- * ✅ NOUVEAU : Obtenir un résumé de la hiérarchie des demandeurs
+ * ✅ Obtenir un résumé de la hiérarchie des demandeurs
  */
 export const getHierarchySummary = (demandeurs: DemandeurLie[]): string => {
     const principal = getDemandeurPrincipal(demandeurs);
@@ -118,7 +122,7 @@ export const getHierarchySummary = (demandeurs: DemandeurLie[]): string => {
 };
 
 /**
- * ✅ AMÉLIORÉ : Message de validation avec support de l'ordre
+ * ✅ CORRIGÉ : Message de validation avec support de l'ordre et accès sécurisé
  */
 export const getValidationMessage = (
     prop: ProprieteWithDemandeurs | null,
@@ -151,12 +155,12 @@ export const getValidationMessage = (
     const demFields = getMissingDemandeurFields(demandeurData);
     
     // Pour acte de vente : vérifier aussi le reçu
-    if (docType === 'acte_vente' && !prop.has_recu) {
+    if (docType === 'acte_vente' && !prop.document_recu) {
         return "⚠️ Vous devez d'abord générer le reçu de paiement";
     }
     
     // Pour reçu : vérifier qu'il n'existe pas déjà
-    if (docType === 'recu' && prop.has_recu) {
+    if (docType === 'recu' && prop.document_recu) {
         return "Un reçu existe déjà pour cette propriété";
     }
     
@@ -169,14 +173,17 @@ export const getValidationMessage = (
     } else if (propFields.length > 0) {
         return `Données manquantes (Propriété) : ${propFields.join(', ')}`;
     } else {
-        return `Données manquantes (Demandeur principal) : ${demFields.join(', ')}`;
+        return `Données manquantes (Demandeur principal) : ${demFields.join(', ')})`;
     }
 };
 
 /**
- * ✅ NOUVEAU : Vérifier si tous les consorts sont valides
+ * ✅ Vérifier si tous les consorts sont valides
  */
-export const areAllConsortsValid = (prop: ProprieteWithDemandeurs, allDemandeurs: Demandeur[]): boolean => {
+export const areAllConsortsValid = (
+    prop: ProprieteWithDemandeurs, 
+    allDemandeurs: Demandeur[]
+): boolean => {
     const consorts = getConsorts(prop.demandeurs_lies || []);
     
     return consorts.every(consort => {
@@ -186,9 +193,12 @@ export const areAllConsortsValid = (prop: ProprieteWithDemandeurs, allDemandeurs
 };
 
 /**
- * ✅ NOUVEAU : Obtenir la liste des consorts invalides
+ * ✅ Obtenir la liste des consorts invalides
  */
-export const getInvalidConsorts = (prop: ProprieteWithDemandeurs, allDemandeurs: Demandeur[]): string[] => {
+export const getInvalidConsorts = (
+    prop: ProprieteWithDemandeurs, 
+    allDemandeurs: Demandeur[]
+): string[] => {
     const consorts = getConsorts(prop.demandeurs_lies || []);
     
     return consorts
@@ -197,4 +207,22 @@ export const getInvalidConsorts = (prop: ProprieteWithDemandeurs, allDemandeurs:
             return !demandeurData || !isDemandeurComplete(demandeurData);
         })
         .map(consort => `${consort.nom} ${consort.prenom} (ordre ${consort.ordre})`);
+};
+
+/**
+ * ✅ NOUVEAU : Vérifier l'accès sécurisé au dossier
+ */
+export const hasDossierAccess = (prop: ProprieteWithDemandeurs): boolean => {
+    return !!prop.dossier && !!prop.dossier.id_district;
+};
+
+/**
+ * ✅ NOUVEAU : Obtenir les informations du district de manière sécurisée
+ */
+export const getDistrictInfo = (prop: ProprieteWithDemandeurs): string => {
+    if (!hasDossierAccess(prop)) {
+        return 'District non disponible';
+    }
+    
+    return prop.dossier.district?.nom_district || 'District inconnu';
 };

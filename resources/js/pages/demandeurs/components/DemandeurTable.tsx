@@ -1,4 +1,4 @@
-// pages/demandeurs/components/DemandeurTable.tsx
+// pages/demandeurs/components/DemandeurTable.tsx - VERSION COMPACTE
 
 import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ interface DemandeurTableProps extends Omit<DemandeursIndexProps, 'demandeurs'> {
     currentPage: number;
     itemsPerPage: number;
     onPageChange: (page: number) => void;
+    onEditDemandeur?: (demandeur: DemandeurWithProperty) => void;
 }
 
 export default function DemandeurTable({
@@ -24,6 +25,7 @@ export default function DemandeurTable({
     isDemandeurIncomplete,
     onLinkPropriete,
     onSelectDemandeur,
+    onEditDemandeur, 
     currentPage,
     itemsPerPage,
     onPageChange
@@ -53,25 +55,25 @@ export default function DemandeurTable({
                 <table className="w-full">
                     <thead className="bg-muted/30 border-b">
                         <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Nom complet
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 CIN
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Domiciliation
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Situation
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Téléphone
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Statut
                             </th>
-                            <th className="px-6 py-4 w-[50px]"></th>
+                            <th className="px-4 py-2.5 w-[50px]"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -86,32 +88,32 @@ export default function DemandeurTable({
                                     className={rowClass} 
                                     onClick={() => onSelectDemandeur?.(demandeur)}
                                 >
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">
+                                            <span className="font-medium text-sm">
                                                 {formatNomComplet(demandeur)}
                                             </span>
                                             {isIncomplete && (
-                                                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                                <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                                         {demandeur.cin}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {demandeur.domiciliation || '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {demandeur.situation_familiale || '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {demandeur.telephone || '-'}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-3">
                                         <Badge 
                                             variant={statusBadge.variant} 
-                                            className={statusBadge.className}
+                                            className={`text-xs ${statusBadge.className}`}
                                         >
                                             {statusBadge.icon && (
                                                 <statusBadge.icon className="mr-1 h-3 w-3" />
@@ -119,10 +121,10 @@ export default function DemandeurTable({
                                             {statusBadge.text}
                                         </Badge>
                                     </td>
-                                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
                                                     <Ellipsis className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -133,17 +135,9 @@ export default function DemandeurTable({
                                                 </DropdownMenuItem>
                                                 {!dossier.is_closed && (
                                                     <>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link
-                                                                href={route('demandeurs.edit', {
-                                                                    id_dossier: dossier.id,
-                                                                    id_demandeur: demandeur.id
-                                                                })}
-                                                                className="flex items-center"
-                                                            >
-                                                                <Pencil className="mr-2 h-4 w-4" />
-                                                                Modifier
-                                                            </Link>
+                                                        <DropdownMenuItem onClick={() => onEditDemandeur?.(demandeur)}>
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Modifier
                                                         </DropdownMenuItem>
                                                         {proprietes.length > 0 && (
                                                             <DropdownMenuItem onClick={() => onLinkPropriete?.(demandeur)}>
@@ -171,14 +165,15 @@ export default function DemandeurTable({
                 </table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination compacte */}
             {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-6 pb-4">
+                <div className="flex justify-center items-center gap-2 mt-4">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage === 1}
+                        className="h-8"
                     >
                         Précédent
                     </Button>
@@ -188,6 +183,7 @@ export default function DemandeurTable({
                             variant={currentPage === page ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => onPageChange(page)}
+                            className="h-8 min-w-8"
                         >
                             {page}
                         </Button>
@@ -197,6 +193,7 @@ export default function DemandeurTable({
                         size="sm"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
+                        className="h-8"
                     >
                         Suivant
                     </Button>

@@ -1,33 +1,25 @@
-// resources/js/pages/dossiers/index.tsx - ✅ VERSION REDESIGNÉE OPTIMISÉE
+// resources/js/pages/dossiers/index.tsx - ✅ VERSION AVEC FILTRAGE PAR DATES COMPLÈTES
+import { useState, useMemo, useEffect } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem, SharedData } from '@/types';
-import type { Dossier } from './types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, Search, Calendar, SlidersHorizontal, Eye, Pencil, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, LockOpen, Lock as LockIcon, FileText, FileOutput, Folder, Info, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useEffect, useState, useMemo } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { LandPlot, EllipsisVertical, Archive } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { filterDossiers, sortDossiers, calculateDossierPermissions, getDisabledDocumentButtonTooltip } from './helpers';
+import { FolderPlus, Folder, Info, Sparkles } from 'lucide-react';
+import type { BreadcrumbItem, Dossier, District, SharedData } from '@/types';
+import { hasIssues } from './helpers/statusHelpers';
+import SmartDeleteDossierDialog from './components/SmartDeleteDossierDialog';
+import DossierFilters from './components/DossierFilters';
+import DossierTable from './components/DossierTable';
+import type { FiltreStatutDossierType, TriDossierType } from './components/DossierFilters';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dossiers', href: '/dossiers' },
-];
-
-const ITEMS_PER_PAGE = 10;
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dossiers', href: '/dossiers' }];
 
 interface PageProps {
     dossiers: Dossier[];
+    districts: District[];
     auth: {
         user: {
             id: number;
@@ -39,244 +31,205 @@ interface PageProps {
 }
 
 export default function Index() {
-    const { dossiers = [], auth } = usePage<PageProps>().props;
+    const { dossiers = [], districts = [], auth } = usePage<PageProps>().props;
     const { flash } = usePage<SharedData>().props;
 
-    const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<'date' | 'nom'>('date');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-    const [dateDebut, setDateDebut] = useState('');
-    const [dateFin, setDateFin] = useState('');
-    const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
-    const [showFilters, setShowFilters] = useState(false);
-    const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+    // États principaux
     const [currentPage, setCurrentPage] = useState(1);
-    const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
+    const [filtreStatut, setFiltreStatut] = useState<FiltreStatutDossierType>('tous');
+    const [recherche, setRecherche] = useState('');
+    const [districtFilter, setDistrictFilter] = useState<string>('all');
+    const [dateStart, setDateStart] = useState<string>('');
+    const [dateEnd, setDateEnd] = useState<string>('');
+    const [tri, setTri] = useState<TriDossierType>('date');
+    const [ordre, setOrdre] = useState<'asc' | 'desc'>('desc');
+    const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+    
+    // Suppression
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [selectedDossierToDelete, setSelectedDossierToDelete] = useState<Dossier | null>(null);
 
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const itemsPerPage = 10;
 
+    // Toasts
     useEffect(() => {
-        if (flash.message != null) {
-            toast.info(flash.message);
-        }
-        if (flash.success) {
-            toast.success(flash.success);
-        }
-        if (flash.error) {
-            toast.error(flash.error);
-        }
+        if (flash?.message) toast.info(flash.message);
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error);
     }, [flash]);
 
+    // ✅ Filtrage avec dates complètes
     const filteredDossiers = useMemo(() => {
-        const filtered = filterDossiers(dossiers, {
-            search,
-            status: statusFilter,
-            dateDebut,
-            dateFin,
-            selectedLetter
+        let filtered = [...dossiers];
+
+        // Filtre par statut
+        if (filtreStatut === 'ouverts') {
+            filtered = filtered.filter(d => !d.is_closed);
+        } else if (filtreStatut === 'fermes') {
+            filtered = filtered.filter(d => d.is_closed);
+        } else if (filtreStatut === 'incomplets') {
+            filtered = filtered.filter(d => (d.demandeurs_count ?? 0) === 0 || (d.proprietes_count ?? 0) === 0);
+        } else if (filtreStatut === 'avec_problemes') {
+            filtered = filtered.filter(d => hasIssues(d));
+        }
+
+        // Recherche
+        if (recherche) {
+            const searchLower = recherche.toLowerCase();
+            filtered = filtered.filter(d => {
+                const numeroStr = d.numero_ouverture?.toString() || '';
+                return (
+                    d.nom_dossier.toLowerCase().includes(searchLower) ||
+                    d.commune.toLowerCase().includes(searchLower) ||
+                    d.circonscription.toLowerCase().includes(searchLower) ||
+                    numeroStr.includes(searchLower)
+                );
+            });
+        }
+
+        // District
+        if (districtFilter !== 'all') {
+            filtered = filtered.filter(d => d.id_district === parseInt(districtFilter));
+        }
+
+        // ✅ NOUVEAU : Filtrage par dates complètes (date_ouverture)
+        if (dateStart) {
+            const startDate = new Date(dateStart);
+            startDate.setHours(0, 0, 0, 0);
+            
+            filtered = filtered.filter(d => {
+                const dossierDate = new Date(d.date_ouverture);
+                dossierDate.setHours(0, 0, 0, 0);
+                return dossierDate >= startDate;
+            });
+        }
+
+        if (dateEnd) {
+            const endDate = new Date(dateEnd);
+            endDate.setHours(23, 59, 59, 999);
+            
+            filtered = filtered.filter(d => {
+                const dossierDate = new Date(d.date_ouverture);
+                dossierDate.setHours(0, 0, 0, 0);
+                return dossierDate <= endDate;
+            });
+        }
+
+        return filtered;
+    }, [dossiers, filtreStatut, recherche, districtFilter, dateStart, dateEnd]);
+
+    // ✅ Tri amélioré
+    const sortedDossiers = useMemo(() => {
+        const sorted = [...filteredDossiers];
+
+        sorted.sort((a, b) => {
+            let compareValue = 0;
+
+            switch (tri) {
+                case 'date':
+                    compareValue = new Date(a.date_ouverture).getTime() - new Date(b.date_ouverture).getTime();
+                    break;
+                case 'nom':
+                    compareValue = a.nom_dossier.localeCompare(b.nom_dossier);
+                    break;
+                case 'commune':
+                    compareValue = a.commune.localeCompare(b.commune);
+                    break;
+                case 'numero':
+                    const numA = a.numero_ouverture ?? 0;
+                    const numB = b.numero_ouverture ?? 0;
+                    compareValue = numA - numB;
+                    break;
+            }
+
+            return ordre === 'asc' ? compareValue : -compareValue;
         });
 
-        return sortDossiers(filtered, sortBy, sortOrder);
-    }, [dossiers, search, dateDebut, dateFin, selectedLetter, sortBy, sortOrder, statusFilter]);
+        return sorted;
+    }, [filteredDossiers, tri, ordre]);
 
-    const clearFilters = () => {
-        setSearch('');
-        setDateDebut('');
-        setDateFin('');
-        setSelectedLetter(null);
-        setSortBy('date');
-        setSortOrder('desc');
-        setStatusFilter('all');
+    // Handlers
+    const handleFiltreStatutChange = (newFiltre: FiltreStatutDossierType) => {
+        setFiltreStatut(newFiltre);
+        setCurrentPage(1);
     };
 
-    const toggleExpand = (id: number) => {
-        const newExpanded = new Set(expandedRows);
-        if (newExpanded.has(id)) {
-            newExpanded.delete(id);
-        } else {
-            newExpanded.add(id);
-        }
-        setExpandedRows(newExpanded);
+    const handleRechercheChange = (newRecherche: string) => {
+        setRecherche(newRecherche);
+        setCurrentPage(1);
     };
 
-    const hasActiveFilters = search || dateDebut || dateFin || selectedLetter || statusFilter !== 'all';
-    const showAlphabet = sortBy === 'nom';
+    const handleDistrictFilterChange = (newDistrict: string) => {
+        setDistrictFilter(newDistrict);
+        setCurrentPage(1);
+    };
 
-    // Pagination
-    const totalPages = Math.ceil(filteredDossiers.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const currentDossiers = filteredDossiers.slice(startIndex, endIndex);
+    const handleDateStartChange = (date: string) => {
+        setDateStart(date);
+        setCurrentPage(1);
+    };
+
+    const handleDateEndChange = (date: string) => {
+        setDateEnd(date);
+        setCurrentPage(1);
+    };
+
+    const handleTriChange = (newTri: TriDossierType) => {
+        setTri(newTri);
+        setCurrentPage(1);
+    };
+
+    const handleOrdreToggle = () => {
+        setOrdre(prev => prev === 'asc' ? 'desc' : 'asc');
+    };
+
+    const handleToggleExpand = (id: number) => {
+        const newSet = new Set(expandedRows);
+        newSet.has(id) ? newSet.delete(id) : newSet.add(id);
+        setExpandedRows(newSet);
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        setExpandedRows(new Set());
+    };
+
+    const handleDeleteDossier = (dossier: Dossier) => {
+        setSelectedDossierToDelete(dossier);
+        setDeleteDialogOpen(true);
+    };
+
+    const canShowAllDistricts = auth.user.role === 'super_admin' || auth.user.role === 'central_user';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dossiers" />
-            <Toaster position="top-right" />
+            <Toaster position="top-right" richColors />
 
-            <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* ✅ HEADER COMPACT ET MODERNE */}
+            <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
+                {/* Header */}
                 <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
+                    <div>
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
                             <Folder className="h-8 w-8 text-blue-600" />
                             Liste des dossiers
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            {filteredDossiers.length} dossier{filteredDossiers.length > 1 ? 's' : ''} enregistré{filteredDossiers.length > 1 ? 's' : ''}
+                            {sortedDossiers.length} dossier{sortedDossiers.length > 1 ? 's' : ''}
+                            {sortedDossiers.length !== dossiers.length && ` (filtré${sortedDossiers.length > 1 ? 's' : ''} sur ${dossiers.length})`}
                         </p>
                     </div>
 
-                    {/* Barre de recherche compacte */}
-                    <div className="relative w-80">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Rechercher un dossier..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10 h-10 border-2"
-                        />
-                    </div>
-
-                    {/* Bouton filtres */}
-                    <Popover open={showFilters} onOpenChange={setShowFilters}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" className="relative gap-2 h-10 shadow-sm">
-                                <SlidersHorizontal className="h-4 w-4" />
-                                Filtres
-                                {hasActiveFilters && (
-                                    <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs" variant="destructive">
-                                        !
-                                    </Badge>
-                                )}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80" align="end">
-                            <div className="space-y-4">
-                                <div>
-                                    <h4 className="font-semibold mb-3">Filtres avancés</h4>
-                                </div>
-
-                                {/* Filtre par statut */}
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Statut du dossier</Label>
-                                    <Select value={statusFilter} onValueChange={(value: 'all' | 'open' | 'closed') => setStatusFilter(value)}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Tous les dossiers</SelectItem>
-                                            <SelectItem value="open">Dossiers ouverts</SelectItem>
-                                            <SelectItem value="closed">Dossiers fermés</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Filtres par date */}
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Période de descente</Label>
-                                    <div className="grid gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                type="date"
-                                                value={dateDebut}
-                                                onChange={(e) => setDateDebut(e.target.value)}
-                                                placeholder="Date début"
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                type="date"
-                                                value={dateFin}
-                                                onChange={(e) => setDateFin(e.target.value)}
-                                                placeholder="Date fin"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Tri */}
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Trier par</Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Select value={sortBy} onValueChange={(value: 'date' | 'nom') => setSortBy(value)}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="date">Date</SelectItem>
-                                                <SelectItem value="nom">Nom</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="asc">↑ A-Z / Ancien</SelectItem>
-                                                <SelectItem value="desc">↓ Z-A / Récent</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                {hasActiveFilters && (
-                                    <Button variant="outline" size="sm" onClick={clearFilters} className="w-full">
-                                        <X className="mr-2 h-4 w-4" />
-                                        Réinitialiser les filtres
-                                    </Button>
-                                )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Button size="lg" asChild className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all">
+                    {/* Bouton Créer */}
+                    <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
                         <Link href={route('dossiers.create')}>
-                            <FolderPlus className="h-5 w-5" />
+                            <FolderPlus className="h-5 w-5 mr-2" />
                             Créer un dossier
                         </Link>
                     </Button>
                 </div>
 
-                {/* Filtres actifs compacts */}
-                {hasActiveFilters && (
-                    <div className="flex flex-wrap gap-2">
-                        {search && (
-                            <Badge variant="secondary" className="gap-1">
-                                Recherche: {search}
-                                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearch('')} />
-                            </Badge>
-                        )}
-                        {dateDebut && (
-                            <Badge variant="secondary" className="gap-1">
-                                Début: {dateDebut}
-                                <X className="h-3 w-3 cursor-pointer" onClick={() => setDateDebut('')} />
-                            </Badge>
-                        )}
-                        {dateFin && (
-                            <Badge variant="secondary" className="gap-1">
-                                Fin: {dateFin}
-                                <X className="h-3 w-3 cursor-pointer" onClick={() => setDateFin('')} />
-                            </Badge>
-                        )}
-                        {selectedLetter && (
-                            <Badge variant="secondary" className="gap-1">
-                                Lettre: {selectedLetter}
-                                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedLetter(null)} />
-                            </Badge>
-                        )}
-                        {statusFilter !== 'all' && (
-                            <Badge variant="secondary" className="gap-1">
-                                Statut: {statusFilter === 'open' ? 'Ouvert' : 'Fermé'}
-                                <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter('all')} />
-                            </Badge>
-                        )}
-                    </div>
-                )}
-
-                {/* ✅ ALERTE INFORMATIVE COMPACTE */}
+                {/* Alerte */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
@@ -288,311 +241,75 @@ export default function Index() {
                                 Gérez vos dossiers facilement
                             </span>
                             <span className="text-blue-700 dark:text-blue-300">
-                                — Consultez, modifiez et générez des documents pour chaque dossier
+                                — Consultez, modifiez et générez des documents 
                             </span>
                         </AlertDescription>
                     </div>
                 </Alert>
 
-                <div className="flex gap-3">
-                    {/* Liste des dossiers */}
-                    <div className="flex-1 space-y-3">
-                        {currentDossiers.length === 0 ? (
-                            <Card>
-                                <CardContent className="py-12 text-center">
-                                    <Folder className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-                                    <p className="text-lg font-medium text-muted-foreground mb-2">
-                                        {hasActiveFilters
-                                            ? 'Aucun dossier ne correspond à vos critères'
-                                            : 'Aucun dossier enregistré'}
+                {/* Card principale */}
+                <Card className="border-0 shadow-lg">
+                    {/* Header compact */}
+                    <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-6 py-3 border-b">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
+                                    <Folder className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-lg font-bold leading-tight">Tous les dossiers</h2>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        {sortedDossiers.length} / {dossiers.length}
                                     </p>
-                                    {hasActiveFilters ? (
-                                        <Button variant="link" onClick={clearFilters} className="mt-2">
-                                            Réinitialiser les filtres
-                                        </Button>
-                                    ) : (
-                                        <Button asChild className="mt-4">
-                                            <Link href={route('dossiers.create')}>
-                                                <FolderPlus className="mr-2 h-4 w-4" />
-                                                Créer votre premier dossier
-                                            </Link>
-                                        </Button>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            <>
-                                {currentDossiers.map((dossier) => {
-                                    const isExpanded = expandedRows.has(dossier.id);
-                                    
-                                    const permissions = calculateDossierPermissions(dossier, {
-                                        role: auth.user.role,
-                                        id_district: auth.user.id_district
-                                    });
-
-                                    const documentTooltip = getDisabledDocumentButtonTooltip(dossier, {
-                                        role: auth.user.role,
-                                        id_district: auth.user.id_district
-                                    });
-
-                                    return (
-                                        <Card key={dossier.id} className="hover:shadow-lg transition-all duration-200 border-0 shadow-md">
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center gap-3">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => toggleExpand(dossier.id)}
-                                                        className="h-8 w-8 shrink-0"
-                                                    >
-                                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                                    </Button>
-
-                                                    <div
-                                                        className="flex-1 cursor-pointer flex items-center gap-3"
-                                                        onClick={() => router.visit(route('dossiers.show', dossier.id))}
-                                                    >
-                                                        <h3 className="font-semibold text-lg truncate max-w-[250px]">
-                                                            {dossier.nom_dossier}
-                                                        </h3>
-
-                                                        {dossier.is_closed ? (
-                                                            <Badge variant="outline" className="flex items-center gap-1 bg-orange-100 text-orange-700 border-orange-300">
-                                                                <LockIcon className="h-3 w-3" />
-                                                                Fermé
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="outline" className="flex items-center gap-1 bg-green-100 text-green-700 border-green-300">
-                                                                <LockOpen className="h-3 w-3" />
-                                                                Ouvert
-                                                            </Badge>
-                                                        )}
-
-                                                        {dossier.proprietes?.some((p) => p.is_archived === true) && (
-                                                            <Badge variant="outline" className="flex items-center gap-1">
-                                                                <Archive className="h-3 w-3" />
-                                                                Propriétés acquises
-                                                            </Badge>
-                                                        )}
-
-                                                        <span className="text-muted-foreground">•</span>
-                                                        <span className="text-muted-foreground truncate max-w-[200px]">
-                                                            {dossier.commune}
-                                                        </span>
-
-                                                        <span className="text-muted-foreground">•</span>
-                                                        <span className="text-muted-foreground whitespace-nowrap text-sm">
-                                                            {dossier.demandeurs_count} demandeur(s), {dossier.proprietes_count} propriété(s)
-                                                        </span>
-                                                    </div>
-
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                                                <EllipsisVertical className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={route("dossiers.show", dossier.id)} className="flex items-center">
-                                                                    <Eye className="mr-2 h-4 w-4" />
-                                                                    Voir Détails
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                            
-                                                            {permissions.canEdit && (
-                                                                <DropdownMenuItem asChild>
-                                                                    <Link href={route("dossiers.edit", dossier.id)} className="flex items-center">
-                                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                                        Modifier
-                                                                    </Link>
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                            
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuLabel>Ajouter</DropdownMenuLabel>
-                                                            
-                                                            {!dossier.is_closed && (
-                                                                <DropdownMenuItem asChild>
-                                                                    <Link href={route("nouveau-lot.create", dossier.id)} className="flex items-center">
-                                                                        <LandPlot className="mr-2 h-4 w-4" />
-                                                                        Nouvelles entrées
-                                                                    </Link>
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                            
-                                                            <DropdownMenuSeparator />
-                                                            
-                                                            {permissions.canGenerateDocuments ? (
-                                                                <DropdownMenuItem asChild>
-                                                                    <Link href={route('documents.generate', dossier.id)}>
-                                                                        <FileOutput className="mr-2 h-4 w-4" />
-                                                                        Générer documents
-                                                                    </Link>
-                                                                </DropdownMenuItem>
-                                                            ) : (
-                                                                <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="relative flex cursor-not-allowed select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none opacity-50">
-                                                                                <FileOutput className="mr-2 h-4 w-4" />
-                                                                                Générer documents
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent className="max-w-xs">
-                                                                            <p>{documentTooltip}</p>
-                                                                        </TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                            )}
-                                                            
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={route('demandes.resume', dossier.id)}>
-                                                                    <FileText className="mr-2 h-4 w-4" />
-                                                                    Résumé des demandes
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-
-                                                {isExpanded && (
-                                                    <div className="mt-4 pt-4 border-t ml-11 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Type Commune</p>
-                                                            <p className="font-medium">{dossier.type_commune}</p>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Circonscription</p>
-                                                            <p className="font-medium">{dossier.circonscription}</p>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Fokontany</p>
-                                                            <p className="font-medium">{dossier.fokontany}</p>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Date descente</p>
-                                                            <p className="font-medium text-sm">
-                                                                {new Date(dossier.date_descente_debut).toLocaleDateString('fr-FR')} – 
-                                                                {new Date(dossier.date_descente_fin).toLocaleDateString('fr-FR')}
-                                                            </p>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Date d'ouverture</p>
-                                                            <p className="font-medium">
-                                                                {new Date(dossier.date_ouverture).toLocaleDateString('fr-FR')}
-                                                            </p>
-                                                        </div>
-                                                        
-                                                        {dossier.is_closed && dossier.date_fermeture && (
-                                                            <div className="space-y-1">
-                                                                <p className="text-xs text-muted-foreground">Date de fermeture</p>
-                                                                <p className="font-medium text-orange-700">
-                                                                    {new Date(dossier.date_fermeture).toLocaleDateString('fr-FR')}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-
-                                {/* Pagination */}
-                                {totalPages > 1 && (
-                                    <div className="flex items-center justify-center gap-2 mt-6">
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-                                        
-                                        <div className="flex items-center gap-1">
-                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                                                if (
-                                                    page === 1 ||
-                                                    page === totalPages ||
-                                                    (page >= currentPage - 1 && page <= currentPage + 1)
-                                                ) {
-                                                    return (
-                                                        <Button
-                                                            key={page}
-                                                            variant={currentPage === page ? 'default' : 'outline'}
-                                                            size="sm"
-                                                            onClick={() => setCurrentPage(page)}
-                                                        >
-                                                            {page}
-                                                        </Button>
-                                                    );
-                                                } else if (
-                                                    page === currentPage - 2 ||
-                                                    page === currentPage + 2
-                                                ) {
-                                                    return <span key={page} className="px-1">...</span>;
-                                                }
-                                                return null;
-                                            })}
-                                        </div>
-
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                            disabled={currentPage === totalPages}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-
-                    {/* Navigation alphabétique */}
-                    {showAlphabet && (
-                        <div className="hidden lg:block">
-                            <div className="sticky top-20">
-                                <Card className="w-12 border-0 shadow-lg">
-                                    <CardContent className="p-2">
-                                        <div className="flex flex-col items-center gap-1">
-                                            {alphabet.map((letter) => {
-                                                const hasResults = dossiers.some(d =>
-                                                    d.nom_dossier.toUpperCase().startsWith(letter)
-                                                );
-                                                return (
-                                                    <button
-                                                        key={letter}
-                                                        onClick={() =>
-                                                            setSelectedLetter(selectedLetter === letter ? null : letter)
-                                                        }
-                                                        className={`
-                                                            w-8 h-8 rounded text-xs font-medium transition-colors
-                                                            ${selectedLetter === letter
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : hasResults
-                                                                ? 'hover:bg-muted text-foreground'
-                                                                : 'text-muted-foreground/30 cursor-default'
-                                                            }
-                                                        `}
-                                                        disabled={!hasResults}
-                                                    >
-                                                        {letter}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                </div>
                             </div>
                         </div>
-                    )}
-                </div>
+                    </div>
+
+                    <CardContent className="p-4">
+                        {/* Filtres */}
+                        <DossierFilters
+                            filtreStatut={filtreStatut}
+                            onFiltreStatutChange={handleFiltreStatutChange}
+                            recherche={recherche}
+                            onRechercheChange={handleRechercheChange}
+                            districtFilter={districtFilter}
+                            onDistrictFilterChange={handleDistrictFilterChange}
+                            dateStart={dateStart}
+                            onDateStartChange={handleDateStartChange}
+                            dateEnd={dateEnd}
+                            onDateEndChange={handleDateEndChange}
+                            tri={tri}
+                            onTriChange={handleTriChange}
+                            ordre={ordre}
+                            onOrdreToggle={handleOrdreToggle}
+                            districts={districts}
+                            totalDossiers={dossiers.length}
+                            totalFiltres={sortedDossiers.length}
+                            canShowAllDistricts={canShowAllDistricts}
+                        />
+
+                        {/* Table */}
+                        <DossierTable
+                            dossiers={sortedDossiers}
+                            auth={auth}
+                            expandedRows={expandedRows}
+                            onToggleExpand={handleToggleExpand}
+                            onDelete={handleDeleteDossier}
+                            currentPage={currentPage}
+                            itemsPerPage={itemsPerPage}
+                            onPageChange={handlePageChange}
+                        />
+                    </CardContent>
+                </Card>
             </div>
+
+            {/* Dialog de suppression */}
+            <SmartDeleteDossierDialog
+                dossier={selectedDossierToDelete}
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+            />
         </AppLayout>
     );
 }

@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
 
 class UserManagementController extends Controller
 {
@@ -238,19 +240,33 @@ class UserManagementController extends Controller
 
             DB::commit();
 
-            Log::info('Utilisateur créé', [
-                'created_by' => $currentUser->id,
-                'user_id' => $user->id,
-                'role' => $user->role,
-                'district' => $user->id_district,
-            ]);
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_USER,
+                $user->id,
+                [
+                    'user_name' => $user->name,
+                    'user_email' => $user->email,
+                    'user_role' => $user->role,
+                    'user_district' => $user->id_district,
+                    'created_by' => $currentUser->id,
+                    'created_by_name' => $currentUser->name,
+                    'id_district' => $user->id_district,
+                ]
+            );
+
+            // Log::info('Utilisateur créé', [
+            //     'created_by' => $currentUser->id,
+            //     'user_id' => $user->id,
+            //     'role' => $user->role,
+            //     'district' => $user->id_district,
+            // ]);
 
             return redirect()->route('users.index')
                 ->with('success', "Utilisateur {$user->name} créé avec succès");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur création utilisateur', ['error' => $e->getMessage()]);
+            // Log::error('Erreur création utilisateur', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur lors de la création : ' . $e->getMessage()]);
         }
     }
@@ -369,6 +385,14 @@ class UserManagementController extends Controller
         try {
             DB::beginTransaction();
 
+            $oldData = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'id_district' => $user->id_district,
+                'status' => $user->status,
+            ];
+
             if ($currentUser->isAdminDistrict()) {
                 if ($validated['role'] !== User::ROLE_USER_DISTRICT) {
                     return back()->withErrors(['role' => 'Vous ne pouvez gérer que des utilisateurs district']);
@@ -414,18 +438,38 @@ class UserManagementController extends Controller
 
             DB::commit();
 
-            Log::info('Utilisateur modifié', [
-                'modified_by' => $currentUser->id,
-                'user_id' => $user->id,
-                'changes' => $user->getChanges(),
-            ]);
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_USER,
+                $user->id,
+                [
+                    'user_name' => $user->name,
+                    'user_email' => $user->email,
+                    'old_data' => $oldData,
+                    'new_data' => [
+                        'name' => $validated['name'],
+                        'email' => $validated['email'],
+                        'role' => $validated['role'],
+                        'id_district' => $validated['id_district'],
+                        'status' => $validated['status'] ?? $user->status,
+                    ],
+                    'modified_by' => $currentUser->id,
+                    'modified_by_name' => $currentUser->name,
+                    'id_district' => $user->id_district,
+                ]
+            );
+
+            // Log::info('Utilisateur modifié', [
+            //     'modified_by' => $currentUser->id,
+            //     'user_id' => $user->id,
+            //     'changes' => $user->getChanges(),
+            // ]);
 
             return redirect()->route('users.index')
                 ->with('success', "Utilisateur {$user->name} modifié avec succès");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur modification utilisateur', ['error' => $e->getMessage()]);
+            // Log::error('Erreur modification utilisateur', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -447,19 +491,33 @@ class UserManagementController extends Controller
         try {
             $newStatus = !$user->status;
             $user->update(['status' => $newStatus]);
+            
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_USER,
+                $user->id,
+                [
+                    'action_type' => 'toggle_status',
+                    'user_name' => $user->name,
+                    'old_status' => !$newStatus,
+                    'new_status' => $newStatus,
+                    'modified_by' => $currentUser->id,
+                    'modified_by_name' => $currentUser->name,
+                    'id_district' => $user->id_district,
+                ]
+            );
 
-            Log::info('Statut utilisateur modifié', [
-                'modified_by' => $currentUser->id,
-                'user_id' => $user->id,
-                'new_status' => $newStatus,
-            ]);
+            // Log::info('Statut utilisateur modifié', [
+            //     'modified_by' => $currentUser->id,
+            //     'user_id' => $user->id,
+            //     'new_status' => $newStatus,
+            // ]);
 
             $message = $newStatus ? 'Utilisateur activé' : 'Utilisateur désactivé';
             
             return back()->with('success', $message);
 
         } catch (\Exception $e) {
-            Log::error('Erreur toggle status', ['error' => $e->getMessage()]);
+            // Log::error('Erreur toggle status', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -490,6 +548,9 @@ class UserManagementController extends Controller
             DB::beginTransaction();
 
             $userName = $user->name;
+            $userName = $user->name;
+            $userEmail = $user->email;
+            $userDistrict = $user->id_district;
             $userId = $user->id;
 
             $dossiersCount = DB::table('dossiers')->where('id_user', $userId)->count();
@@ -506,18 +567,30 @@ class UserManagementController extends Controller
 
             DB::commit();
 
-            Log::warning('Utilisateur supprimé', [
-                'deleted_by' => $currentUser->id,
-                'user_id' => $userId,
-                'user_name' => $userName,
-            ]);
+            ActivityLogger::logDeletion(
+                ActivityLog::ENTITY_USER,
+                $id,
+                [
+                    'user_name' => $userName,
+                    'user_email' => $userEmail,
+                    'deleted_by' => $currentUser->id,
+                    'deleted_by_name' => $currentUser->name,
+                    'id_district' => $userDistrict,
+                ]
+            );
+
+            // Log::warning('Utilisateur supprimé', [
+            //     'deleted_by' => $currentUser->id,
+            //     'user_id' => $userId,
+            //     'user_name' => $userName,
+            // ]);
 
             return redirect()->route('users.index')
                 ->with('success', "Utilisateur {$userName} supprimé avec succès");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur suppression utilisateur', ['error' => $e->getMessage()]);
+            // Log::error('Erreur suppression utilisateur', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -540,15 +613,27 @@ class UserManagementController extends Controller
         try {
             $user->update(['password' => Hash::make($validated['password'])]);
 
-            Log::info('Mot de passe réinitialisé', [
-                'reset_by' => $currentUser->id,
-                'user_id' => $user->id,
-            ]);
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_USER,
+                $user->id,
+                [
+                    'action_type' => 'reset_password',
+                    'user_name' => $user->name,
+                    'reset_by' => $currentUser->id,
+                    'reset_by_name' => $currentUser->name,
+                    'id_district' => $user->id_district,
+                ]
+            );
+
+            // Log::info('Mot de passe réinitialisé', [
+            //     'reset_by' => $currentUser->id,
+            //     'user_id' => $user->id,
+            // ]);
 
             return back()->with('success', 'Mot de passe réinitialisé avec succès');
 
         } catch (\Exception $e) {
-            Log::error('Erreur reset password', ['error' => $e->getMessage()]);
+            // Log::error('Erreur reset password', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }

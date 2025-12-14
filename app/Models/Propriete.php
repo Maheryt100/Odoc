@@ -7,28 +7,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class Propriete extends Model
 {
     use HasPiecesJointes;
-    
+
     protected $fillable = [
         'lot',
+        'titre',
+        'contenance',
+        'proprietaire',
         'propriete_mere',
         'titre_mere',
-        'titre',
-        'proprietaire',
-        'contenance',
         'charge',
         'situation',
         'nature',
-        'type_operation',
         'vocation',
         'numero_FN',
         'numero_requisition',
+        'type_operation',
         'date_requisition',
         'date_inscription',
         'dep_vol',
@@ -38,13 +36,14 @@ class Propriete extends Model
     ];
 
     protected $casts = [
+        'contenance' => 'decimal:2',
         'date_requisition' => 'date',
         'date_inscription' => 'date',
-        'contenance' => 'integer',
     ];
 
     protected $appends = [
-        // 'nom_complet',
+        'dep_vol_complet',
+        'titre_complet',
         'is_incomplete',
         'is_archived',
         'is_empty',
@@ -52,11 +51,10 @@ class Propriete extends Model
         'status_label',
     ];
 
-    private $_status_cache = null;
+    // ============================================
+    // RELATIONS
+    // ============================================
 
-    
-    // ============ RELATIONS ============
-    
     public function dossier(): BelongsTo
     {
         return $this->belongsTo(Dossier::class, 'id_dossier');
@@ -67,70 +65,76 @@ class Propriete extends Model
         return $this->belongsTo(User::class, 'id_user');
     }
 
+    /**
+     * ✅ CORRECTION PRINCIPALE : Retirer ->using(Demander::class)
+     * Utiliser la relation hasMany pour accéder aux demandes
+     */
     public function demandeurs(): BelongsToMany
     {
-        return $this->belongsToMany(
-            Demandeur::class,
-            'demander',
-            'id_propriete',
-            'id_demandeur'
-        )->withPivot(['id', 'status', 'status_consort', 'ordre', 'total_prix', 'motif_archive'])
-          ->withTimestamps();
+        return $this->belongsToMany(Demandeur::class, 'demander', 'id_propriete', 'id_demandeur')
+            ->withPivot(['id', 'total_prix', 'status', 'status_consort', 'ordre', 'motif_archive', 'id_user', 'created_at', 'updated_at'])
+            ->withTimestamps()
+            ->orderBy('demander.ordre', 'asc');
     }
-
-    public function demandes(): HasMany
-    {
-        return $this->hasMany(Demander::class, 'id_propriete');
-    }
-
-    // ✅ AJOUTER cette méthode helper si besoin d'accéder aux demandeurs
-    public function getDemandeurs(): Collection
-    {
-        return $this->demandes()
-            ->with('demandeur')
-            ->get()
-            ->pluck('demandeur')
-            ->filter();
-    }
-
-    public function demandesActives(): HasMany
-    {
-        return $this->demandes()->where('status', Demander::STATUS_ACTIVE);
-    }
-
-    public function demandesArchivees(): HasMany
-    {
-        return $this->demandes()->where('status', Demander::STATUS_ARCHIVE);
-    }
-
-    public function recuPaiements(): HasMany
-    {
-        return $this->hasMany(RecuPaiement::class, 'id_propriete');
-    }
-
-    // ============ ACCESSORS ============
-
 
     /**
-     * Format complet du dep/vol avec numéro
+     * ✅ RELATION PRINCIPALE : Accès direct aux demandes (recommandé)
      */
-    public function getDepVolCompletAttribute(): string
+    public function demandes(): HasMany
     {
-        if (!$this->dep_vol) {
-            return '-';
-        }
-
-        if ($this->numero_dep_vol) {
-            return "{$this->dep_vol} n°{$this->numero_dep_vol}";
-        }
-
-        return $this->dep_vol;
+        return $this->hasMany(Demander::class, 'id_propriete')
+            ->orderBy('ordre', 'asc');
     }
 
-    // ✅ Accessors qui retournent toujours une valeur
-    public function getTitreAttribute($value)
+    /**
+     * ✅ Demandes actives uniquement
+     */
+    public function demandesActives(): HasMany
     {
-        return $value; // Laravel retourne null comme undefined en JSON
+        return $this->hasMany(Demander::class, 'id_propriete')
+            ->where('status', Demander::STATUS_ACTIVE)
+            ->orderBy('ordre');
+    }
+
+    /**
+     * ✅ Demandes archivées
+     */
+    public function demandesArchivees(): HasMany
+    {
+        return $this->hasMany(Demander::class, 'id_propriete')
+            ->where('status', Demander::STATUS_ARCHIVE)
+            ->orderBy('ordre');
+    }
+
+    // ============================================
+    // ACCESSORS
+    // ============================================
+
+    /**
+     * ✅ Formater le Dep/Vol complet avec numéro
+     */
+    public function getDepVolCompletAttribute(): ?string
+    {
+        if (!$this->dep_vol) {
+            return null;
+        }
+
+        $depVol = trim($this->dep_vol);
+        
+        if ($this->numero_dep_vol) {
+            $numero = trim($this->numero_dep_vol);
+            return "{$depVol} n°{$numero}";
+        }
+
+        return $depVol;
+    }
+
+    /**
+     * Formater le titre complet
+     */
+    public function getTitreCompletAttribute(): ?string
+    {
+        return $this->titre ? "TNº{$this->titre}" : null;
     }
 
     /**
@@ -147,261 +151,152 @@ class Propriete extends Model
     }
 
     /**
-     * Obtenir le prix selon la vocation et le district
-     */
-    public function getPrixUnitaire(): int
-    {
-        if (!$this->dossier || !$this->dossier->district) {
-            return 0;
-        }
-
-        $district = $this->dossier->district;
-        
-        return match(strtolower($this->vocation)) {
-            'edilitaire' => $district->edilitaire ?? 0,
-            'agricole' => $district->agricole ?? 0,
-            'forestiere', 'forestière' => $district->forestiere ?? 0,
-            'touristique' => $district->touristique ?? 0,
-            default => 0,
-        };
-    }
-
-    /**
-     * Calculer le prix total
-     */
-    public function getPrixTotal(): int
-    {
-        if (!$this->contenance) {
-            return 0;
-        }
-
-        return $this->getPrixUnitaire() * $this->contenance;
-    }
-
-    /**
-     * Formater le titre complet
-     */
-    public function getTitreCompletAttribute(): string
-    {
-        if (!$this->titre) {
-            return 'Non attribué';
-        }
-        return "TNº{$this->titre}";
-    }
-
-    // ============ MÉTHODES MÉTIER ============
-
-    /**
-     * ✅ Vérifier si peut être supprimée
-     * RÈGLE : Une propriété ne peut être supprimée que si elle n'a AUCUNE demande
-     */
-    public function canBeDeleted(): bool
-    {
-        return $this->getStatusInfo()['can_be_deleted'];
-    }
-
-   
-
-    public function getStatusInfo(): array
-    {
-
-        return Cache::remember(
-        "propriete.{$this->id}.status_info",
-        60, // 1 minute
-        function () {
-             // ✅ Cache d'instance pour éviter les requêtes répétées
-            if (isset($this->_status_cache)) {
-                return $this->_status_cache;
-            }
-            
-            $hasActives = $this->demandesActives()->exists();
-            $hasArchivees = $this->demandesArchivees()->exists();
-            $isArchived = !$hasActives && $hasArchivees;
-            $isDossierClosed = $this->dossier && $this->dossier->is_closed;
-            
-            $this->_status_cache = [
-                'has_actives' => $hasActives,
-                'has_archivees' => $hasArchivees,
-                'is_archived' => $isArchived,
-                'is_dossier_closed' => $isDossierClosed,
-                'can_be_modified' => !$isArchived && !$isDossierClosed,
-                'can_be_deleted' => !$hasActives && !$hasArchivees && !$isDossierClosed,
-                'can_be_archived' => $hasActives && !$isArchived,
-                'can_be_unarchived' => $isArchived && !$isDossierClosed,
-            ];
-            
-            return $this->_status_cache;
-        }
-    );
-       
-    }
-
-    /**
-     * ✅ CORRECTION CRITIQUE : Accessor is_archived
-     * 
-     * LOGIQUE CORRECTE :
-     * - ACQUISE = Au moins 1 demande archivée ET AUCUNE demande active
-     * - VIDE = Aucune demande du tout
-     * - ACTIVE = Au moins 1 demande active (peu importe les archivées)
+     * ✅ OPTIMISÉ : Cache les stats
      */
     public function getIsArchivedAttribute(): bool
     {
-        // Si aucune demande, pas archivée (juste vide)
-        if (!$this->demandes()->exists()) {
-            return false;
-        }
-        
-        $hasActiveDemandes = $this->demandes()
-            ->where('status', Demander::STATUS_ACTIVE)
-            ->exists();
-        
-        $hasArchivedDemandes = $this->demandes()
-            ->where('status', Demander::STATUS_ARCHIVE)
-            ->exists();
-        
-        // ✅ CRITÈRE : AUCUNE active ET au moins UNE archivée
-        return !$hasActiveDemandes && $hasArchivedDemandes;
+        $stats = $this->getDemandesStats();
+        return $stats['actives'] === 0 && $stats['archivees'] > 0;
     }
 
-    /**
-     * ✅ NOUVEAU : Vérifier si propriété est vide
-     */
     public function getIsEmptyAttribute(): bool
     {
-        return !$this->demandes()->exists();
+        $stats = $this->getDemandesStats();
+        return $stats['actives'] === 0 && $stats['archivees'] === 0;
     }
 
-    /**
-     * ✅ NOUVEAU : Vérifier si propriété a des demandes actives
-     */
     public function getHasActiveDemandesAttribute(): bool
     {
-        return $this->demandes()
-            ->where('status', Demander::STATUS_ACTIVE)
-            ->exists();
+        $stats = $this->getDemandesStats();
+        return $stats['actives'] > 0;
     }
 
     public function getStatusLabelAttribute(): string
     {
-        if ($this->is_empty) {
-            return 'Vide';
-        }
-        
         if ($this->is_archived) {
             return 'Acquise';
         }
-        
+
         if ($this->has_active_demandes) {
             return 'Active';
         }
-        
+
+        if ($this->is_empty) {
+            return 'Vide';
+        }
+
         return 'Inconnu';
     }
 
-    
-
-    public function canBeModified(): bool {
-        return $this->getStatusInfo()['can_be_modified'];
-    }
+    // ============================================
+    // MÉTHODES HELPER
+    // ============================================
 
     /**
-     * Obtenir le nombre de demandeurs actifs
+     * ✅ OPTIMISÉ : Obtenir les statistiques avec cache
      */
-    public function getActiveDemandeursCount(): int
+    public function getDemandesStats(): array
     {
-        return $this->demandesActives()->count();
+        static $cache = [];
+        
+        $cacheKey = "propriete_{$this->id}_stats";
+        
+        if (isset($cache[$cacheKey])) {
+            return $cache[$cacheKey];
+        }
+
+        // Utiliser la relation demandes qui est plus performante
+        $demandes = $this->demandes ?? [];
+        
+        $actives = 0;
+        $archivees = 0;
+
+        foreach ($demandes as $demande) {
+            if ($demande->status === Demander::STATUS_ACTIVE) {
+                $actives++;
+            } elseif ($demande->status === Demander::STATUS_ARCHIVE) {
+                $archivees++;
+            }
+        }
+
+        $stats = [
+            'actives' => $actives,
+            'archivees' => $archivees,
+            'total' => $actives + $archivees
+        ];
+
+        $cache[$cacheKey] = $stats;
+
+        return $stats;
     }
 
-    /**
-     * ✅ Obtenir le demandeur principal (ordre = 1)
-     */
-    public function getMainDemandeur(): ?Demandeur
+    public function canBeArchived(): bool
     {
-        $demande = $this->demandesActives()
-            ->where('ordre', 1)
-            ->with('demandeur')
-            ->first();
-
-        return $demande?->demandeur;
+        $stats = $this->getDemandesStats();
+        return $stats['actives'] > 0;
     }
 
-    /**
-     * ✅ Obtenir tous les demandeurs actifs avec ordre
-     */
-    public function getActiveDemandeursWithOrder(): array
+    public function canBeUnarchived(): bool
     {
-        return $this->demandesActives()
-            ->orderBy('ordre')
-            ->with('demandeur')
-            ->get()
-            ->map(function ($demande) {
-                return [
-                    'demande_id' => $demande->id,
-                    'demandeur' => $demande->demandeur,
-                    'ordre' => $demande->ordre,
-                    'is_principal' => $demande->ordre === 1,
-                    'is_consort' => $demande->ordre > 1,
-                    'total_prix' => $demande->total_prix,
-                ];
-            })
-            ->toArray();
+        $stats = $this->getDemandesStats();
+        return $stats['actives'] === 0 && $stats['archivees'] > 0;
     }
 
-    /**
-     * ✅ Obtenir les statistiques complètes
-     */
-
-    // ============ SCOPES ============
-    
-    /**
-     * ✅ Propriétés avec au moins une demande active
-     */
-    public function scopeWithActiveDemandes(Builder $query): Builder
+    public function canBeModified(): bool
     {
-        return $query->whereHas('demandesActives');
+        if ($this->dossier && $this->dossier->is_closed) {
+            return false;
+        }
+
+        return !$this->is_archived;
     }
 
-    /**
-     * ✅ Propriétés sans aucune demande active (vides OU archivées)
-     */
-    public function scopeWithoutActiveDemandes(Builder $query): Builder
+    public function canBeDeleted(): bool
     {
-        return $query->whereDoesntHave('demandesActives');
+        if ($this->dossier && $this->dossier->is_closed) {
+            return false;
+        }
+
+        $stats = $this->getDemandesStats();
+        return $stats['actives'] === 0 && $stats['archivees'] === 0;
     }
 
-    /**
-     * ✅ Propriétés archivées (toutes demandes archivées)
-     */
-    public function scopeArchived(Builder $query): Builder
+    // ============================================
+    // SCOPES
+    // ============================================
+
+    public function scopeWithDossier($query)
     {
-        return $query->whereHas('demandesArchivees')
-            ->whereDoesntHave('demandesActives');
+        return $query->with('dossier');
     }
 
-    /**
-     * ✅ Propriétés sans aucune demande (jamais liées)
-     */
-    public function scopeEmpty(Builder $query): Builder
+    public function scopeWithDemandesAndDemandeurs($query)
     {
-        return $query->whereDoesntHave('demandes');
+        return $query->with(['demandes.demandeur']);
     }
 
-    public function scopeByDossier(Builder $query, int $dossierId): Builder
+    public function scopeActives($query)
     {
-        return $query->where('id_dossier', $dossierId);
+        return $query->whereHas('demandes', function ($q) {
+            $q->where('status', Demander::STATUS_ACTIVE);
+        });
     }
 
-    public function scopeByVocation(Builder $query, string $vocation): Builder
+    public function scopeArchivees($query)
     {
-        return $query->where('vocation', 'ilike', "%{$vocation}%");
+        return $query->whereDoesntHave('demandes', function ($q) {
+            $q->where('status', Demander::STATUS_ACTIVE);
+        })->whereHas('demandes', function ($q) {
+            $q->where('status', Demander::STATUS_ARCHIVE);
+        });
     }
 
-    public function scopeByNature(Builder $query, string $nature): Builder
+    public function scopeSansDemandeur($query)
     {
-        return $query->where('nature', 'ilike', "%{$nature}%");
+        return $query->doesntHave('demandes');
     }
 
-    public function scopeIncomplete(Builder $query): Builder
+    public function scopeIncomplets($query)
     {
         return $query->where(function ($q) {
             $q->whereNull('titre')
@@ -413,107 +308,23 @@ class Propriete extends Model
         });
     }
 
-    public function scopeByLot(Builder $query, string $lot): Builder
-    {
-        return $query->where('lot', 'like', "%{$lot}%");
-    }
+    // ============================================
+    // BOOT
+    // ============================================
 
-    // ============ BOOT METHOD ============
-    
-    /**
-     * ✅ Vérifier si peut être archivée
-     */
-    public function canBeArchived(): bool
-    {
-        return $this->getStatusInfo()['can_be_archived'];
-    }
-
-    /**
-     * ✅ Vérifier si peut être désarchivée
-     */
-    public function canBeUnarchived(): bool
-    {
-        return $this->getStatusInfo()['can_be_unarchived'];
-    }
-
-    /**
-     * ✅ Vérifier si peut être liée à un demandeur
-     */
-    public function canBeLinked(): bool
-    {
-        $status = $this->getStatusInfo();
-        return !$status['is_dossier_closed'] && !$status['is_archived'];
-    }
-
-    /**
-     * ✅ Obtenir la raison du blocage de liaison
-     */
-    public function getLinkBlockReason(): string
-    {
-        $status = $this->getStatusInfo();
-        
-        if ($status['is_dossier_closed']) {
-            return "❌ Impossible de lier : le dossier est fermé.";
-        }
-        
-        if ($status['is_archived']) {
-            return "❌ Impossible de lier : la propriété Lot {$this->lot} est archivée (acquise).";
-        }
-        
-        return '';
-    }
-
-    /**
-     * ✅ MISE À JOUR : Utiliser le cache de getStatusInfo()
-     */
-    public function getDemandesStats(): array
-    {
-        $status = $this->getStatusInfo();
-        
-        return [
-            'actives' => $status['has_actives'] ? $this->demandesActives()->count() : 0,
-            'archivees' => $status['has_archivees'] ? $this->demandesArchivees()->count() : 0,
-            'total' => $this->demandes()->count(),
-            'is_archived' => $status['is_archived'],
-            'is_empty' => !$status['has_actives'] && !$status['has_archivees'],
-        ];
-    }
-
-    /**
-     * ✅ Obtenir les statistiques complètes
-     */
-    public function getStats(): array
-{
-    return Cache::remember(
-        "propriete.{$this->id}.stats",
-        config('cache.statistics.ttl'),
-        function () {
-            // 1. Récupérer ou calculer le statut AVANT de l'utiliser
-            $status = $this->getStatus(); // adapte au nom de ta méthode réelle
-
-            return [
-                'demandes'            => $this->getDemandesStats(),
-                'is_archived'         => $this->is_archived,
-                'has_active_demandes' => $status['has_actives'] ?? false,
-                'prix_unitaire'       => $this->getPrixUnitaire(),
-                'prix_total'          => $this->getPrixTotal(),
-                'is_complete'         => !$this->is_incomplete,
-                'demandeur_principal' => $this->getMainDemandeur()?->nom_complet,
-                'can_be_deleted'      => $status['can_be_deleted'] ?? false,
-                'can_be_modified'     => $status['can_be_modified'] ?? false,
-                'can_be_archived'     => $status['can_be_archived'] ?? false,
-                'can_be_unarchived'   => $status['can_be_unarchived'] ?? false,
-            ];
-        }
-    );
-}
-    // Invalider le cache lors des modifications
     protected static function boot()
     {
         parent::boot();
-        
-        static::updated(function ($propriete) {
-            Cache::forget("propriete.{$propriete->id}.stats");
+
+        static::deleting(function ($propriete) {
+            Log::info('Suppression propriété', [
+                'propriete_id' => $propriete->id,
+                'lot' => $propriete->lot,
+                'demandes_count' => $propriete->demandes()->count()
+            ]);
+
+            $propriete->demandes()->delete();
+            $propriete->piecesJointes()->delete();
         });
     }
 }

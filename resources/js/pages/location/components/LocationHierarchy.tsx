@@ -1,13 +1,16 @@
-// resources/js/pages/location/components/LocationHierarchy.tsx
+// resources/js/pages/location/components/LocationHierarchy.tsx - ✅ AVEC RECHERCHE INTÉGRÉE
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
     Accordion,
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Map, MapPin, Building2, LandPlot } from 'lucide-react';
+import { Map, MapPin, LandPlot, Search, X, Eye } from 'lucide-react';
 import DistrictCard from './DistrictCard';
 import type { District } from '@/types';
 
@@ -26,6 +29,7 @@ interface Province {
 
 interface LocationHierarchyProps {
     provinces: Province[];
+    allProvinces: Province[];
     expandedProvinces: string[];
     expandedRegions: string[];
     isSuperAdmin: boolean;
@@ -36,10 +40,13 @@ interface LocationHierarchyProps {
     onDistrictView: (district: District) => void;
     totalRegions: number;
     totalDistricts: number;
+    search: string;
+    onSearchChange: (value: string) => void;
 }
 
 export default function LocationHierarchy({
     provinces,
+    allProvinces,
     expandedProvinces,
     expandedRegions,
     isSuperAdmin,
@@ -49,25 +56,73 @@ export default function LocationHierarchy({
     onDistrictEdit,
     onDistrictView,
     totalRegions,
-    totalDistricts
+    totalDistricts,
+    search,
+    onSearchChange
 }: LocationHierarchyProps) {
     return (
         <Card className="border-0 shadow-lg">
-            <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 p-6 border-b">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        <Map className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            {/* ✅ Header compact style propriétés */}
+            <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-6 py-3 border-b">
+                <div className="flex items-center justify-between gap-4">
+                    {/* Titre et stats */}
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
+                            <Map className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-bold leading-tight">Hiérarchie des Localisations</h2>
+                            <p className="text-xs text-muted-foreground truncate">
+                                {provinces.length} / {allProvinces.length} province{allProvinces.length > 1 ? 's' : ''} • {totalRegions} région{totalRegions > 1 ? 's' : ''} • {totalDistricts} district{totalDistricts > 1 ? 's' : ''}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold">Hiérarchie des Localisations</h2>
-                        <p className="text-sm text-muted-foreground">
-                            {provinces.length} province{provinces.length > 1 ? 's' : ''} • {totalRegions} région{totalRegions > 1 ? 's' : ''} • {totalDistricts} district{totalDistricts > 1 ? 's' : ''}
-                        </p>
-                    </div>
+
+                    {/* Badge mode lecture */}
+                    {!isSuperAdmin && (
+                        <Badge variant="outline" className="hidden lg:flex bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 gap-1 flex-shrink-0">
+                            <Eye className="h-3 w-3" />
+                            Mode lecture
+                        </Badge>
+                    )}
                 </div>
             </div>
             
-            <CardContent className="p-6">
+            <CardContent className="p-4">
+                {/* ✅ Barre de recherche intégrée - Style propriétés */}
+                <div className="mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Rechercher une province, région ou district..."
+                                value={search}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                className="pl-9 pr-9 h-9"
+                            />
+                            {search && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onSearchChange('')}
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* Résumé des résultats */}
+                    {search && (
+                        <div className="text-xs text-muted-foreground mt-2 ml-1">
+                            {provinces.length} résultat{provinces.length > 1 ? 's' : ''} sur {allProvinces.length}
+                        </div>
+                    )}
+                </div>
+
+                {/* ✅ Hiérarchie */}
                 {provinces.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                         <LandPlot className="h-12 w-12 mx-auto mb-4 opacity-50" />

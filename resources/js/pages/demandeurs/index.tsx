@@ -1,4 +1,4 @@
-// pages/demandeurs/index.tsx - ✅ VERSION CORRIGÉE FINALE
+// pages/demandeurs/index.tsx - ✅ VERSION COMPACTE
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import {
     sortDemandeurs, 
     matchesSearch 
 } from './helpers';
+import EditDemandeurDialog from './components/EditDemandeurDialog';
 
 export default function DemandeursIndex({
     demandeurs,
@@ -39,8 +40,9 @@ export default function DemandeursIndex({
     
     const [selectedDemandeur, setSelectedDemandeur] = useState<DemandeurWithProperty | null>(null);
     const [showDemandeurDetail, setShowDemandeurDetail] = useState(false);
+    const [editDemandeur, setEditDemandeur] = useState<DemandeurWithProperty | null>(null);
+    const [showEditDialog, setShowEditDialog] = useState(false);
     
-    // ✅ CORRECTION: Ajout de l'état manquant
     const [selectedPropriete, setSelectedPropriete] = useState<Propriete | null>(null);
     const [showProprieteDetail, setShowProprieteDetail] = useState(false);
 
@@ -105,6 +107,24 @@ export default function DemandeursIndex({
         }
     };
 
+    const handleEditDemandeur = (demandeur: DemandeurWithProperty) => {
+        setShowDemandeurDetail(false);
+        setShowProprieteDetail(false);
+        setTimeout(() => {
+            setEditDemandeur(demandeur);
+            setShowEditDialog(true);
+        }, 100);
+    };
+
+    const handleCloseEditDialog = (open: boolean) => {
+        setShowEditDialog(open);
+        if (!open) {
+            setTimeout(() => {
+                setEditDemandeur(null);
+            }, 300);
+        }
+    };
+
     // HANDLERS - FILTRES
     const handleFiltreStatutChange = (newFiltre: FiltreStatutType) => {
         setFiltreStatut(newFiltre);
@@ -133,38 +153,38 @@ export default function DemandeursIndex({
     return (
         <>
             <Card className="border-0 shadow-lg">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 p-6 border-b">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                                <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                {/* Header Compact */}
+                <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 px-6 py-3 border-b">
+                    <div className="flex items-center justify-between gap-4">
+                        {/* Titre */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex-shrink-0">
+                                <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
-                            <div>
-                                <h2 className="text-xl font-bold">Demandeurs</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    {demandeursFiltres.length} demandeur{demandeursFiltres.length > 1 ? 's' : ''} 
-                                    {demandeursFiltres.length !== demandeurs.length && ` sur ${demandeurs.length}`}
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-bold leading-tight">Demandeurs</h2>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {demandeursFiltres.length} / {demandeurs.length}
                                 </p>
                             </div>
                         </div>
                         
-                        {/* Légende */}
-                        <div className="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
-                                <span>Données incomplètes</span>
+                        {/* Légende compacte */}
+                        <div className="hidden xl:flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
+                                <span>Incomplet</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-amber-200 dark:bg-amber-900/50 rounded border border-amber-300 dark:border-amber-800"></div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-amber-200 dark:bg-amber-900/50 rounded border border-amber-300 dark:border-amber-800"></div>
                                 <span>Sans propriété</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <CardContent className="p-6">
-                    {/* Filtres */}
+                <CardContent className="p-4">
+                    {/* Filtres sur une seule ligne */}
                     <DemandeurFilters
                         filtreStatut={filtreStatut}
                         onFiltreStatutChange={handleFiltreStatutChange}
@@ -187,6 +207,7 @@ export default function DemandeursIndex({
                         isDemandeurIncomplete={isDemandeurIncomplete}
                         onLinkPropriete={onLinkPropriete}
                         onSelectDemandeur={handleSelectDemandeur}
+                        onEditDemandeur={handleEditDemandeur}
                         onDissociate={onDissociate}
                         currentPage={currentPage}
                         itemsPerPage={itemsPerPage}
@@ -214,6 +235,14 @@ export default function DemandeursIndex({
                 onSelectDemandeur={handleSelectDemandeurFromPropriete}
                 dossierClosed={dossier.is_closed}
                 onDissociate={onDissociate}
+            />
+            
+            <EditDemandeurDialog
+                demandeur={editDemandeur}
+                open={showEditDialog}
+                onOpenChange={handleCloseEditDialog}
+                dossierId={dossier.id}
+                dossierClosed={dossier.is_closed}
             />
         </>
     );

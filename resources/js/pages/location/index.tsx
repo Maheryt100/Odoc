@@ -1,4 +1,4 @@
-// resources/js/pages/location/index.tsx - ✅ VERSION REDESIGNÉE
+// resources/js/pages/location/index.tsx - ✅ VERSION REDESIGNÉE AVEC RECHERCHE INTÉGRÉE
 
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
@@ -6,13 +6,12 @@ import type { BreadcrumbItem, District, User } from '@/types';
 import { useForm } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
-import { MapPin } from 'lucide-react';
+import { Info, MapPin, Sparkles } from 'lucide-react';
 
 // Import des composants
-import LocationStatsCards from './components/LocationStatsCards';
-import LocationSearchBar from './components/LocationSearchBar';
 import LocationHierarchy from './components/LocationHierarchy';
 import PriceEditDialog from './components/PriceEditDialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Province {
     id: number;
@@ -158,22 +157,28 @@ export default function LocationIndex({ provinces, auth }: LocationPageProps) {
                     </p>
                 </div>
 
-                {/* ✅ Statistiques redesignées */}
-                <LocationStatsCards
-                    totalDistricts={stats.totalDistricts}
-                    districtsWithPrices={stats.districtsWithPrices}
-                />
+                {/* ✅ Alert Info */}
+                <Alert className="border-0 shadow-md bg-gradient-to-r from-orange-50/50 to-amber-50/50 dark:from-orange-950/20 dark:to-amber-950/20">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
+                            <Info className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <AlertDescription className="text-sm text-orange-900 dark:text-orange-100">
+                            <span className="font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Structure hiérarchique complète
+                            </span>
+                            <span className="text-orange-700 dark:text-orange-300">
+                                — Configurez les tarifs par district et suivez la couverture géographique
+                            </span>
+                        </AlertDescription>
+                    </div>
+                </Alert>
 
-                {/* ✅ Recherche */}
-                <LocationSearchBar
-                    search={search}
-                    onSearchChange={setSearch}
-                    isSuperAdmin={isSuperAdmin}
-                />
-
-                {/* Hiérarchie */}
+                {/* ✅ Hiérarchie avec recherche intégrée */}
                 <LocationHierarchy
                     provinces={filteredProvinces}
+                    allProvinces={provinces}
                     expandedProvinces={expandedProvinces}
                     expandedRegions={expandedRegions}
                     isSuperAdmin={isSuperAdmin}
@@ -184,6 +189,8 @@ export default function LocationIndex({ provinces, auth }: LocationPageProps) {
                     onDistrictView={(district) => openDistrictDialog(district, 'view')}
                     totalRegions={totalRegions}
                     totalDistricts={stats.totalDistricts}
+                    search={search}
+                    onSearchChange={setSearch}
                 />
             </div>
 

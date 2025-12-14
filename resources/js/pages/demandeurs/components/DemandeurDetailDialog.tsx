@@ -1,3 +1,4 @@
+// demandeurs/components/DemandeurDetailDialog.tsx
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -184,7 +185,6 @@ export default function DemandeurDetailDialog({
         }
     };
 
-    // ✅ CORRECTION : URL correcte selon votre route Laravel
     const handleEdit = () => {
         onOpenChange(false);
         setTimeout(() => {
@@ -211,7 +211,7 @@ export default function DemandeurDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader className="pb-4 border-b">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -605,15 +605,14 @@ export default function DemandeurDetailDialog({
                     </Tabs>
                 </div>
 
-                {/* ✅ FOOTER avec bouton Modifier en bas */}
-                {!dossierClosed && (
+                {/* {!dossierClosed && (
                     <DialogFooter className="pt-4 border-t">
                         <Button onClick={handleEdit} size="default">
                             <Pencil className="mr-2 h-4 w-4" />
                             Modifier ce demandeur
                         </Button>
                     </DialogFooter>
-                )}
+                )} */}
             </DialogContent>
         </Dialog>
     );

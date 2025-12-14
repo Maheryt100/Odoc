@@ -1,10 +1,39 @@
-// Statistics/components/tabs/DemandeursTab.tsx
+// Statistics/components/DemandeursTab.tsx
+// ✅ VERSION AVEC OPACITÉS COHÉRENTES (opacity=1 acquis, 0.5 actifs, 0.2 sans propriété)
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, UserX, Activity, TrendingUp } from 'lucide-react';
-import { StatCard } from '../StatCard';
 import { Separator } from '@/components/ui/separator';
-import type { DemandeursStats, DemographicsStats, ChartData } from '../../types';
+
+interface DemandeursStats {
+    total: number;
+    avec_propriete: number;
+    sans_propriete: number;
+    actifs: number;
+    age_moyen: number;
+}
+
+interface DemographicsStats {
+    total_hommes: number;
+    total_femmes: number;
+    pourcentage_hommes: number;
+    pourcentage_femmes: number;
+    hommes_actifs: number;
+    femmes_actifs: number;
+    hommes_acquis: number;
+    femmes_acquis: number;
+    hommes_sans_propriete: number;
+    femmes_sans_propriete: number;
+    age_moyen: number;
+    tranches_age: {
+        [key: string]: number;
+    };
+}
+
+interface ChartData {
+    // Ajoutez les types de graphiques si nécessaire
+}
 
 interface Props {
     demandeurs: DemandeursStats;
@@ -12,10 +41,45 @@ interface Props {
     charts: ChartData;
 }
 
+function StatCard({ 
+    icon: Icon, 
+    title, 
+    value, 
+    subtitle, 
+    color 
+}: { 
+    icon: any; 
+    title: string; 
+    value: string; 
+    subtitle: string; 
+    color: string; 
+}) {
+    const colorClasses = {
+        blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600',
+        green: 'bg-green-50 dark:bg-green-900/20 text-green-600',
+        purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
+        orange: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600'
+    };
+
+    return (
+        <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="pt-6">
+                <div className={`p-3 rounded-lg w-fit ${colorClasses[color as keyof typeof colorClasses]}`}>
+                    <Icon className="h-6 w-6" />
+                </div>
+                <div className="mt-4">
+                    <p className="text-sm text-muted-foreground">{title}</p>
+                    <p className="text-2xl font-bold mt-1">{value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
     const totalPersonnes = demographics.total_hommes + demographics.total_femmes;
     
-    // Calculer les pourcentages avec gestion des valeurs nulles
     const calculatePercentage = (value: number, total: number): number => {
         return total > 0 ? Math.round((value / total) * 100) : 0;
     };
@@ -53,7 +117,7 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                         icon={UserX}
                         title="Sans propriété"
                         value={demandeurs.sans_propriete.toString()}
-                        subtitle="À traiter"
+                        subtitle={`${calculatePercentage(demandeurs.sans_propriete, demandeurs.total)}% du total`}
                         color="orange"
                     />
                 </div>
@@ -69,7 +133,7 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <span className="text-2xl">👨</span>
+                                
                                 Hommes
                             </CardTitle>
                             <CardDescription>
@@ -78,39 +142,54 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Statistiques hommes */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                    <p className="text-sm text-muted-foreground">Actifs</p>
-                                    <p className="text-2xl font-bold text-blue-600">
-                                        {demographics.hommes_actifs}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {calculatePercentage(demographics.hommes_actifs, demographics.total_hommes)}% des hommes
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-blue-100 dark:bg-blue-800/20 rounded-lg">
-                                    <p className="text-sm text-muted-foreground">Acquis</p>
-                                    <p className="text-2xl font-bold text-blue-700">
+                            <div className="grid grid-cols-3 gap-3">
+                                 <div className="p-3 bg-blue-600 dark:bg-blue-600 rounded-lg">
+                                    <p className="text-xs text-white/90">Acquis</p>
+                                    <p className="text-xl font-bold text-white">
                                         {demographics.hommes_acquis}
                                     </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {calculatePercentage(demographics.hommes_acquis, demographics.total_hommes)}% des hommes
+                                    <p className="text-xs text-white/80 mt-1">
+                                        {calculatePercentage(demographics.hommes_acquis, demographics.total_hommes)}%
                                     </p>
                                 </div>
+                                <div className="p-3 bg-blue-600/50 dark:bg-blue-600/50 rounded-lg">
+                                    <p className="text-xs text-white/90">En cours</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {demographics.hommes_actifs}
+                                    </p>
+                                    <p className="text-xs text-white/80 mt-1">
+                                        {calculatePercentage(demographics.hommes_actifs, demographics.total_hommes)}%
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-blue-600/20 dark:bg-blue-600/20 rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Sans prop.</p>
+                                    <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                                        {demographics.hommes_sans_propriete}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {calculatePercentage(demographics.hommes_sans_propriete, demographics.total_hommes)}%
+                                    </p>
+                                </div>
+                                
+                               
                             </div>
 
-                            {/* Barre de progression hommes */}
+                            {/* Barre de progression hommes avec 3 sections */}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground">Progression</span>
-                                    <div className="flex gap-4 text-xs">
+                                    <div className="flex gap-3 text-xs flex-wrap">
                                         <div className="flex items-center gap-1">
                                             <div className="w-3 h-3 rounded-full bg-blue-600" />
-                                            <span>Acquis: {demographics.hommes_acquis}</span>
+                                            <span>Acquis</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <div className="w-3 h-3 rounded-full bg-blue-400" />
-                                            <span>En cours: {demographics.hommes_actifs}</span>
+                                            <div className="w-3 h-3 rounded-full bg-blue-600/50" />
+                                            <span>En cours</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-3 h-3 rounded-full bg-blue-600/20" />
+                                            <span>Sans prop.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -118,30 +197,47 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                                 <div className="flex w-full h-8 rounded-full overflow-hidden border border-border">
                                     {demographics.total_hommes > 0 ? (
                                         <>
-                                            <div 
-                                                className="bg-blue-600 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                                style={{ 
-                                                    width: `${calculatePercentage(demographics.hommes_acquis, demographics.total_hommes)}%` 
-                                                }}
-                                            >
-                                                {demographics.hommes_acquis > 0 && (
-                                                    <span className="px-2">
-                                                        {calculatePercentage(demographics.hommes_acquis, demographics.total_hommes)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div 
-                                                className="bg-blue-400 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                                style={{ 
-                                                    width: `${calculatePercentage(demographics.hommes_actifs, demographics.total_hommes)}%` 
-                                                }}
-                                            >
-                                                {demographics.hommes_actifs > 0 && (
-                                                    <span className="px-2">
-                                                        {calculatePercentage(demographics.hommes_actifs, demographics.total_hommes)}%
-                                                    </span>
-                                                )}
-                                            </div>
+                                            {/* Acquis (opacity=1) */}
+                                            {demographics.hommes_acquis > 0 && (
+                                                <div 
+                                                    className="bg-blue-600 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                    style={{ 
+                                                        width: `${calculatePercentage(demographics.hommes_acquis, demographics.total_hommes)}%` 
+                                                    }}
+                                                >
+                                                    {calculatePercentage(demographics.hommes_acquis, demographics.total_hommes) > 10 && (
+                                                        <span className="px-2">{demographics.hommes_acquis}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            
+                                            {/* En cours (opacity=0.5) */}
+                                            {demographics.hommes_actifs > 0 && (
+                                                <div 
+                                                    className="bg-blue-600/50 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                    style={{ 
+                                                        width: `${calculatePercentage(demographics.hommes_actifs, demographics.total_hommes)}%` 
+                                                    }}
+                                                >
+                                                    {calculatePercentage(demographics.hommes_actifs, demographics.total_hommes) > 10 && (
+                                                        <span className="px-2">{demographics.hommes_actifs}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            
+                                            {/* Sans propriété (opacity=0.2) */}
+                                            {demographics.hommes_sans_propriete > 0 && (
+                                                <div 
+                                                    className="bg-blue-600/20 flex items-center justify-center text-xs text-blue-900 dark:text-blue-100 font-medium transition-all"
+                                                    style={{ 
+                                                        width: `${calculatePercentage(demographics.hommes_sans_propriete, demographics.total_hommes)}%` 
+                                                    }}
+                                                >
+                                                    {calculatePercentage(demographics.hommes_sans_propriete, demographics.total_hommes) > 10 && (
+                                                        <span className="px-2">{demographics.hommes_sans_propriete}</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
                                         <div className="w-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
@@ -166,39 +262,52 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Statistiques femmes */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
-                                    <p className="text-sm text-muted-foreground">Actives</p>
-                                    <p className="text-2xl font-bold text-pink-600">
-                                        {demographics.femmes_actifs}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {calculatePercentage(demographics.femmes_actifs, demographics.total_femmes)}% des femmes
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-pink-100 dark:bg-pink-800/20 rounded-lg">
-                                    <p className="text-sm text-muted-foreground">Acquises</p>
-                                    <p className="text-2xl font-bold text-pink-700">
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="p-3 bg-pink-600 dark:bg-pink-600 rounded-lg">
+                                    <p className="text-xs text-white/90">Acquises</p>
+                                    <p className="text-xl font-bold text-white">
                                         {demographics.femmes_acquis}
                                     </p>
+                                    <p className="text-xs text-white/80 mt-1">
+                                        {calculatePercentage(demographics.femmes_acquis, demographics.total_femmes)}%
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-pink-600/50 dark:bg-pink-600/50 rounded-lg">
+                                    <p className="text-xs text-white/90">En cours</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {demographics.femmes_actifs}
+                                    </p>
+                                    <p className="text-xs text-white/80 mt-1">
+                                        {calculatePercentage(demographics.femmes_actifs, demographics.total_femmes)}%
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-pink-600/20 dark:bg-pink-600/20 rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Sans prop.</p>
+                                    <p className="text-xl font-bold text-pink-900 dark:text-pink-100">
+                                        {demographics.femmes_sans_propriete}
+                                    </p>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        {calculatePercentage(demographics.femmes_acquis, demographics.total_femmes)}% des femmes
+                                        {calculatePercentage(demographics.femmes_sans_propriete, demographics.total_femmes)}%
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Barre de progression femmes */}
+                            {/* Barre de progression femmes avec 3 sections */}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground">Progression</span>
-                                    <div className="flex gap-4 text-xs">
+                                    <div className="flex gap-3 text-xs flex-wrap">
                                         <div className="flex items-center gap-1">
                                             <div className="w-3 h-3 rounded-full bg-pink-600" />
-                                            <span>Acquises: {demographics.femmes_acquis}</span>
+                                            <span>Acquises</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <div className="w-3 h-3 rounded-full bg-pink-400" />
-                                            <span>En cours: {demographics.femmes_actifs}</span>
+                                            <div className="w-3 h-3 rounded-full bg-pink-600/50" />
+                                            <span>En cours</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-3 h-3 rounded-full bg-pink-600/20" />
+                                            <span>Sans prop.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -206,30 +315,47 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                                 <div className="flex w-full h-8 rounded-full overflow-hidden border border-border">
                                     {demographics.total_femmes > 0 ? (
                                         <>
-                                            <div 
-                                                className="bg-pink-600 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                                style={{ 
-                                                    width: `${calculatePercentage(demographics.femmes_acquis, demographics.total_femmes)}%` 
-                                                }}
-                                            >
-                                                {demographics.femmes_acquis > 0 && (
-                                                    <span className="px-2">
-                                                        {calculatePercentage(demographics.femmes_acquis, demographics.total_femmes)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div 
-                                                className="bg-pink-400 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                                style={{ 
-                                                    width: `${calculatePercentage(demographics.femmes_actifs, demographics.total_femmes)}%` 
-                                                }}
-                                            >
-                                                {demographics.femmes_actifs > 0 && (
-                                                    <span className="px-2">
-                                                        {calculatePercentage(demographics.femmes_actifs, demographics.total_femmes)}%
-                                                    </span>
-                                                )}
-                                            </div>
+                                            {/* Acquises (opacity=1) */}
+                                            {demographics.femmes_acquis > 0 && (
+                                                <div 
+                                                    className="bg-pink-600 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                    style={{ 
+                                                        width: `${calculatePercentage(demographics.femmes_acquis, demographics.total_femmes)}%` 
+                                                    }}
+                                                >
+                                                    {calculatePercentage(demographics.femmes_acquis, demographics.total_femmes) > 10 && (
+                                                        <span className="px-2">{demographics.femmes_acquis}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            
+                                            {/* En cours (opacity=0.5) */}
+                                            {demographics.femmes_actifs > 0 && (
+                                                <div 
+                                                    className="bg-pink-600/50 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                    style={{ 
+                                                        width: `${calculatePercentage(demographics.femmes_actifs, demographics.total_femmes)}%` 
+                                                    }}
+                                                >
+                                                    {calculatePercentage(demographics.femmes_actifs, demographics.total_femmes) > 10 && (
+                                                        <span className="px-2">{demographics.femmes_actifs}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            
+                                            {/* Sans propriété (opacity=0.2) */}
+                                            {demographics.femmes_sans_propriete > 0 && (
+                                                <div 
+                                                    className="bg-pink-600/20 flex items-center justify-center text-xs text-pink-900 dark:text-pink-100 font-medium transition-all"
+                                                    style={{ 
+                                                        width: `${calculatePercentage(demographics.femmes_sans_propriete, demographics.total_femmes)}%` 
+                                                    }}
+                                                >
+                                                    {calculatePercentage(demographics.femmes_sans_propriete, demographics.total_femmes) > 10 && (
+                                                        <span className="px-2">{demographics.femmes_sans_propriete}</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
                                         <div className="w-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
@@ -288,7 +414,6 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                             })}
                         </div>
 
-                        {/* Message si aucune donnée d'âge */}
                         {Object.values(demographics.tranches_age).every(count => count === 0) && (
                             <div className="text-center py-8 text-muted-foreground">
                                 <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-50" />

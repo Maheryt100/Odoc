@@ -20,7 +20,7 @@ class Dossier extends Model
 
     protected $fillable = [
         'nom_dossier',
-        'numero_ouverture',
+        'numero_ouverture', // ✅ Maintenant un integer
         'date_descente_debut',
         'date_descente_fin',
         'date_ouverture',
@@ -50,6 +50,7 @@ class Dossier extends Model
         'date_descente_fin' => 'date',
         'date_ouverture' => 'date',
         'date_fermeture' => 'date',
+        'numero_ouverture' => 'integer', // ✅ Cast en integer
     ];
 
     protected $with = ['closedBy'];
@@ -93,15 +94,6 @@ class Dossier extends Model
         )->where('demander.status', 'active');
     }
 
-
-     // ❌ NE PAS FAIRE CECI (filtrage au niveau du modèle)
-    // public function proprietes(): HasMany
-    // {
-    //     return $this->hasMany(Propriete::class, 'id_dossier')
-    //         ->where('is_archived', false); // ❌ Mauvais
-    // }
-
-    // ✅ Si vous voulez filtrer, créez des relations séparées
     public function proprietesActives(): HasMany
     {
         return $this->hasMany(Propriete::class, 'id_dossier')
@@ -113,6 +105,7 @@ class Dossier extends Model
         return $this->hasMany(Propriete::class, 'id_dossier')
             ->where('is_archived', true);
     }
+
     // ============ ACCESSORS ============
     
     public function getDemandeursCountAttribute()
@@ -125,36 +118,27 @@ class Dossier extends Model
         return $this->proprietes()->count();
     }
 
-    /**
-     * Vérifier si le dossier est fermé
-     */
     public function getIsClosedAttribute(): bool
     {
         return $this->date_fermeture !== null;
     }
 
-    /**
-     * Vérifier si le dossier est ouvert
-     */
     public function getIsOpenAttribute(): bool
     {
         return $this->date_fermeture === null;
     }
 
     /**
-     * Affichage formaté du numéro d'ouverture
+     * ✅ MODIFIÉ : Affichage simple du numéro
      */
     public function getNumeroOuvertureDisplayAttribute(): string
     {
         if (!$this->numero_ouverture) {
             return 'Non assigné';
         }
-        return $this->numero_ouverture;
+        return "N° {$this->numero_ouverture}";
     }
 
-    /**
-     * Label du statut pour l'affichage
-     */
     public function getStatusLabelAttribute(): string
     {
         if ($this->is_closed) {
@@ -175,9 +159,6 @@ class Dossier extends Model
         return 'Incomplet';
     }
 
-    /**
-     * Vérifier si le dossier peut être modifié
-     */
     public function getCanBeModifiedAttribute(): bool
     {
         return $this->is_open;
@@ -217,11 +198,11 @@ class Dossier extends Model
     }
 
     /**
-     * Recherche par numéro d'ouverture
+     * ✅ MODIFIÉ : Recherche par numéro d'ouverture (integer)
      */
-    public function scopeByNumeroOuverture(Builder $query, string $numero): Builder
+    public function scopeByNumeroOuverture(Builder $query, int $numero): Builder
     {
-        return $query->where('numero_ouverture', 'like', "%{$numero}%");
+        return $query->where('numero_ouverture', $numero);
     }
 
     // ============ MÉTHODES DE GESTION DE FERMETURE ============
@@ -238,7 +219,6 @@ class Dossier extends Model
             'motif_fermeture' => $motif,
         ]);
 
-        // Log de l'activité
         if (class_exists(\App\Models\ActivityLog::class) && $userId) {
             \App\Models\ActivityLog::create([
                 'id_user' => $userId,
@@ -271,7 +251,6 @@ class Dossier extends Model
             'motif_fermeture' => null,
         ]);
 
-        // Log de l'activité
         if (class_exists(\App\Models\ActivityLog::class) && $userId) {
             \App\Models\ActivityLog::create([
                 'id_user' => $userId,
@@ -349,9 +328,6 @@ class Dossier extends Model
         return "{$this->commune}, {$this->fokontany} - District {$this->district->nom_district}";
     }
 
-    /**
-     * Obtenir le nombre de jours depuis l'ouverture
-     */
     public function getDaysSinceOpeningAttribute(): int
     {
         if (!$this->date_ouverture) {
@@ -365,9 +341,6 @@ class Dossier extends Model
         return $dateOuverture->diffInDays(now());
     }
 
-    /**
-     * Obtenir le nombre de jours depuis la fermeture
-     */
     public function getDaysSinceClosureAttribute(): ?int
     {
         if (!$this->date_fermeture) {
@@ -396,39 +369,27 @@ class Dossier extends Model
     }
 
     /**
-     * Générer automatiquement un numéro d'ouverture
-     * Format: DST-YYYY-0001
+     * ✅ NOUVEAU : Génération automatique du prochain numéro global
+     * Retourne simplement le prochain numéro incrémental
      */
-    public static function generateNumeroOuverture(int $districtId): string
+    public static function getNextNumeroOuverture(): int
     {
-        $district = District::find($districtId);
-        $year = now()->year;
-        
-        // Récupérer le dernier numéro pour ce district cette année
-        $lastDossier = static::where('id_district', $districtId)
-            ->where('numero_ouverture', 'like', "DST{$district->id}-{$year}-%")
-            ->orderBy('numero_ouverture', 'desc')
-            ->first();
+        // ✅ Désactiver temporairement tous les scopes pour obtenir le vrai maximum global
+        $maxNumero = static::withoutGlobalScopes()->max('numero_ouverture');
+        return ($maxNumero ?? 0) + 1;
+    }
 
-        if ($lastDossier && $lastDossier->numero_ouverture) {
-            // Extraire le numéro séquentiel
-            preg_match('/DST\d+-\d+-(\d+)$/', $lastDossier->numero_ouverture, $matches);
-            $lastNumber = isset($matches[1]) ? intval($matches[1]) : 0;
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        // Format: DST1-2025-0001
-        return sprintf("DST%d-%d-%04d", $district->id, $year, $nextNumber);
+    public static function getLastNumeroOuverture(): ?int
+    {
+        return static::withoutGlobalScopes()->max('numero_ouverture');
     }
 
     /**
-     * Vérifier si un numéro d'ouverture existe déjà
+     * ✅ MODIFIÉ : Vérifier si un numéro existe déjà
      */
-    public static function numeroOuvertureExists(string $numero, ?int $excludeId = null): bool
+    public static function numeroOuvertureExists(int $numero, ?int $excludeId = null): bool
     {
-        $query = static::where('numero_ouverture', $numero);
+        $query = static::withoutGlobalScopes()->where('numero_ouverture', $numero);
         
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
@@ -443,16 +404,18 @@ class Dossier extends Model
     {
         parent::boot();
 
-        // Générer automatiquement le numéro d'ouverture à la création si non fourni
+        /**
+         * ✅ MODIFIÉ : Ne plus générer automatiquement le numéro
+         * L'utilisateur doit le saisir manuellement (pré-rempli dans le formulaire)
+         */
         static::creating(function ($dossier) {
-            if (empty($dossier->numero_ouverture)) {
-                $dossier->numero_ouverture = static::generateNumeroOuverture($dossier->id_district);
-            }
-
             // Définir la date d'ouverture par défaut
             if (empty($dossier->date_ouverture)) {
                 $dossier->date_ouverture = $dossier->date_descente_debut ?? now();
             }
+            
+            // ✅ Le numéro doit être fourni par l'utilisateur via le formulaire
+            // On ne le génère plus automatiquement ici
         });
     }
 }

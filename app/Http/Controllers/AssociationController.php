@@ -16,15 +16,13 @@ use Illuminate\Validation\ValidationException;
 class AssociationController extends Controller
 {
     /**
-     * ✅ Lier un demandeur à une propriété
+     *  Lier un demandeur à une propriété
      */
     public function link(Request $request)
     {
         $validated = $request->validate([
             'id_demandeur' => 'required|exists:demandeurs,id',
             'id_propriete' => 'required|exists:proprietes,id',
-            // ❌ PROBLÈME : ordre est requis mais pas fourni par le frontend
-            // ✅ SOLUTION : Le rendre nullable et auto-calculer
             'ordre' => 'nullable|integer|min:1',
         ]);
 
@@ -34,7 +32,7 @@ class AssociationController extends Controller
             $demandeur = Demandeur::findOrFail($validated['id_demandeur']);
             $propriete = Propriete::with('dossier')->findOrFail($validated['id_propriete']);
 
-            // ✅ VÉRIFICATIONS MÉTIER
+            //  VÉRIFICATIONS MÉTIER
             if (!$propriete->canBeLinked()) {
                 DB::rollBack();
                 return back()->with('error', $propriete->getLinkBlockReason());

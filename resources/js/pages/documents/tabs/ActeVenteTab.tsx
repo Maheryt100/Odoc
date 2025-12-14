@@ -163,7 +163,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
             setTimeout(() => {
                 router.reload({ 
                     only: ['proprietes'],
-                    preserveUrl: true, // ✅ CORRIGÉ
+                    preserveUrl: true,
                     onSuccess: () => {
                         toast.success(`${type === 'recu' ? 'Reçu' : 'Acte de vente'} généré avec succès !`);
                         setIsGenerating(false);
@@ -194,7 +194,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-                {/* Sélection Propriété */}
                 <div className="space-y-2">
                     <Label className="text-sm font-semibold">Propriété</Label>
                     <Select 
@@ -215,7 +214,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                     <SelectItem key={prop.id} value={String(prop.id)}>
                                         <div className="flex items-center gap-4 py-2">
 
-                                            {/* Badges (Lot, Titre, Reçu, ADV, Incomplet) */}
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <Badge variant="outline" className="font-mono">
                                                     Lot {prop.lot}
@@ -244,7 +242,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                                 )}
                                             </div>
 
-                                            {/* Principal & consorts sur la même ligne */}
                                             {principal && (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
 
@@ -274,7 +271,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                     </Select>
                 </div>
 
-                {/* ✅ Affichage amélioré de la propriété sélectionnée */}
                 {selectedPropriete && selectedProprieteData && (
                     <Card className="border-2 border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
                         <CardContent className="p-4 space-y-4">
@@ -313,7 +309,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                 </div>
                             </div>
 
-                            {/* Hiérarchie des demandeurs */}
                             {demandeurPrincipal && (
                                 <div className="pt-3 border-t border-violet-200 dark:border-violet-800">
                                     <div className="flex items-start gap-3">
@@ -358,7 +353,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                 </div>
                             )}
 
-                            {/* Prix total si disponible */}
                             {selectedProprieteData.demandeurs_lies && selectedProprieteData.demandeurs_lies.length > 0 && (
                                 <div className="pt-3 border-t border-violet-200 dark:border-violet-800">
                                     <div className="flex items-center gap-2 text-sm">

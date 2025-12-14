@@ -10,10 +10,18 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| Endpoints API pour AJAX/Fetch depuis le frontend
 */
 
-Route::prefix('api')->name('api.')->group(function () {
+// ✅ CORRECTION : Supprimer le prefix('api') car déjà géré par Laravel
+Route::middleware(['auth', 'district.scope'])->name('api.')->group(function () {
+    
+    // ========================================================================
+    // RECHERCHE DEMANDEURS
+    // ========================================================================
+    
+    // ✅ Ceci créera l'URL: /api/demandeur/search-by-cin/{cin}
+    Route::get('/demandeur/search-by-cin/{cin}', [DemandeurController::class, 'searchByCin'])
+        ->name('demandeur.search-by-cin');
     
     // ========================================================================
     // ASSOCIATIONS
@@ -32,11 +40,8 @@ Route::prefix('api')->name('api.')->group(function () {
         ->name('propriete.demandeurs-full');
     
     // ========================================================================
-    // RECHERCHE
+    // RECHERCHE GLOBALE
     // ========================================================================
-    
-    Route::get('/demandeur/search-by-cin/{cin}', [DemandeurController::class, 'searchByCin'])
-        ->name('demandeur.search-by-cin');
     
     Route::get('/global-search', [GlobalSearchController::class, 'search'])
         ->name('global-search');
@@ -53,6 +58,9 @@ Route::prefix('api')->name('api.')->group(function () {
     
     Route::get('/demandeur/{id}/check-delete', [ApiController::class, 'checkDemandeurDelete'])
         ->name('demandeur.check-delete');
+        
+    Route::get('/dossier/{id}/check-delete', [ApiController::class, 'checkDossierDelete'])
+    ->name('dossier.check-delete');
     
     // ========================================================================
     // VALIDATION DE SUPPRESSION - PROPRIÉTÉS

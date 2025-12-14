@@ -9,8 +9,9 @@ import { QuickActions } from './components/QuickActions';
 import { AlertsSection } from './components/AlertsSection';
 import { StatisticsLinkButton } from './components/StatisticsLinkButton';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, LayoutDashboard } from 'lucide-react';
+import { Calendar, Info, LayoutDashboard, Sparkles } from 'lucide-react';
 import type { DashboardProps } from './types';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function DashboardIndex({ kpis, charts, alerts, recentActivity }: DashboardProps) {
     return (
@@ -40,6 +41,25 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
 
                 {/* Alertes */}
                 <AlertsSection alerts={alerts} />
+                
+                <Alert className="border-0 shadow-md bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-950/20 dark:to-blue-950/20">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg shrink-0">
+                            <Info className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <AlertDescription className="text-sm text-indigo-900 dark:text-indigo-100">
+                            <span className="font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Vue d'ensemble centralisée
+                            </span>
+                            <span className="text-indigo-700 dark:text-indigo-300">
+                                — Surveillez vos KPIs, graphiques et activités récentes en temps réel
+                            </span>
+                        </AlertDescription>
+                    </div>
+                </Alert>
+
+                
 
                 {/* KPIs Principaux */}
                 <KPICards kpis={kpis} />

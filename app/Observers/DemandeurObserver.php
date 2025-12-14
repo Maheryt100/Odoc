@@ -39,9 +39,9 @@ class DemandeurObserver
             $this->cache->forgetDistrictCache($districtId);
         }
         
-        Log::info("Cache invalidé suite à modification Demandeur", [
-            'demandeur_id' => $demandeur->id,
-            'districts_affected' => $districtIds->toArray(),
-        ]);
+        // Log::info("Cache invalidé suite à modification Demandeur", [
+        //     'demandeur_id' => $demandeur->id,
+        //     'districts_affected' => $districtIds->toArray(),
+        // ]);
     }
 }

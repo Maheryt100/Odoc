@@ -1,8 +1,8 @@
-// ============================================
-// 3️⃣ js/pages/demandes/types.ts
-// ============================================
-import type { Demandeur, Propriete } from '@/types';
+// pages/demandes/types.ts - ✅ TYPES COMPLETS
 
+import type { Demandeur, Propriete, Dossier } from '@/types';
+
+// Types de base pour une demande
 export interface DemandeBase {
     id: number;
     id_demandeur: number;
@@ -26,6 +26,75 @@ export interface DemandeWithRelations extends DemandeWithStatus {
 
 export type Demande = DemandeWithRelations;
 
+// Type pour un document de demande (utilisé dans ResumeDossier)
+export interface DocumentDemande {
+    id: number;
+    id_propriete: number;
+    propriete: {
+        id: number;
+        lot: string;
+        titre?: string;
+        contenance?: number;
+        nature?: string;
+        vocation?: string;
+        proprietaire?: string;
+        situation?: string;
+        is_archived?: boolean;
+    };
+    demandeurs: Array<{
+        id: number;
+        id_demandeur: number;
+        demandeur: {
+            id: number;
+            titre_demandeur?: string;
+            nom_demandeur: string;
+            prenom_demandeur?: string;
+            cin: string;
+            domiciliation?: string;
+            telephone?: string;
+            date_naissance?: string;
+            lieu_naissance?: string;
+            date_delivrance?: string;
+            lieu_delivrance?: string;
+            occupation?: string;
+            nom_mere?: string;
+        };
+    }>;
+    total_prix: number;
+    status: 'active' | 'archive';
+    status_consort: boolean;
+    nombre_demandeurs: number;
+}
+
+// Type avec propriétés computed
+export interface DemandeWithDetails extends DocumentDemande {
+    _computed: {
+        isIncomplete: boolean;
+        hasValidDemandeurs: boolean;
+        isArchived: boolean;
+    };
+}
+
+// Props pour le composant principal
+export interface DemandesIndexProps {
+    documents: {
+        data: DocumentDemande[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
+    dossier: Dossier & {
+        proprietes?: Propriete[];
+    };
+    onArchive: (doc: DocumentDemande) => void;
+    onUnarchive: (doc: DocumentDemande) => void;
+}
+
+// Types pour les filtres
+export type FiltreStatutDemandeType = 'tous' | 'actives' | 'archivees' | 'incompletes';
+export type TriDemandeType = 'date' | 'lot' | 'demandeur' | 'prix' | 'statut';
+
+// Type pour les données de formulaire
 export interface DemandeFormData {
     id_demandeur: number;
     id_propriete: number;
@@ -33,11 +102,12 @@ export interface DemandeFormData {
     status_consort: boolean;
 }
 
+// Type pour les filtres de recherche
 export interface DemandeFilters {
     status?: 'active' | 'archive' | 'all';
     propriete_id?: number;
     demandeur_id?: number;
 }
 
-// Type pour le pivot (legacy support)
+// Legacy support
 export type Demander = Demande;

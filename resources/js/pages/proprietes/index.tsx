@@ -1,6 +1,6 @@
-// pages/proprietes/index.tsx - ✅ VERSION FINALE AVEC SYSTÈME COMPLET
+// pages/proprietes/index.tsx - ✅ VERSION AVEC NETTOYAGE D'OVERLAY
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { LandPlot } from 'lucide-react';
 import type { Propriete, Dossier, Demandeur } from '@/types';
@@ -45,6 +45,57 @@ export default function ProprietesIndex({
 
     const itemsPerPage = 10;
 
+    // CORRECTION : Nettoyer les overlays résiduels au montage et démontage
+    useEffect(() => {
+        // Fonction de nettoyage
+        const cleanupOverlays = () => {
+            // Nettoyer les overlays de radix-ui
+            const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+            overlays.forEach(overlay => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            });
+            
+            // Nettoyer les styles du body
+            document.body.style.pointerEvents = '';
+            document.body.style.overflow = '';
+            
+            // Supprimer data-state du body si présent
+            document.body.removeAttribute('data-scroll-locked');
+        };
+
+        // Nettoyage initial
+        cleanupOverlays();
+
+        // Nettoyage au démontage
+        return () => {
+            cleanupOverlays();
+        };
+    }, []);
+
+    // Nettoyer quand tous les dialogs sont fermés
+    useEffect(() => {
+        if (!showProprieteDetail && !showDemandeurDetail) {
+            const timer = setTimeout(() => {
+                // Nettoyer les overlays résiduels
+                const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+                overlays.forEach(overlay => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                });
+                
+                // Restaurer le body
+                document.body.style.pointerEvents = '';
+                document.body.style.overflow = '';
+                document.body.removeAttribute('data-scroll-locked');
+            }, 300);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [showProprieteDetail, showDemandeurDetail]);
+
     // FILTRAGE ET TRI
     const proprietesFiltrees = useMemo(() => {
         let filtered = filterProprietesByStatus(proprietes, filtreStatut);
@@ -75,25 +126,36 @@ export default function ProprietesIndex({
 
     // HANDLERS - DIALOGUES
     const handleSelectPropriete = (propriete: Propriete) => {
-        setShowDemandeurDetail(false);
-        setTimeout(() => {
-            setSelectedPropriete(propriete);
-            setShowProprieteDetail(true);
-        }, 100);
+        // Fermer le dialog demandeur d'abord
+        if (showDemandeurDetail) {
+            setShowDemandeurDetail(false);
+            setSelectedDemandeur(null);
+        }
+        
+        // Ouvrir le dialog propriété
+        setSelectedPropriete(propriete);
+        setShowProprieteDetail(true);
     };
 
     const handleSelectDemandeurFromPropriete = (demandeur: Demandeur) => {
+        // Fermer le dialog propriété
         setShowProprieteDetail(false);
+        
         const demandeurComplet = demandeurs.find(d => d.id === demandeur.id) || demandeur;
+        
         setTimeout(() => {
+            setSelectedPropriete(null);
             setSelectedDemandeur(demandeurComplet);
             setShowDemandeurDetail(true);
         }, 100);
     };
 
     const handleSelectProprieteFromDemandeur = (propriete: Propriete) => {
+        // Fermer le dialog demandeur
         setShowDemandeurDetail(false);
+        
         setTimeout(() => {
+            setSelectedDemandeur(null);
             setSelectedPropriete(propriete);
             setShowProprieteDetail(true);
         }, 100);
@@ -102,14 +164,18 @@ export default function ProprietesIndex({
     const handleCloseProprieteDialog = (open: boolean) => {
         setShowProprieteDetail(open);
         if (!open) {
-            setTimeout(() => setSelectedPropriete(null), 300);
+            setTimeout(() => {
+                setSelectedPropriete(null);
+            }, 100);
         }
     };
 
     const handleCloseDemandeurDialog = (open: boolean) => {
         setShowDemandeurDetail(open);
         if (!open) {
-            setTimeout(() => setSelectedDemandeur(null), 300);
+            setTimeout(() => {
+                setSelectedDemandeur(null);
+            }, 100);
         }
     };
 
@@ -141,42 +207,42 @@ export default function ProprietesIndex({
     return (
         <>
             <Card className="border-0 shadow-lg">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20 p-6 border-b">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-                                <LandPlot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                {/* Header Compact */}
+                <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20 px-6 py-3 border-b">
+                    <div className="flex items-center justify-between gap-4">
+                        {/* Titre */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="p-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-lg flex-shrink-0">
+                                <LandPlot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                             </div>
-                            <div>
-                                <h2 className="text-xl font-bold">Propriétés</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    {proprietesFiltrees.length} propriété{proprietesFiltrees.length > 1 ? 's' : ''}
-                                    {proprietesFiltrees.length !== proprietes.length && ` sur ${proprietes.length}`}
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-bold leading-tight">Propriétés</h2>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {proprietesFiltrees.length} / {proprietes.length}
                                 </p>
                             </div>
                         </div>
                         
-                        {/* Légende */}
-                        <div className="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
-                                <span>Données incomplètes</span>
+                        {/* Légende compacte */}
+                        <div className="hidden xl:flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
+                                <span>Incomplet</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-amber-200 dark:bg-amber-900/50 rounded border border-amber-300 dark:border-amber-800"></div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-amber-200 dark:bg-amber-900/50 rounded border border-amber-300 dark:border-amber-800"></div>
                                 <span>Sans demandeur</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-green-200 dark:bg-green-900/50 rounded border border-green-300 dark:border-green-800"></div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-green-200 dark:bg-green-900/50 rounded border border-green-300 dark:border-green-800"></div>
                                 <span>Acquise</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <CardContent className="p-6">
-                    {/* Filtres */}
+                <CardContent className="p-4">
+                    {/* Filtres sur une seule ligne */}
                     <ProprieteFilters
                         filtreStatut={filtreStatut}
                         onFiltreStatutChange={handleFiltreStatutChange}
@@ -209,7 +275,7 @@ export default function ProprietesIndex({
                 </CardContent>
             </Card>
 
-            {/* Dialogues */}
+            {/* Dialogues - Toujours rendus pour gérer le nettoyage */}
             <ProprieteDetailDialog
                 propriete={selectedPropriete}
                 open={showProprieteDetail}

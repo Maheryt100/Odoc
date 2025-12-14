@@ -77,10 +77,10 @@ class DemanderObserver
             $propriete = $demander->propriete;
 
             if (!$propriete) {
-                Log::warning("Observer Demander [{$event}]: Propriété introuvable", [
-                    'demander_id'   => $demander->id,
-                    'id_propriete'  => $demander->id_propriete,
-                ]);
+                // Log::warning("Observer Demander [{$event}]: Propriété introuvable", [
+                //     'demander_id'   => $demander->id,
+                //     'id_propriete'  => $demander->id_propriete,
+                // ]);
                 return;
             }
 
@@ -88,19 +88,19 @@ class DemanderObserver
             $prix = PrixCalculatorService::calculerPrixTotal($propriete);
             $demander->total_prix = $prix;
 
-            Log::info("Observer Demander [{$event}]: Prix calculé", [
-                'demander_id'   => $demander->id ?? 'nouveau',
-                'propriete_id'  => $propriete->id,
-                'lot'           => $propriete->lot,
-                'prix_calcule'  => $prix,
-            ]);
+            // Log::info("Observer Demander [{$event}]: Prix calculé", [
+            //     'demander_id'   => $demander->id ?? 'nouveau',
+            //     'propriete_id'  => $propriete->id,
+            //     'lot'           => $propriete->lot,
+            //     'prix_calcule'  => $prix,
+            // ]);
 
         } catch (\Exception $e) {
-            Log::error("Observer Demander [{$event}]: Erreur calcul prix", [
-                'demander_id'   => $demander->id ?? 'nouveau',
-                'id_propriete'  => $demander->id_propriete,
-                'error'         => $e->getMessage(),
-            ]);
+            // Log::error("Observer Demander [{$event}]: Erreur calcul prix", [
+            //     'demander_id'   => $demander->id ?? 'nouveau',
+            //     'id_propriete'  => $demander->id_propriete,
+            //     'error'         => $e->getMessage(),
+            // ]);
         }
     }
 
@@ -114,11 +114,11 @@ class DemanderObserver
 
             $this->cache->forgetDistrictCache($district);
 
-            Log::info("🗑️ Cache invalidé suite à modification Demande", [
-                'demande_id'    => $demander->id,
-                'propriete_id'  => $demander->id_propriete,
-                'district_id'   => $district,
-            ]);
+            // Log::info("Cache invalidé suite à modification Demande", [
+            //     'demande_id'    => $demander->id,
+            //     'propriete_id'  => $demander->id_propriete,
+            //     'district_id'   => $district,
+            // ]);
         }
     }
 
@@ -128,10 +128,10 @@ class DemanderObserver
     public function saved(Demander $demander): void
     {
         if ($demander->total_prix > 0) {
-            Log::info("Demande sauvegardée avec prix", [
-                'demander_id' => $demander->id,
-                'total_prix'  => $demander->total_prix,
-            ]);
+            // Log::info("Demande sauvegardée avec prix", [
+            //     'demander_id' => $demander->id,
+            //     'total_prix'  => $demander->total_prix,
+            // ]);
         }
     }
 }

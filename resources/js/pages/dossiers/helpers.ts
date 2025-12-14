@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/helpers.ts
+// resources/js/pages/dossiers/helpers.ts - ✅ VERSION CORRIGÉE
 import type { Dossier, DossierPermissions } from './types';
 
 /**
@@ -96,10 +96,10 @@ export function getDaysSince(dateString: string): number {
 }
 
 /**
- * Vérifier si un dossier est complet (a des demandeurs et propriétés)
+ * ✅ CORRIGÉ : Vérifier si un dossier est complet
  */
 export function isDossierComplete(dossier: Dossier): boolean {
-    return dossier.demandeurs_count > 0 && dossier.proprietes_count > 0;
+    return (dossier.demandeurs_count ?? 0) > 0 && (dossier.proprietes_count ?? 0) > 0;
 }
 
 /**
@@ -134,7 +134,7 @@ export function getDossierStatusBadge(dossier: Dossier): {
 }
 
 /**
- * Calculer toutes les permissions pour un dossier
+ * ✅ CORRIGÉ : Calculer toutes les permissions pour un dossier
  */
 export function calculateDossierPermissions(
     dossier: Dossier,
@@ -200,10 +200,12 @@ export function filterDossiers(
         // Filtre par recherche
         if (filters.search) {
             const searchLower = filters.search.toLowerCase();
+            const numeroStr = dossier.numero_ouverture?.toString() || '';
             const matchesSearch = 
                 dossier.nom_dossier.toLowerCase().includes(searchLower) ||
                 dossier.commune.toLowerCase().includes(searchLower) ||
-                dossier.circonscription.toLowerCase().includes(searchLower);
+                dossier.circonscription.toLowerCase().includes(searchLower) ||
+                numeroStr.includes(searchLower);
             
             if (!matchesSearch) return false;
         }

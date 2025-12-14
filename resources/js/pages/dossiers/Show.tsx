@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ArrowLeft, FileOutput, FileText } from 'lucide-react';
+import { ArrowLeft, FileOutput, FileText, Info, Sparkles } from 'lucide-react';
 import type { BreadcrumbItem, Demandeur, Propriete, SharedData } from '@/types';
 import type { BaseDemandeur, BasePropriete } from '@/pages/PiecesJointes/pieces-jointes';
 import type { Dossier, DossierPermissions } from './types';
@@ -25,6 +25,7 @@ import ProprietesIndex from '@/pages/proprietes/index';
 import PiecesJointesIndex from '@/pages/PiecesJointes/Index';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getDisabledDocumentButtonTooltip } from './helpers';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PageProps {
     dossier: Dossier & {
@@ -331,7 +332,6 @@ export default function Show() {
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
                 
-                {/* ✅ HEADER MODERNE - Style uniforme avec Generate et Resume */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div>
@@ -353,15 +353,14 @@ export default function Show() {
                             </Link>
                         </Button>
 
-                        {/* ✅ Résumé - gradient emerald/teal */}
+              
                         <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
                             <Link href={route('demandes.resume', dossier.id)}>
                                 <FileText className="h-4 w-4 mr-2" />
-                                Résumé demandes
+                                Liste des demandes
                             </Link>
                         </Button>
 
-                        {/* ✅ Documents - avec tooltip si désactivé */}
                         {permissions.canGenerateDocuments ? (
                             <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
                                 <Link href={route('documents.generate', dossier.id)}>
@@ -393,6 +392,23 @@ export default function Show() {
                     </div>
                 </div>
 
+                <Alert className="border-0 shadow-md bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg shrink-0">
+                            <Info className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <AlertDescription className="text-sm text-emerald-900 dark:text-emerald-100">
+                            <span className="font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Gestion complète du dossier
+                            </span>
+                            <span className="text-emerald-700 dark:text-emerald-300">
+                                — Gérez les demandeurs, propriétés et documents associés en un seul endroit
+                            </span>
+                        </AlertDescription>
+                    </div>
+                </Alert>
+
                 {/* Section Info */}
                 <DossierInfoSection
                     dossier={dossier}
@@ -401,6 +417,8 @@ export default function Show() {
                     onCloseToggle={() => setCloseDialogOpen(true)}
                     permissions={permissions}
                 />
+
+                
 
                 <DemandeursIndex
                     demandeurs={allDemandeurs}
@@ -417,7 +435,7 @@ export default function Show() {
                     proprietes={proprietes}
                     dossier={dossier}
                     demandeurs={allDemandeurs}
-                    onSelectPropriete={(prop: any) => console.log('Sélectionné:', prop)}
+                    // onSelectPropriete={(prop: any) => console.log('Sélectionné:', prop)}
                     onDeletePropriete={handleDeletePropriete}
                     onArchivePropriete={handleArchivePropriete}
                     onUnarchivePropriete={handleUnarchivePropriete}

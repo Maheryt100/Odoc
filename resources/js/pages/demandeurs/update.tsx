@@ -1,3 +1,4 @@
+// demandeurs/update.tsx
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -166,7 +167,7 @@ export default function DemandeurUpdate() {
                 {/* ✅ FORMULAIRE PRINCIPAL */}
                 <form onSubmit={handleSubmit}>
                     <Card className="border-0 shadow-xl">
-                        <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 border-b">
+                        {/* <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 border-b">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                                     <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -178,7 +179,7 @@ export default function DemandeurUpdate() {
                                     </CardDescription>
                                 </div>
                             </div>
-                        </CardHeader>
+                        </CardHeader> */}
                         
                         <CardContent className="p-8 space-y-8">
                             {/* SECTION CIN */}

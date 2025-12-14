@@ -4,18 +4,17 @@ namespace App\Http\Controllers\Dashboard\Services\Dashboard;
 
 use App\Models\Dossier;
 use App\Models\Propriete;
+use App\Models\Demandeur;
 use App\Models\Demander;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
 /**
- * Service de graphiques optimisé pour le Dashboard
+ * ✅ VERSION HARMONISÉE avec Statistics
  * 
- * Contraintes :
- * - Période fixe : 12 derniers mois
- * - Cache agressif : 10 minutes
- * - Graphiques simplifiés
+ * Changement majeur : Tous les comptages sont maintenant basés sur date_ouverture des dossiers
+ * pour assurer la cohérence avec le module Statistics
  */
 class DashboardChartService
 {
@@ -36,7 +35,8 @@ class DashboardChartService
                 'dossiers_timeline' => $this->getDossiersTimeline(),
                 'proprietes_status' => $this->getProprietesStatus(),
                 'top_communes' => $this->getTopCommunes(5),
-                'evolution_mensuelle' => $this->getEvolutionMensuelle(),
+                'evolution_mensuelle' => $this->getDossiersTimeline(), // Compatibilité
+                'evolution_complete' => $this->getEvolutionComplete(), // ✅ HARMONISÉ
                 'revenus_par_vocation' => $this->getRevenuParVocation(),
                 'performance_trimestrielle' => $this->getPerformanceQuarterly(),
             ];
@@ -79,7 +79,54 @@ class DashboardChartService
     }
 
     /**
-     * 🏘️ Statut des propriétés
+     * ✅ HARMONISÉ : Évolution complète avec MÊME LOGIQUE que Statistics
+     * 
+     * Règle unifiée : On compte par date_ouverture des dossiers associés
+     */
+    private function getEvolutionComplete(): array
+    {
+        $user = $this->getAuthUser();
+        $months = $this->getLast12Months();
+        
+        return collect($months)->map(function($month) use ($user) {
+            // ✅ Dossiers ouverts dans le mois
+            $dossiers = Dossier::query()
+                ->when(!$user->canAccessAllDistricts(), fn($q) => $q->where('id_district', $user->id_district))
+                ->whereBetween('date_ouverture', [$month['start'], $month['end']])
+                ->count();
+            
+            // ✅ Propriétés liées aux dossiers ouverts ce mois
+            $proprietes = Propriete::query()
+                ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
+                    $q->whereHas('dossier', fn($q2) => $q2->where('id_district', $user->id_district));
+                })
+                ->whereHas('dossier', function($q) use ($month) {
+                    $q->whereBetween('date_ouverture', [$month['start'], $month['end']]);
+                })
+                ->count();
+            
+            // ✅ CORRIGÉ : Demandeurs liés aux dossiers ouverts ce mois
+            // On utilise la même logique que Statistics
+            $demandeurs = Demandeur::query()
+                ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
+                    $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
+                })
+                ->whereHas('dossiers', function($q) use ($month) {
+                    $q->whereBetween('date_ouverture', [$month['start'], $month['end']]);
+                })
+                ->count();
+            
+            return [
+                'month' => $month['label'],
+                'dossiers' => $dossiers,
+                'proprietes' => $proprietes,
+                'demandeurs' => $demandeurs,
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Statut des propriétés
      */
     private function getProprietesStatus(): array
     {
@@ -122,14 +169,6 @@ class DashboardChartService
             ->limit($limit)
             ->get()
             ->toArray();
-    }
-
-    /**
-     * 📊 Évolution mensuelle (12 mois)
-     */
-    private function getEvolutionMensuelle(): array
-    {
-        return $this->getDossiersTimeline(); // Alias pour compatibilité
     }
 
     /**

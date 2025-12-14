@@ -1,7 +1,7 @@
 <?php
 
 # ============================================================
-# config/broadcasting.php - Vérifier la configuration
+# config/broadcasting.php ne sera plus utilisé
 # ============================================================
 
 return [

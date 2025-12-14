@@ -1,4 +1,4 @@
-// components/ProprieteDetailDialog.tsx 
+// proprietes/components/ProprieteDetailDialog.tsx - ✅ VERSION CORRIGÉE
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ interface Propriete {
     id: number;
     lot: string;
     titre?: string;
+    titre_complet?: string;  // ✅ Utiliser l'accessor Laravel
     type_operation: string;
     contenance?: number;
     proprietaire?: string;
@@ -30,7 +31,7 @@ interface Propriete {
     date_inscription?: string;
     dep_vol?: string;
     numero_dep_vol?: string;
-    dep_vol_complet?: string;
+    dep_vol_complet?: string;  // ✅ Utiliser l'accessor Laravel
     is_archived?: boolean;
     status_label?: string;
     demandes?: Array<{
@@ -81,7 +82,6 @@ export default function ProprieteDetailDialog({
 }: ProprieteDetailDialogProps) {
     if (!propriete) return null;
 
-    // ✅ Utiliser UNIQUEMENT propriete.demandes
     const demandeursActifs = propriete.demandes?.filter(d => d.status === 'active')
         .sort((a, b) => a.ordre - b.ordre) || [];
     
@@ -164,8 +164,7 @@ export default function ProprieteDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
-                {/* Header Fixe */}
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader className="pb-4 border-b">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -177,7 +176,13 @@ export default function ProprieteDetailDialog({
                             </DialogTitle>
                             
                             <div className="flex flex-wrap items-center gap-2 ml-14">
-                                {propriete.titre && (
+                                {/* ✅ Utiliser titre_complet si disponible */}
+                                {propriete.titre_complet && (
+                                    <Badge variant="outline" className="font-mono text-sm">
+                                        {propriete.titre_complet}
+                                    </Badge>
+                                )}
+                                {!propriete.titre_complet && propriete.titre && (
                                     <Badge variant="outline" className="font-mono text-sm">
                                         TNº{propriete.titre}
                                     </Badge>
@@ -202,26 +207,9 @@ export default function ProprieteDetailDialog({
                                 )}
                             </div>
                         </div>
-                        
-                        {!dossierClosed && !propriete.is_archived && (
-                            <Button 
-                                onClick={() => {
-                                    onOpenChange(false);
-                                    setTimeout(() => {
-                                        window.location.href = `/proprietes/${propriete.id}/edit`;
-                                    }, 100);
-                                }}
-                                size="sm"
-                                className="shrink-0"
-                            >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Modifier
-                            </Button>
-                        )}
                     </div>
                 </DialogHeader>
 
-                {/* Contenu Scrollable */}
                 <div className="flex-1 overflow-y-auto px-1">
                     <Tabs defaultValue="informations" className="w-full">
                         <TabsList className="grid w-full grid-cols-3 mb-6">
@@ -239,7 +227,6 @@ export default function ProprieteDetailDialog({
                             </TabsTrigger>
                         </TabsList>
 
-                        {/* ONGLET 1: INFORMATIONS GÉNÉRALES */}
                         <TabsContent value="informations" className="space-y-6">
                             <Card>
                                 <CardHeader>
@@ -258,7 +245,7 @@ export default function ProprieteDetailDialog({
                                     <InfoItem 
                                         icon={FileText} 
                                         label="Titre Foncier" 
-                                        value={propriete.titre ? `TNº${propriete.titre}` : '-'}
+                                        value={propriete.titre_complet || (propriete.titre ? `TNº${propriete.titre}` : '-')}
                                         valueClass="font-mono"
                                     />
                                     <InfoItem 
@@ -314,7 +301,6 @@ export default function ProprieteDetailDialog({
                             </Card>
                         </TabsContent>
 
-                        {/* ONGLET 2: RÉFÉRENCES CADASTRALES */}
                         <TabsContent value="cadastre" className="space-y-6">
                             <Card>
                                 <CardHeader>
@@ -345,6 +331,7 @@ export default function ProprieteDetailDialog({
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="grid md:grid-cols-2 gap-3">
+                                    {/* ✅ CORRECTION : Utiliser dep_vol_complet prioritairement */}
                                     <InfoItem 
                                         icon={FileText} 
                                         label="Dépôt/Volume" 
@@ -388,9 +375,7 @@ export default function ProprieteDetailDialog({
                             </Card>
                         </TabsContent>
 
-                        {/* ONGLET 3: DEMANDEURS */}
                         <TabsContent value="demandeurs" className="space-y-6">
-                            {/* Actifs */}
                             {demandeursActifs.length > 0 && (
                                 <Card>
                                     <CardHeader>
@@ -458,7 +443,6 @@ export default function ProprieteDetailDialog({
                                 </Card>
                             )}
 
-                            {/* Acquis */}
                             {demandeursAcquis.length > 0 && (
                                 <Card>
                                     <CardHeader>
@@ -506,7 +490,6 @@ export default function ProprieteDetailDialog({
                                 </Card>
                             )}
 
-                            {/* Vide */}
                             {demandeursActifs.length === 0 && demandeursAcquis.length === 0 && (
                                 <Card>
                                     <CardContent className="text-center py-12">

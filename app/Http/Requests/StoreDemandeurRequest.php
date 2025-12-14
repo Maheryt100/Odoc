@@ -2,32 +2,28 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Demandeur;
 use App\Rules\ValidCIN;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
+
 
 /**
- * ✅ AMÉLIORATION: Form Request pour validation centralisée
- * Utilisé par DemandeurProprieteController@store
+ * ✅ CORRIGÉ : Validation intelligente CIN
+ * - Autorise les CIN existants (pour mise à jour)
+ * - Bloque uniquement les doublons INTERNES (dans la même requête)
  */
 class StoreDemandeurRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            // Propriété
+            // ========== PROPRIÉTÉ ==========
             'lot' => 'required|string|max:15',
             'nature' => 'required|in:Urbaine,Suburbaine,Rurale',
             'vocation' => 'required|in:Edilitaire,Agricole,Forestière,Touristique',
@@ -49,14 +45,16 @@ class StoreDemandeurRequest extends FormRequest
             'dep_vol' => 'nullable|string|max:50',
             'numero_dep_vol' => 'nullable|string|max:50',
             
-            // Demandeurs (tableau JSON)
-            'demandeurs_json' => 'required|json',
+            // ========== DEMANDEURS ==========
+            'demandeurs_json' => 'required|string',
+            
+            // ✅ Validation de base (sans unique sur CIN)
             'demandeurs' => 'required|array|min:1',
             'demandeurs.*.titre_demandeur' => 'required|string|max:15',
             'demandeurs.*.nom_demandeur' => 'required|string|max:40',
             'demandeurs.*.prenom_demandeur' => 'required|string|max:50',
             'demandeurs.*.date_naissance' => 'required|date|before:-18 years',
-            'demandeurs.*.cin' => ['required', new ValidCIN, 'unique:demandeurs,cin'],
+            'demandeurs.*.cin' => ['required', new ValidCIN],
             
             // Champs facultatifs demandeurs
             'demandeurs.*.lieu_naissance' => 'nullable|string|max:100',
@@ -79,15 +77,9 @@ class StoreDemandeurRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom messages for validator errors.
-     *
-     * @return array<string, string>
-     */
     public function messages(): array
     {
         return [
-            // Propriété
             'lot.required' => 'Le numéro de lot est obligatoire.',
             'nature.required' => 'La nature est obligatoire.',
             'nature.in' => 'La nature doit être: Urbaine, Suburbaine ou Rurale.',
@@ -95,7 +87,6 @@ class StoreDemandeurRequest extends FormRequest
             'vocation.in' => 'La vocation doit être: Edilitaire, Agricole, Forestière ou Touristique.',
             'type_operation.required' => 'Le type d\'opération est obligatoire.',
             
-            // Demandeurs
             'demandeurs.required' => 'Au moins un demandeur est requis.',
             'demandeurs.*.titre_demandeur.required' => 'Le titre est obligatoire (demandeur :position).',
             'demandeurs.*.nom_demandeur.required' => 'Le nom est obligatoire (demandeur :position).',
@@ -103,17 +94,15 @@ class StoreDemandeurRequest extends FormRequest
             'demandeurs.*.date_naissance.required' => 'La date de naissance est obligatoire (demandeur :position).',
             'demandeurs.*.date_naissance.before' => 'Le demandeur doit avoir au moins 18 ans (demandeur :position).',
             'demandeurs.*.cin.required' => 'Le CIN est obligatoire (demandeur :position).',
-            'demandeurs.*.cin.unique' => 'Ce CIN existe déjà (demandeur :position).',
         ];
     }
 
     /**
-     * Préparer les données pour validation
-     * ✅ Décode le JSON des demandeurs automatiquement
+     * ✅ Préparer les données avant validation
      */
     protected function prepareForValidation(): void
     {
-        if ($this->has('demandeurs_json')) {
+        if ($this->has('demandeurs_json') && is_string($this->demandeurs_json)) {
             $demandeurs = json_decode($this->demandeurs_json, true);
             
             if (json_last_error() === JSON_ERROR_NONE && is_array($demandeurs)) {
@@ -125,23 +114,46 @@ class StoreDemandeurRequest extends FormRequest
     }
 
     /**
-     * ✅ Valider après validation standard
-     * Vérifier les doublons CIN dans la requête
+     * ✅ VALIDATION INTELLIGENTE CIN
+     * Vérifie uniquement les doublons INTERNES dans la requête
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (!$validator->errors()->has('demandeurs')) {
-                $demandeurs = $this->input('demandeurs', []);
-                $cins = array_column($demandeurs, 'cin');
-                
-                // Vérifier doublons dans la requête
-                if (count($cins) !== count(array_unique($cins))) {
+            if (!$this->has('demandeurs') || !is_array($this->demandeurs)) {
+                $validator->errors()->add('demandeurs_json', 'Format JSON invalide');
+                return;
+            }
+
+            $demandeurs = $this->demandeurs;
+            $cins = array_column($demandeurs, 'cin');
+            
+            // ✅ 1. Vérifier doublons INTERNES (même CIN plusieurs fois dans le formulaire)
+            $cinCounts = array_count_values($cins);
+            
+            foreach ($demandeurs as $index => $demandeur) {
+                $position = $index + 1;
+                $prefix = "demandeurs.{$index}";
+                $cin = $demandeur['cin'] ?? '';
+
+                // Si CIN apparaît plusieurs fois dans la requête
+                if (isset($cinCounts[$cin]) && $cinCounts[$cin] > 1) {
                     $validator->errors()->add(
-                        'demandeurs', 
-                        'Certains CIN sont dupliqués dans le formulaire.'
+                        "{$prefix}.cin", 
+                        "Ce CIN apparaît plusieurs fois dans le formulaire (demandeur {$position})"
                     );
                 }
+            }
+
+            // ✅ 2. Log pour debug (peut être retiré en production)
+            if (!$validator->errors()->has('demandeurs')) {
+                Log::info('✅ Validation CIN réussie', [
+                    'count' => count($demandeurs),
+                    'cins' => $cins,
+                    'demandeurs_existants' => Demandeur::whereIn('cin', $cins)
+                        ->pluck('nom_demandeur', 'cin')
+                        ->toArray()
+                ]);
             }
         });
     }

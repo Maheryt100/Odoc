@@ -22,6 +22,10 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpWord\TemplateProcessor;
 use App\Services\PrixCalculatorService;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
+
+
 
 class DemandeController extends Controller
 {
@@ -182,9 +186,8 @@ class DemandeController extends Controller
     //     return $mapping[$vocation] ?? strtolower($vocation);
     // }
 
-    /**
-     * ✅ MÉTHODE STORE SIMPLIFIÉE
-     * Le calcul du prix est maintenant géré par l'Observer
+    /*
+     * MÉTHODE STORE SIMPLIFIÉE
      */
     public function store(Request $request)
     {
@@ -212,7 +215,6 @@ class DemandeController extends Controller
                 ]);
             }
 
-            // Création simplifiée - L'Observer calcule automatiquement le prix
             $document = Demander::create([
                 'id_demandeur' => $validate['demandeur_id'],
                 'id_propriete' => $validate['propriete_id'],
@@ -221,7 +223,6 @@ class DemandeController extends Controller
                 'status_consort' => !empty($validate['consort']),
             ]);
 
-            // ✅ SUPPRIMÉ: Mise à jour propriete.status (n'existe plus)
 
             // Gestion des consorts
             if (!empty($validate['consort'])) {
@@ -240,10 +241,24 @@ class DemandeController extends Controller
 
             DB::commit();
 
-            Log::info('Demande créée avec succès', [
-                'demande_id' => $document->id,
-                'prix_final' => $document->total_prix
-            ]);
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_DOCUMENT,
+                $document->id,
+                [
+                    'propriete_id' => $document->id_propriete,
+                    'demandeur_id' => $document->id_demandeur,
+                    'lot' => $propriete->lot,
+                    'titre' => $propriete->titre,
+                    'total_prix' => $document->total_prix,
+                    'has_consorts' => !empty($validated['consort']),
+                    'id_district' => $propriete->dossier->id_district,
+                ]
+            );
+
+            // Log::info('Demande créée avec succès', [
+            //     'demande_id' => $document->id,
+            //     'prix_final' => $document->total_prix
+            // ]);
 
             return redirect()->route('dossiers.list', $dossier->id)
                 ->with('message', 'Document créé avec succès!');
@@ -272,7 +287,6 @@ class DemandeController extends Controller
             $propriete = $demande->propriete;
             $dossier = $propriete->dossier;
 
-            // ✅ UTILISER LE SERVICE POUR RÉCUPÉRER LE PRIX UNITAIRE
             try {
                 $prix = PrixCalculatorService::getPrixUnitaire($propriete);
             } catch (\Exception $e) {
@@ -333,7 +347,7 @@ class DemandeController extends Controller
 
             $type_operation = $propriete->type_operation;
 
-            // ✅ GÉNÉRATION DU DOCUMENT - Code inchangé
+            // GÉNÉRATION DU DOCUMENT - Code inchangé
             if ($demande->status_consort == false) {
                 // SANS CONSORT
                 $templatePath = $type_operation == 'morcellement' 
@@ -548,20 +562,25 @@ class DemandeController extends Controller
 
             $demande = Demander::findOrFail($validated['id']);
             
-            // Marquer la demande comme archivée
             $demande->status = 'archive';
             $demande->save();
 
-            // ✅ SUPPRIMÉ: Bloquer la propriété (n'existe plus)
-            // La propriété est considérée "archivée" si toutes ses demandes sont archivées
-            // Ceci est géré automatiquement par l'accessor Propriete::getIsArchivedAttribute()
-
             DB::commit();
 
-            Log::info('Document archivé', [
-                'demande_id' => $demande->id,
-                'propriete_id' => $demande->id_propriete,
-            ]);
+            ActivityLogger::logArchive(
+                ActivityLog::ENTITY_DOCUMENT,
+                $demande->id,
+                [
+                    'propriete_id' => $demande->id_propriete,
+                    'lot' => $demande->propriete->lot,
+                    'id_district' => $demande->propriete->dossier->id_district,
+                ]
+            );
+
+            // Log::info('Document archivé', [
+            //     'demande_id' => $demande->id,
+            //     'propriete_id' => $demande->id_propriete,
+            // ]);
 
             return redirect()
                 ->route('dossiers.list', $validated['id_dossier'])
@@ -697,10 +716,20 @@ class DemandeController extends Controller
 
             DB::commit();
 
-            Log::info('Document désarchivé', [
-                'demande_id' => $demande->id,
-                'propriete_id' => $demande->id_propriete
-            ]);
+            ActivityLogger::logUnarchive(
+                ActivityLog::ENTITY_DOCUMENT,
+                $demande->id,
+                [
+                    'propriete_id' => $demande->id_propriete,
+                    'lot' => $demande->propriete->lot,
+                    'id_district' => $demande->propriete->dossier->id_district,
+                ]
+            );
+
+            // Log::info('Document désarchivé', [
+            //     'demande_id' => $demande->id,
+            //     'propriete_id' => $demande->id_propriete
+            // ]);
 
             return redirect()
                 ->route('dossiers.list', $validated['id_dossier'])
@@ -721,39 +750,39 @@ class DemandeController extends Controller
 
 
     /**
-     * ✅ Méthode groupeDemandes() optimisée avec validation stricte
+     * Méthode groupeDemandes() optimisée avec validation stricte
      */
 
     private function groupeDemandes($demandes)
     {
         return $demandes->groupBy('id_propriete')->map(function ($groupe) {
-            // ✅ Trier par ordre
+            // Trier par ordre
             $groupeTrie = $groupe->sortBy(function($demande) {
                 return $demande->ordre ?? 999;
             })->values();
             
             $premiere = $groupeTrie->first();
             
-            // ✅ VALIDATION : S'assurer que la propriété existe
+            // VALIDATION : S'assurer que la propriété existe
             if (!$premiere || !$premiere->propriete) {
-                Log::warning('⚠️ Propriété manquante pour demande', [
+                Log::warning('Propriété manquante pour demande', [
                     'demande_id' => $premiere?->id,
                     'id_propriete' => $premiere?->id_propriete,
                 ]);
-                return null; // ✅ Sera filtré plus tard
+                return null; // Sera filtré plus tard
             }
             
-            // ✅ MAPPER tous les demandeurs avec validation
+            // MAPPER tous les demandeurs avec validation
             $tousLesDemandeurs = $groupeTrie->map(function ($demande, $index) {
                 if (!$demande->demandeur) {
-                    Log::warning('⚠️ Demandeur manquant', [
+                    Log::warning('Demandeur manquant', [
                         'demande_id' => $demande->id,
                         'id_demandeur' => $demande->id_demandeur,
                     ]);
                     return null;
                 }
                 
-                // ✅ Vérification d'intégrité
+                // Vérification d'intégrité
                 $demandeur = $demande->demandeur;
                 $isIncomplete = !$demandeur->date_naissance ||
                             !$demandeur->lieu_naissance ||
@@ -774,11 +803,11 @@ class DemandeController extends Controller
                     'is_principal' => ($demande->ordre ?? ($index + 1)) === 1,
                     'is_incomplete' => $isIncomplete,
                 ];
-            })->filter()->values(); // ✅ Retirer les null
+            })->filter()->values(); // Retirer les null
             
-            // ✅ Si aucun demandeur valide, skip cette propriété
+            // Si aucun demandeur valide, skip cette propriété
             if ($tousLesDemandeurs->isEmpty()) {
-                Log::warning('⚠️ Propriété sans demandeurs valides', [
+                Log::warning('Propriété sans demandeurs valides', [
                     'propriete_id' => $premiere->id_propriete,
                     'propriete_lot' => $premiere->propriete->lot,
                 ]);
@@ -797,17 +826,16 @@ class DemandeController extends Controller
                 'nombre_demandeurs' => $tousLesDemandeurs->count(),
             ];
         })
-        ->filter() // ✅ Retirer les null (propriétés invalides)
+        ->filter() // Retirer les null (propriétés invalides)
         ->values();
     }
 
 
     /**
-     * ✅ RÉSUMÉ DOSSIER - VERSION TOTALEMENT CORRIGÉE
+     * RÉSUMÉ DOSSIER 
      */
     public function resume(Request $request, $dossierId)
     {
-        // ✅ CORRECTION 1 : Charger TOUTES les colonnes réelles du dossier
         $dossier = Dossier::with([
             'proprietes' => function($q) {
                 $q->select('id', 'lot', 'titre', 'contenance', 'id_dossier')
@@ -822,12 +850,11 @@ class DemandeController extends Controller
             'demandeurs'
         ])->findOrFail($dossierId);
 
-        // ✅ L'accessor is_closed sera calculé automatiquement depuis date_fermeture
+        // L'accessor is_closed sera calculé automatiquement depuis date_fermeture
         
-        // ✅ CORRECTION 2 : Optimiser la requête des demandes avec TOUTES les infos nécessaires
         $query = Demander::with([
             'demandeur' => function($q) {
-                // ✅ Charger TOUS les champs pour la validation d'intégrité
+                //  Charger TOUS les champs pour la validation d'intégrité
                 $q->select(
                     'id', 'titre_demandeur', 'nom_demandeur', 'prenom_demandeur', 'cin',
                     'date_naissance', 'lieu_naissance', 'date_delivrance', 'lieu_delivrance',
@@ -869,26 +896,6 @@ class DemandeController extends Controller
         }
 
         $demandes = $query->get();
-
-        // ✅ LOG AMÉLIORÉ
-        // Log::info('📊 Resume - Données chargées', [
-        //     'dossier_id' => $dossierId,
-        //     'dossier_nom' => $dossier->nom_dossier,
-        //     'is_closed' => $dossier->is_closed,
-        //     'date_fermeture' => $dossier->date_fermeture,
-        //     'demandes_count' => $demandes->count(),
-        //     'proprietes_count' => $dossier->proprietes->count(),
-        //     'demandeurs_incomplets' => $demandes->filter(function($d) {
-        //         return !$d->demandeur || 
-        //             !$d->demandeur->date_naissance ||
-        //             !$d->demandeur->lieu_naissance ||
-        //             !$d->demandeur->date_delivrance ||
-        //             !$d->demandeur->lieu_delivrance ||
-        //             !$d->demandeur->domiciliation ||
-        //             !$d->demandeur->occupation ||
-        //             !$d->demandeur->nom_mere;
-        //     })->count(),
-        // ]);
 
         // Grouper les demandes par propriété
         $documentsGroupes = $this->groupeDemandes($demandes);

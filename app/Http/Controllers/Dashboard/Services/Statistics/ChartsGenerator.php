@@ -2,17 +2,14 @@
 
 namespace App\Http\Controllers\Dashboard\Services\Statistics;
 
-
 use App\Models\Propriete;
 use App\Models\Dossier;
 use App\Models\Demandeur;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
-
 /**
- * Service de génération des données pour les graphiques
- * Responsabilité unique : Préparer les données pour les visualisations
+ * ✅ VERSION CORRIGÉE : Tous les graphiques respectent maintenant les dates de filtrage
  */
 class ChartsGenerator
 {
@@ -23,26 +20,27 @@ class ChartsGenerator
     ) {}
     
     /**
-     * Récupérer tous les graphiques
+     * ✅ Récupérer tous les graphiques (signature inchangée pour compatibilité)
      */
     public function getAllCharts(array $dates): array
     {
         return [
-            'evolution_complete' => $this->getEvolutionComplete(),
-            'ouvertures_fermetures' => $this->getOuverturesFermetures(),
-            'repartition_nature' => $this->getRepartitionNature(),
-            'repartition_vocation' => $this->getRepartitionVocation(),
-            'top_communes' => $this->getTopCommunes(),
-            'top_districts' => $this->getTopDistricts(),
-            'age_pyramid' => $this->getAgePyramid(),
-            'completion_rate' => $this->getCompletionRate(),
+            'evolution_complete' => $this->getEvolutionComplete($dates),
+            'ouvertures_fermetures' => $this->getOuverturesFermetures($dates),
+            'repartition_nature' => $this->getRepartitionNature($dates),
+            'repartition_vocation' => $this->getRepartitionVocation($dates),
+            'top_communes' => $this->getTopCommunes($dates),
+            'top_districts' => $this->getTopDistricts($dates),
+            'age_pyramid' => $this->getAgePyramid($dates),
+            'completion_rate' => $this->getCompletionRate($dates),
         ];
     }
     
     /**
-     * Évolution mensuelle complète (dossiers + propriétés + demandeurs)
+     * ✅ Évolution mensuelle complète (dossiers + propriétés + demandeurs)
+     * Note: Utilise toujours les 12 derniers mois pour un graphique cohérent
      */
-    public function getEvolutionComplete(): array
+    public function getEvolutionComplete(array $dates): array
     {
         $user = $this->getAuthUser();
         $months = $this->periodService->getMonthsForChart(12);
@@ -57,14 +55,18 @@ class ChartsGenerator
                 ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                     $q->whereHas('dossier', fn($q2) => $q2->where('id_district', $user->id_district));
                 })
-                ->whereBetween('created_at', [$month['start'], $month['end']])
+                ->whereHas('dossier', function($q) use ($month) {
+                    $q->whereBetween('date_ouverture', [$month['start'], $month['end']]);
+                })
                 ->count();
             
             $demandeurs = Demandeur::query()
                 ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                     $q->whereHas('dossiers', fn($q2) => $q2->where('id_district', $user->id_district));
                 })
-                ->whereBetween('created_at', [$month['start'], $month['end']])
+                ->whereHas('dossiers', function($q) use ($month) {
+                    $q->whereBetween('date_ouverture', [$month['start'], $month['end']]);
+                })
                 ->count();
             
             return [
@@ -77,9 +79,9 @@ class ChartsGenerator
     }
     
     /**
-     * Ouvertures vs Fermetures
+     * ✅ Ouvertures vs Fermetures
      */
-    public function getOuverturesFermetures(): array
+    public function getOuverturesFermetures(array $dates): array
     {
         $user = $this->getAuthUser();
         $months = $this->periodService->getMonthsForChart(12);
@@ -105,15 +107,18 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ FIX: Répartition par nature avec superficie
+     * ✅ CORRIGÉ : Répartition par nature avec dates
      */
-    public function getRepartitionNature(): array
+    public function getRepartitionNature(array $dates): array
     {
         $user = $this->getAuthUser();
         
         return Propriete::query()
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                 $q->whereHas('dossier', fn($q2) => $q2->where('id_district', $user->id_district));
+            })
+            ->whereHas('dossier', function($q) use ($dates) {
+                $q->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
             })
             ->select('nature')
             ->selectRaw('COUNT(*) as count')
@@ -130,15 +135,18 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ FIX: Répartition par vocation avec superficie
+     * ✅ CORRIGÉ : Répartition par vocation avec dates
      */
-    public function getRepartitionVocation(): array
+    public function getRepartitionVocation(array $dates): array
     {
         $user = $this->getAuthUser();
         
         return Propriete::query()
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                 $q->whereHas('dossier', fn($q2) => $q2->where('id_district', $user->id_district));
+            })
+            ->whereHas('dossier', function($q) use ($dates) {
+                $q->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
             })
             ->select('vocation')
             ->selectRaw('COUNT(*) as count')
@@ -155,14 +163,15 @@ class ChartsGenerator
     }
     
     /**
-     * Top 10 communes (format pour bar chart)
+     * ✅ CORRIGÉ : Top 10 communes avec dates
      */
-    public function getTopCommunes(): array
+    public function getTopCommunes(array $dates): array
     {
         $user = $this->getAuthUser();
         
         return Dossier::query()
             ->when(!$user->canAccessAllDistricts(), fn($q) => $q->where('id_district', $user->id_district))
+            ->whereBetween('date_ouverture', [$dates['from'], $dates['to']])
             ->select('commune')
             ->selectRaw('COUNT(*) as count')
             ->groupBy('commune')
@@ -177,9 +186,9 @@ class ChartsGenerator
     }
     
     /**
-     * Top 10 districts (uniquement pour super admin)
+     * ✅ CORRIGÉ : Top 10 districts avec dates (uniquement pour super admin)
      */
-    public function getTopDistricts(): array
+    public function getTopDistricts(array $dates): array
     {
         $user = $this->getAuthUser();
         
@@ -189,6 +198,7 @@ class ChartsGenerator
         
         return Dossier::query()
             ->join('districts', 'dossiers.id_district', '=', 'districts.id')
+            ->whereBetween('dossiers.date_ouverture', [$dates['from'], $dates['to']])
             ->select('districts.nom_district')
             ->selectRaw('COUNT(dossiers.id) as count')
             ->groupBy('districts.nom_district')
@@ -203,9 +213,9 @@ class ChartsGenerator
     }
     
     /**
-     * Pyramide des âges par genre
+     * ✅ CORRIGÉ : Pyramide des âges par genre avec dates
      */
-    public function getAgePyramid(): array
+    public function getAgePyramid(array $dates): array
     {
         $user = $this->getAuthUser();
         $tranches = [];
@@ -227,6 +237,12 @@ class ChartsGenerator
                             ->where('dossiers.id_district', $user->id_district);
                     });
                 })
+                ->whereExists(function($subq) use ($dates) {
+                    $subq->from('contenir')
+                        ->join('dossiers', 'contenir.id_dossier', '=', 'dossiers.id')
+                        ->whereColumn('contenir.id_demandeur', 'demandeurs.id')
+                        ->whereBetween('dossiers.date_ouverture', [$dates['from'], $dates['to']]);
+                })
                 ->where('sexe', 'Homme')
                 ->whereNotNull('date_naissance')
                 ->whereRaw("DATE_PART('year', AGE(CURRENT_DATE, date_naissance)) BETWEEN ? AND ?", [$min, $max])
@@ -240,6 +256,12 @@ class ChartsGenerator
                             ->whereColumn('contenir.id_demandeur', 'demandeurs.id')
                             ->where('dossiers.id_district', $user->id_district);
                     });
+                })
+                ->whereExists(function($subq) use ($dates) {
+                    $subq->from('contenir')
+                        ->join('dossiers', 'contenir.id_dossier', '=', 'dossiers.id')
+                        ->whereColumn('contenir.id_demandeur', 'demandeurs.id')
+                        ->whereBetween('dossiers.date_ouverture', [$dates['from'], $dates['to']]);
                 })
                 ->where('sexe', 'Femme')
                 ->whereNotNull('date_naissance')
@@ -256,11 +278,12 @@ class ChartsGenerator
     }
     
     /**
-     * Taux de complétion des dossiers
+     * ✅ CORRIGÉ : Taux de complétion des dossiers avec dates
      */
-    public function getCompletionRate(): array
+    public function getCompletionRate(array $dates): array
     {
-        $query = $this->baseQuery();
+        $query = $this->baseQuery()
+            ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
         
         $total = (clone $query)->count();
         $complets = (clone $query)

@@ -24,32 +24,33 @@ class ProprieteObserver
 
     public function created(Propriete $propriete): void
     {
-        // 1️⃣ Invalidation du cache si dossier présent
+        // 1️Invalidation du cache si dossier présent
         if ($propriete->dossier) {
             $this->cache->forgetDistrictCache($propriete->dossier->id_district);
             
-            Log::info("🗑️ Cache invalidé suite à création Propriete", [
-                'propriete_id' => $propriete->id,
-                'district_id' => $propriete->dossier->id_district,
-            ]);
+            // Log::info("Cache invalidé suite à création Propriete", [
+            //     'propriete_id' => $propriete->id,
+            //     'district_id' => $propriete->dossier->id_district,
+            // ]);
         }
 
-        // 2️⃣ Calcul du prix + log
+        // 2 Calcul du prix + log
         try {
             $prix = PrixCalculatorService::calculerPrixTotal($propriete);
 
-            Log::info("Propriété créée", [
-                'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'vocation' => $propriete->vocation,
-                'contenance' => $propriete->contenance,
-                'prix_calcule' => $prix
-            ]);
+            // Log::info("Propriété créée", [
+            //     'propriete_id' => $propriete->id,
+            //     'lot' => $propriete->lot,
+            //     'vocation' => $propriete->vocation,
+            //     'contenance' => $propriete->contenance,
+            //     'prix_calcule' => $prix
+            // ]);
+
         } catch (\Exception $e) {
-            Log::warning("Propriété créée mais prix non calculable", [
-                'propriete_id' => $propriete->id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::warning("Propriété créée mais prix non calculable", [
+            //     'propriete_id' => $propriete->id,
+            //     'error' => $e->getMessage()
+            // ]);
         }
     }
 
@@ -69,10 +70,10 @@ class ProprieteObserver
         if ($propriete->dossier) {
             $this->cache->forgetDistrictCache($propriete->dossier->id_district);
             
-            Log::info("Cache invalidé suite à modification Propriete", [
-                'propriete_id' => $propriete->id,
-                'district_id' => $propriete->dossier->id_district,
-            ]);
+            // Log::info("Cache invalidé suite à modification Propriete", [
+            //     'propriete_id' => $propriete->id,
+            //     'district_id' => $propriete->dossier->id_district,
+            // ]);
         }
     }
     /**
@@ -87,12 +88,12 @@ class ProprieteObserver
         foreach ($champsCritiques as $champ) {
             if ($propriete->isDirty($champ)) {
                 $aChange = true;
-                Log::info("Propriété modifiée: champ '{$champ}' changé", [
-                    'propriete_id' => $propriete->id,
-                    'lot' => $propriete->lot,
-                    'ancien' => $propriete->getOriginal($champ),
-                    'nouveau' => $propriete->$champ
-                ]);
+                // Log::info("Propriété modifiée: champ '{$champ}' changé", [
+                //     'propriete_id' => $propriete->id,
+                //     'lot' => $propriete->lot,
+                //     'ancien' => $propriete->getOriginal($champ),
+                //     'nouveau' => $propriete->$champ
+                // ]);
             }
         }
 
@@ -109,18 +110,18 @@ class ProprieteObserver
                 'total_prix' => $nouveauPrix
             ]);
 
-            Log::info("Prix recalculés suite à modification propriété", [
-                'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'nouveau_prix' => $nouveauPrix,
-                'demandes_affectees' => $demandesAffectees
-            ]);
+            // Log::info("Prix recalculés suite à modification propriété", [
+            //     'propriete_id' => $propriete->id,
+            //     'lot' => $propriete->lot,
+            //     'nouveau_prix' => $nouveauPrix,
+            //     'demandes_affectees' => $demandesAffectees
+            // ]);
 
         } catch (\Exception $e) {
-            Log::error("Erreur recalcul prix après modification propriété", [
-                'propriete_id' => $propriete->id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error("Erreur recalcul prix après modification propriété", [
+            //     'propriete_id' => $propriete->id,
+            //     'error' => $e->getMessage()
+            // ]);
         }
     }
 

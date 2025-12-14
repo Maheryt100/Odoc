@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Dashboard\Services\Statistics\StatisticsService;
 use App\Models\User;
+use App\Models\Province;
+use App\Models\Region;
 use App\Models\District;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 /**
- * ✅ AMÉLIORÉ : Filtre "all" par défaut + validation renforcée
+ * ✅ AVEC FILTRAGE GÉOGRAPHIQUE HIÉRARCHIQUE
+ * Province → Région → District
  */
 class StatisticsController extends Controller
 {
@@ -24,41 +27,95 @@ class StatisticsController extends Controller
         /** @var User $user */
         $user = Auth::user();
         
-        // ✅ Validation des filtres
+        // ✅ VALIDATION DES FILTRES
         $validated = $request->validate([
             'period' => 'nullable|in:today,week,month,year,all,custom',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after_or_equal:date_from',
+            'province_id' => 'nullable|integer|exists:provinces,id',
+            'region_id' => 'nullable|integer|exists:regions,id',
             'district_id' => 'nullable|integer|exists:districts,id',
         ]);
         
-        // ✅ CHANGEMENT : Période par défaut = "all" (Tout)
+        // ✅ PÉRIODE (défaut = "all")
         $period = $validated['period'] ?? 'all';
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
+        
+        // ✅ FILTRES GÉOGRAPHIQUES
+        $provinceId = $validated['province_id'] ?? null;
+        $regionId = $validated['region_id'] ?? null;
         $districtId = $validated['district_id'] ?? null;
 
-        // ✅ Validation : Utilisateur non super admin ne peut voir que son district
-        if (!$user->canAccessAllDistricts() && $districtId !== null && $districtId != $user->id_district) {
-            return back()->with('error', 'Vous ne pouvez pas voir les statistiques d\'un autre district.');
+        // ✅ SÉCURITÉ : Utilisateur district ne peut pas filtrer géographiquement
+        if (!$user->canAccessAllDistricts()) {
+            // Forcer sur son district
+            $provinceId = null;
+            $regionId = null;
+            $districtId = $user->id_district;
+            
+            // Refuser si tentative de voir autre district
+            if (isset($validated['district_id']) && $validated['district_id'] != $user->id_district) {
+                return back()->with('error', 'Vous ne pouvez pas voir les statistiques d\'un autre district.');
+            }
+            if (isset($validated['region_id']) || isset($validated['province_id'])) {
+                return back()->with('error', 'Vous ne pouvez pas appliquer de filtres géographiques.');
+            }
         }
 
-        // ✅ Appliquer le contexte district si nécessaire
-        if ($districtId && $user->canAccessAllDistricts()) {
-            $this->setDistrictContext($districtId);
+        // ✅ VALIDATION HIÉRARCHIE (si Super Admin filtre)
+        if ($user->canAccessAllDistricts()) {
+            // Si district choisi → vérifier qu'il appartient à la région (si fournie)
+            if ($districtId && $regionId) {
+                $district = District::find($districtId);
+                if (!$district || $district->id_region != $regionId) {
+                    return back()->with('error', 'Le district sélectionné n\'appartient pas à cette région.');
+                }
+            }
+            
+            // Si région choisie → vérifier qu'elle appartient à la province (si fournie)
+            if ($regionId && $provinceId) {
+                $region = Region::find($regionId);
+                if (!$region || $region->id_province != $provinceId) {
+                    return back()->with('error', 'La région sélectionnée n\'appartient pas à cette province.');
+                }
+            }
         }
 
-        // Calculer les dates selon la période
+        // ✅ CALCULER LES DATES
         $dates = $this->statisticsService->getPeriodDates($period, $dateFrom, $dateTo);
 
-        // ✅ Ajouter les métadonnées pour le cache
+        // ✅ AJOUTER MÉTADONNÉES POUR CACHE ET FILTRAGE
         $dates['period'] = $period;
-        $dates['district_id'] = $districtId ?? $user->id_district;
+        $dates['province_id'] = $provinceId;
+        $dates['region_id'] = $regionId;
+        $dates['district_id'] = $districtId;
 
-        // Récupérer les districts disponibles
-        $districts = $user->canAccessAllDistricts()
-            ? District::orderBy('nom_district')->get(['id', 'nom_district'])
+        // ✅ DONNÉES GÉOGRAPHIQUES POUR LES SÉLECTEURS
+        $canFilterGeography = $user->canAccessAllDistricts();
+        
+        $provinces = $canFilterGeography 
+            ? Province::orderBy('nom_province')->get(['id', 'nom_province'])
+            : collect();
+        
+        $regions = $canFilterGeography
+            ? Region::with('province:id,nom_province')
+                ->orderBy('nom_region')
+                ->get(['id', 'nom_region', 'id_province'])
+            : collect();
+        
+        $districts = $canFilterGeography
+            ? District::with(['region:id,nom_region,id_province', 'region.province:id,nom_province'])
+                ->orderBy('nom_district')
+                ->get(['id', 'nom_district', 'id_region'])
             : collect([$user->district])->filter();
+
+        // ✅ CORRECTION : Charger explicitement le district avec ses relations
+        $userDistrict = null;
+        if (!$canFilterGeography && $user->id_district) {
+            $userDistrict = District::with(['region:id,nom_region', 'region.province:id,nom_province'])
+                ->find($user->id_district, ['id', 'nom_district', 'id_region']);
+        }
 
         return Inertia::render('Statistics/Index', [
             'stats' => $this->statisticsService->getAllStats($dates),
@@ -67,25 +124,16 @@ class StatisticsController extends Controller
                 'period' => $period,
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
+                'province_id' => $provinceId,
+                'region_id' => $regionId,
                 'district_id' => $districtId,
             ],
+            'provinces' => $provinces,
+            'regions' => $regions,
             'districts' => $districts,
+            'canFilterGeography' => $canFilterGeography,
+            'userDistrict' => $userDistrict, // ✅ Chargé explicitement
         ]);
-    }
-
-    /**
-     * ✅ Simuler temporairement le contexte d'un district
-     */
-    private function setDistrictContext(int $districtId): void
-    {
-        $user = Auth::user();
-        $originalDistrict = $user->id_district;
-        $user->id_district = $districtId;
-        
-        // Restaurer après la requête
-        app()->terminating(function() use ($user, $originalDistrict) {
-            $user->id_district = $originalDistrict;
-        });
     }
 
     /**
@@ -100,26 +148,30 @@ class StatisticsController extends Controller
             'period' => 'nullable|in:today,week,month,year,all,custom',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'province_id' => 'nullable|integer|exists:provinces,id',
+            'region_id' => 'nullable|integer|exists:regions,id',
             'district_id' => 'nullable|integer|exists:districts,id',
         ]);
         
         $period = $validated['period'] ?? 'all';
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
+        $provinceId = $validated['province_id'] ?? null;
+        $regionId = $validated['region_id'] ?? null;
         $districtId = $validated['district_id'] ?? null;
         
         // Validation permissions
-        if (!$user->canAccessAllDistricts() && $districtId !== null && $districtId != $user->id_district) {
-            return back()->with('error', 'Vous ne pouvez pas exporter les statistiques d\'un autre district.');
+        if (!$user->canAccessAllDistricts()) {
+            $provinceId = null;
+            $regionId = null;
+            $districtId = $user->id_district;
         }
         
         $dates = $this->statisticsService->getPeriodDates($period, $dateFrom, $dateTo);
         $dates['period'] = $period;
-        $dates['district_id'] = $districtId ?? $user->id_district;
-        
-        if ($districtId && $user->canAccessAllDistricts()) {
-            $this->setDistrictContext($districtId);
-        }
+        $dates['province_id'] = $provinceId;
+        $dates['region_id'] = $regionId;
+        $dates['district_id'] = $districtId;
         
         $stats = $this->statisticsService->getAllStats($dates);
         $charts = $this->statisticsService->getAllCharts($dates);
@@ -146,6 +198,8 @@ class StatisticsController extends Controller
             'period' => 'required|in:today,week,month,year,all,custom',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'province_id' => 'nullable|integer|exists:provinces,id',
+            'region_id' => 'nullable|integer|exists:regions,id',
             'district_id' => 'nullable|integer|exists:districts,id',
             'type' => 'nullable|in:stats,charts,all',
         ]);
@@ -153,21 +207,23 @@ class StatisticsController extends Controller
         $period = $validated['period'];
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
+        $provinceId = $validated['province_id'] ?? null;
+        $regionId = $validated['region_id'] ?? null;
         $districtId = $validated['district_id'] ?? null;
         $type = $validated['type'] ?? 'all';
         
         // Validation
-        if (!$user->canAccessAllDistricts() && $districtId !== null && $districtId != $user->id_district) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        if (!$user->canAccessAllDistricts()) {
+            $provinceId = null;
+            $regionId = null;
+            $districtId = $user->id_district;
         }
         
         $dates = $this->statisticsService->getPeriodDates($period, $dateFrom, $dateTo);
         $dates['period'] = $period;
-        $dates['district_id'] = $districtId ?? $user->id_district;
-        
-        if ($districtId && $user->canAccessAllDistricts()) {
-            $this->setDistrictContext($districtId);
-        }
+        $dates['province_id'] = $provinceId;
+        $dates['region_id'] = $regionId;
+        $dates['district_id'] = $districtId;
         
         $response = [];
         

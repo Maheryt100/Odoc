@@ -48,16 +48,12 @@ export default function DemandeDetailDialog({
 
     const propriete = demande.propriete;
     const demandeur = demande.demandeur;
-    
-    // ✅ AMÉLIORATION : Gestion robuste des demandeurs
+
     const allDemandeurs = (() => {
-        // Si on a une liste complète de demandeurs
         if (demande.demandeurs && Array.isArray(demande.demandeurs) && demande.demandeurs.length > 0) {
-            // Filtrer les entrées invalides
             return demande.demandeurs.filter(d => d && d.demandeur);
         }
-        
-        // Sinon, créer une liste avec le demandeur principal s'il existe
+
         if (demandeur) {
             return [{
                 id: demande.id,
@@ -75,7 +71,6 @@ export default function DemandeDetailDialog({
 
     const hasValidData = propriete && allDemandeurs.length > 0;
 
-    // ✅ Formater nom complet avec titre
     const formatNomComplet = (demandeur: Demandeur): string => {
         return [
             demandeur.titre_demandeur,
@@ -116,7 +111,6 @@ export default function DemandeDetailDialog({
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {/* ✅ TOUS LES DEMANDEURS */}
                         <div>
                             <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                                 <Users className="h-4 w-4" />
@@ -170,7 +164,6 @@ export default function DemandeDetailDialog({
 
                         <Separator />
 
-                        {/* Propriété */}
                         <div>
                             <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                                 <MapPin className="h-4 w-4" />

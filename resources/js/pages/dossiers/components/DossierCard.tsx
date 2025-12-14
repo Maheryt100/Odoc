@@ -24,6 +24,11 @@ export function DossierCard({ dossier }: DossierCardProps) {
 
     const hasArchivedProperties = dossier.proprietes?.some((p) => p.is_archived === true);
 
+    // ✅ Affichage du numéro d'ouverture (gère les anciens strings et nouveaux integers)
+    const displayNumero = typeof dossier.numero_ouverture === 'number' 
+        ? `N° ${dossier.numero_ouverture}`
+        : (dossier.numero_ouverture_display || dossier.numero_ouverture);
+
     return (
         <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-3">
@@ -51,7 +56,7 @@ export function DossierCard({ dossier }: DossierCardProps) {
                         {dossier.numero_ouverture && (
                             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300 font-mono">
                                 <Hash className="h-3 w-3 mr-1" />
-                                {dossier.numero_ouverture}
+                                {displayNumero}
                             </Badge>
                         )}
 

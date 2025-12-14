@@ -1,6 +1,6 @@
-// pages/proprietes/components/ProprieteTable.tsx
+// pages/proprietes/components/ProprieteTable.tsx - ✅ VERSION AVEC DIALOG
 
-import { Link } from '@inertiajs/react';
+import { useState } from 'react'; // ✅ Ajouter useState
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -8,6 +8,7 @@ import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Archive, ArchiveResto
 import type { ProprieteWithDetails, ProprietesIndexProps } from '../types';
 import type { Propriete } from '@/types';
 import { getRowClassName, isPropertyArchived, hasActiveDemandeurs } from '../helpers';
+import EditProprieteDialog from '../components/EditProprieteDialog'; 
 
 interface ProprieteTableProps extends Omit<ProprietesIndexProps, 'proprietes'> {
     proprietes: ProprieteWithDetails[];
@@ -31,11 +32,21 @@ export default function ProprieteTable({
     onPageChange
 }: ProprieteTableProps) {
     
+    // ✅ AJOUTER CES STATES
+    const [editingPropriete, setEditingPropriete] = useState<ProprieteWithDetails | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
     // Pagination
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedProprietes = proprietes.slice(startIndex, endIndex);
     const totalPages = Math.ceil(proprietes.length / itemsPerPage);
+
+    // ✅ AJOUTER CE HANDLER
+    const handleEditClick = (propriete: ProprieteWithDetails) => {
+        setEditingPropriete(propriete);
+        setIsEditDialogOpen(true);
+    };
 
     if (proprietes.length === 0) {
         return (
@@ -55,25 +66,25 @@ export default function ProprieteTable({
                 <table className="w-full">
                     <thead className="bg-muted/30 border-b">
                         <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Lot
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Titre
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Dep/Vol
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Contenance
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Nature
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Statut
                             </th>
-                            <th className="px-6 py-4 w-[50px]"></th>
+                            <th className="px-4 py-2.5 w-[50px]"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -82,6 +93,7 @@ export default function ProprieteTable({
                             const isArchived = isPropertyArchived(propriete);
                             const hasDemandeurs = hasActiveDemandeurs(propriete);
                             const rowClass = getRowClassName(propriete, isIncomplete);
+                            const canModify = !isArchived && !dossier.is_closed; // ✅ Ajouter cette condition
                             
                             return (
                                 <tr 
@@ -89,30 +101,30 @@ export default function ProprieteTable({
                                     className={rowClass} 
                                     onClick={() => onSelectPropriete(propriete)}
                                 >
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">{propriete.lot}</span>
+                                            <span className="font-medium text-sm">{propriete.lot}</span>
                                             {isIncomplete && (
-                                                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                                <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
                                             )}
                                             {isArchived && (
-                                                <Archive className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                                <Archive className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {propriete.titre ? `TNº${propriete.titre}` : '-'}
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                                         {propriete.dep_vol_complet || propriete.dep_vol || '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {propriete.contenance ? `${propriete.contenance} m²` : '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground capitalize">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">
                                         {propriete.nature || '-'}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">
                                             {isArchived ? (
                                                 <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-400">
@@ -130,10 +142,10 @@ export default function ProprieteTable({
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
                                                     <Ellipsis className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -144,14 +156,13 @@ export default function ProprieteTable({
                                                 </DropdownMenuItem>
                                                 {!dossier.is_closed && (
                                                     <>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link
-                                                                href={route('proprietes.edit', propriete.id)}
-                                                                className="flex items-center"
-                                                            >
-                                                                <Pencil className="mr-2 h-4 w-4" />
-                                                                Modifier
-                                                            </Link>
+                                                        {/* ✅ REMPLACER LE LIEN PAR UN BOUTON DIALOG */}
+                                                        <DropdownMenuItem 
+                                                            onClick={() => handleEditClick(propriete)}
+                                                            disabled={!canModify}
+                                                        >
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Modifier
                                                         </DropdownMenuItem>
                                                         {!isArchived && (
                                                             <DropdownMenuItem onClick={() => onLinkDemandeur?.(propriete)}>
@@ -196,14 +207,15 @@ export default function ProprieteTable({
                 </table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination compacte */}
             {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-6 pb-4">
+                <div className="flex justify-center items-center gap-2 mt-4">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage === 1}
+                        className="h-8"
                     >
                         Précédent
                     </Button>
@@ -213,6 +225,7 @@ export default function ProprieteTable({
                             variant={currentPage === page ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => onPageChange(page)}
+                            className="h-8 min-w-8"
                         >
                             {page}
                         </Button>
@@ -222,11 +235,20 @@ export default function ProprieteTable({
                         size="sm"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
+                        className="h-8"
                     >
                         Suivant
                     </Button>
                 </div>
             )}
+
+            {/* ✅ AJOUTER LE DIALOG D'ÉDITION */}
+            <EditProprieteDialog
+                propriete={editingPropriete}
+                dossier={dossier}
+                open={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+            />
         </>
     );
 }

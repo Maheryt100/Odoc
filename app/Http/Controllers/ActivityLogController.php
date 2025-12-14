@@ -22,16 +22,13 @@ class ActivityLogController extends Controller
         
         $filters = $request->only(['user_id', 'action', 'document_type', 'date_from', 'date_to', 'search']);
 
-        // Requête de base avec optimisation
         $query = ActivityLog::with(['user:id,name,email', 'district:id,nom_district'])
             ->orderBy('created_at', 'desc');
 
-        // Filtrer par district si nécessaire
         if (!$user->isSuperAdmin()) {
             $query->where('id_district', $user->id_district);
         }
 
-        // Appliquer les filtres avec validation
         if (!empty($filters['user_id']) && is_numeric($filters['user_id'])) {
             $query->where('id_user', $filters['user_id']);
         }
@@ -105,38 +102,38 @@ class ActivityLogController extends Controller
     /**
      * Statistiques de téléchargement des documents
      */
-    public function documentStats()
-    {
-        /** @var User $user */
-        $user = Auth::user();
+    // public function documentStats()
+    // {
+    //     /** @var User $user */
+    //     $user = Auth::user();
         
-        $stats = ActivityLogger::getUserDocumentStats();
+    //     $stats = ActivityLogger::getUserDocumentStats();
 
-        // Filtrer par district si nécessaire
-        if (!$user->isSuperAdmin()) {
-            $stats = $stats->filter(function($stat) use ($user) {
-                return $stat->user && $stat->user->id_district == $user->id_district;
-            });
-        }
+    //     // Filtrer par district si nécessaire
+    //     if (!$user->isSuperAdmin()) {
+    //         $stats = $stats->filter(function($stat) use ($user) {
+    //             return $stat->user && $stat->user->id_district == $user->id_district;
+    //         });
+    //     }
 
-        $userStats = $stats->groupBy('id_user')->map(function ($userLogs) {
-            $firstLog = $userLogs->first();
+    //     $userStats = $stats->groupBy('id_user')->map(function ($userLogs) {
+    //         $firstLog = $userLogs->first();
             
-            return [
-                'user' => $firstLog->user,
-                'documents' => $userLogs->map(fn($log) => [
-                    'type' => $log->document_type,
-                    'count' => $log->download_count,
-                    'last_download' => $log->last_download,
-                ])->values(),
-                'total' => $userLogs->sum('download_count'),
-            ];
-        })->values();
+    //         return [
+    //             'user' => $firstLog->user,
+    //             'documents' => $userLogs->map(fn($log) => [
+    //                 'type' => $log->document_type,
+    //                 'count' => $log->download_count,
+    //                 'last_download' => $log->last_download,
+    //             ])->values(),
+    //             'total' => $userLogs->sum('download_count'),
+    //         ];
+    //     })->values();
 
-        return Inertia::render('admin/activity-logs/DocumentStats', [
-            'userStats' => $userStats,
-        ]);
-    }
+    //     return Inertia::render('admin/activity-logs/DocumentStats', [
+    //         'userStats' => $userStats,
+    //     ]);
+    // }
 
     /**
      * Activité d'un utilisateur spécifique
@@ -172,88 +169,88 @@ class ActivityLogController extends Controller
     /**
      * Export des logs en CSV
      */
-    public function export(Request $request)
-    {
-        /** @var User $user */
-        $user = Auth::user();
+    // public function export(Request $request)
+    // {
+    //     /** @var User $user */
+    //     $user = Auth::user();
         
-        $filters = $request->only(['user_id', 'action', 'document_type', 'date_from', 'date_to']);
+    //     $filters = $request->only(['user_id', 'action', 'document_type', 'date_from', 'date_to']);
 
-        $query = ActivityLog::with(['user:id,name,email', 'district:id,nom_district'])
-            ->orderBy('created_at', 'desc');
+    //     $query = ActivityLog::with(['user:id,name,email', 'district:id,nom_district'])
+    //         ->orderBy('created_at', 'desc');
 
-        // Filtre par district
-        if (!$user->isSuperAdmin()) {
-            $query->where('id_district', $user->id_district);
-        }
+    //     // Filtre par district
+    //     if (!$user->isSuperAdmin()) {
+    //         $query->where('id_district', $user->id_district);
+    //     }
 
-        // Appliquer les filtres
-        if (!empty($filters['user_id']) && is_numeric($filters['user_id'])) {
-            $query->where('id_user', $filters['user_id']);
-        }
+    //     // Appliquer les filtres
+    //     if (!empty($filters['user_id']) && is_numeric($filters['user_id'])) {
+    //         $query->where('id_user', $filters['user_id']);
+    //     }
 
-        if (!empty($filters['action'])) {
-            $query->where('action', $filters['action']);
-        }
+    //     if (!empty($filters['action'])) {
+    //         $query->where('action', $filters['action']);
+    //     }
 
-        if (!empty($filters['document_type'])) {
-            $query->where('document_type', $filters['document_type']);
-        }
+    //     if (!empty($filters['document_type'])) {
+    //         $query->where('document_type', $filters['document_type']);
+    //     }
 
-        if (!empty($filters['date_from'])) {
-            try {
-                $query->whereDate('created_at', '>=', Carbon::parse($filters['date_from']));
-            } catch (\Exception $e) {
-                // Ignorer
-            }
-        }
+    //     if (!empty($filters['date_from'])) {
+    //         try {
+    //             $query->whereDate('created_at', '>=', Carbon::parse($filters['date_from']));
+    //         } catch (\Exception $e) {
+    //             // Ignorer
+    //         }
+    //     }
 
-        if (!empty($filters['date_to'])) {
-            try {
-                $query->whereDate('created_at', '<=', Carbon::parse($filters['date_to']));
-            } catch (\Exception $e) {
-                // Ignorer
-            }
-        }
+    //     if (!empty($filters['date_to'])) {
+    //         try {
+    //             $query->whereDate('created_at', '<=', Carbon::parse($filters['date_to']));
+    //         } catch (\Exception $e) {
+    //             // Ignorer
+    //         }
+    //     }
 
-        // Limiter le nombre de résultats pour éviter les timeouts
-        $logs = $query->limit(10000)->get();
+    //     // Limiter le nombre de résultats pour éviter les timeouts
+    //     $logs = $query->limit(10000)->get();
 
-        // Logger l'export
-        ActivityLogger::logExport('activity_log', [
-            'filters' => $filters,
-            'count' => $logs->count(),
-            'exported_by' => $user->name,
-        ]);
+    //     // Logger l'export
+    //     ActivityLogger::logExport('activity_log', [
+    //         'filters' => $filters,
+    //         'count' => $logs->count(),
+    //         'exported_by' => $user->name,
+    //     ]);
 
-        // Génération du CSV avec BOM UTF-8 pour Excel
-        $csv = "\xEF\xBB\xBF"; // BOM UTF-8
-        $csv .= "Date/Heure,Utilisateur,Email,District,Action,Type Document,Entité,Détails,IP\n";
+    //     // Génération du CSV avec BOM UTF-8 pour Excel
+    //     $csv = "\xEF\xBB\xBF"; // BOM UTF-8
+    //     $csv .= "Date/Heure,Utilisateur,Email,District,Action,Type Document,Entité,Détails,IP\n";
         
-        foreach ($logs as $log) {
-            $csv .= sprintf(
-                "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
-                $log->created_at->format('Y-m-d H:i:s'),
-                $this->escapeCsv($log->user->name ?? 'Inconnu'),
-                $this->escapeCsv($log->user->email ?? ''),
-                $this->escapeCsv($log->district->nom_district ?? 'N/A'),
-                $this->escapeCsv($log->action_label),
-                $this->escapeCsv($log->document_type ?? 'N/A'),
-                $this->escapeCsv($log->entity_label),
-                $this->escapeCsv($this->formatMetadata($log->metadata)),
-                $this->escapeCsv($log->ip_address ?? '')
-            );
-        }
+    //     foreach ($logs as $log) {
+    //         $csv .= sprintf(
+    //             "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+    //             $log->created_at->format('Y-m-d H:i:s'),
+    //             $this->escapeCsv($log->user->name ?? 'Inconnu'),
+    //             $this->escapeCsv($log->user->email ?? ''),
+    //             $this->escapeCsv($log->district->nom_district ?? 'N/A'),
+    //             $this->escapeCsv($log->action_label),
+    //             $this->escapeCsv($log->document_type ?? 'N/A'),
+    //             $this->escapeCsv($log->entity_label),
+    //             $this->escapeCsv($this->formatMetadata($log->metadata)),
+    //             $this->escapeCsv($log->ip_address ?? '')
+    //         );
+    //     }
 
-        $fileName = 'activity_logs_' . now()->format('Y-m-d_His') . '.csv';
+    //     $fileName = 'activity_logs_' . now()->format('Y-m-d_His') . '.csv';
 
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=utf-8')
-            ->header('Content-Disposition', "attachment; filename=\"{$fileName}\"")
-            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-            ->header('Pragma', 'no-cache')
-            ->header('Expires', '0');
-    }
+    //     return response($csv)
+    //         ->header('Content-Type', 'text/csv; charset=utf-8')
+    //         ->header('Content-Disposition', "attachment; filename=\"{$fileName}\"")
+    //         ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    //         ->header('Pragma', 'no-cache')
+    //         ->header('Expires', '0');
+    // }
 
     /**
      * Échapper les valeurs CSV pour éviter les injections

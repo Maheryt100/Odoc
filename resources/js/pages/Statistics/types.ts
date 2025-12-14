@@ -2,16 +2,34 @@
 
 import { Auth } from '@/types';
 
-export interface StatisticsFilters {
-    period: string;
-    date_from: string | null;
-    date_to: string | null;
-    district_id: number | null;
+// ✅ NOUVEAUX TYPES GÉOGRAPHIQUES
+export interface Province {
+    id: number;
+    nom_province: string;
+}
+
+export interface Region {
+    id: number;
+    nom_region: string;
+    id_province: number;
+    province?: Province;
 }
 
 export interface District {
     id: number;
     nom_district: string;
+    id_region: number;
+    region?: Region;
+}
+
+// ✅ FILTRES GÉOGRAPHIQUES HIÉRARCHIQUES
+export interface StatisticsFilters {
+    period: string;
+    date_from: string | null;
+    date_to: string | null;
+    province_id: number | null;  // ✅ Nouveau
+    region_id: number | null;     // ✅ Nouveau
+    district_id: number | null;
 }
 
 export interface OverviewStats {
@@ -63,6 +81,8 @@ export interface DemographicsStats {
     femmes_actifs: number;
     hommes_acquis: number;
     femmes_acquis: number;
+    hommes_sans_propriete: number;
+    femmes_sans_propriete: number;
     age_moyen: number;
     tranches_age: {
         [key: string]: number;
@@ -155,11 +175,15 @@ export interface ChartData {
     };
 }
 
-// ✅ Type principal avec auth
+// ✅ Props avec données géographiques
 export interface StatisticsProps {
-    auth: Auth;  // ✅ Ajouté
+    auth: Auth;
     stats: Stats;
     charts: ChartData;
     filters: StatisticsFilters;
+    provinces: Province[];
+    regions: Region[];
     districts: District[];
+    canFilterGeography: boolean;
+    userDistrict: District | null;
 }

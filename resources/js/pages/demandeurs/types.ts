@@ -29,6 +29,7 @@ export interface DemandeursIndexProps {
     proprietes: Propriete[];
     onDeleteDemandeur: (id: number) => void;
     onSelectDemandeur?: (demandeur: DemandeurWithProperty) => void;
+    onEditDemandeur?: (demandeur: DemandeurWithProperty) => void; // ✅ AJOUT
     onLinkPropriete?: (demandeur: Demandeur) => void;
     isDemandeurIncomplete: (dem: Demandeur) => boolean;
     onDissociate: (

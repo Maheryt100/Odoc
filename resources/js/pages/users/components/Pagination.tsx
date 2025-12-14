@@ -8,7 +8,7 @@ interface PaginationProps {
     total: number;
     perPage: number;
     onPageChange: (page: number) => void;
-    itemName?: string; // Ex: "utilisateur", "dossier"
+    itemName?: string;
 }
 
 export const Pagination = ({
@@ -25,37 +25,26 @@ export const Pagination = ({
     const endItem = Math.min(currentPage * perPage, total);
     const itemNamePlural = total > 1 ? `${itemName}s` : itemName;
 
-    /**
-     * Génère les numéros de page à afficher
-     */
     const getPageNumbers = (): (number | 'ellipsis')[] => {
         const pages: (number | 'ellipsis')[] = [];
-        const delta = 2; // Nombre de pages à afficher de chaque côté
+        const delta = 1;
 
-        // Toujours afficher la première page
         pages.push(1);
 
-        // Pages autour de la page actuelle
         for (let i = Math.max(2, currentPage - delta); i <= Math.min(lastPage - 1, currentPage + delta); i++) {
-            // Ajouter ellipsis si nécessaire avant
             if (i === currentPage - delta && i > 2) {
                 pages.push('ellipsis');
             }
-
             pages.push(i);
-
-            // Ajouter ellipsis si nécessaire après
             if (i === currentPage + delta && i < lastPage - 1) {
                 pages.push('ellipsis');
             }
         }
 
-        // Toujours afficher la dernière page
         if (lastPage > 1) {
             pages.push(lastPage);
         }
 
-        // Supprimer les doublons d'ellipsis
         return pages.filter((page, index, arr) => {
             if (page === 'ellipsis' && arr[index - 1] === 'ellipsis') {
                 return false;
@@ -67,39 +56,32 @@ export const Pagination = ({
     const pageNumbers = getPageNumbers();
 
     return (
-        <div className="flex items-center justify-between pt-4 border-t">
-            {/* Info */}
+        <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-                Affichage de <span className="font-medium">{startItem}</span> à{' '}
-                <span className="font-medium">{endItem}</span> sur{' '}
-                <span className="font-medium">{total}</span> {itemNamePlural}
+                <span className="font-medium">{startItem}-{endItem}</span> sur <span className="font-medium">{total}</span> {itemNamePlural}
             </div>
 
-            {/* Contrôles */}
-            <div className="flex items-center gap-2">
-                {/* Première page */}
+            <div className="flex items-center gap-1">
                 <Button
                     variant="outline"
                     size="icon"
+                    className="h-8 w-8"
                     onClick={() => onPageChange(1)}
                     disabled={currentPage === 1}
-                    title="Première page"
                 >
                     <ChevronsLeft className="h-4 w-4" />
                 </Button>
 
-                {/* Page précédente */}
                 <Button
                     variant="outline"
                     size="icon"
+                    className="h-8 w-8"
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    title="Page précédente"
                 >
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
 
-                {/* Numéros de page */}
                 <div className="hidden md:flex items-center gap-1">
                     {pageNumbers.map((page, index) => {
                         if (page === 'ellipsis') {
@@ -116,8 +98,9 @@ export const Pagination = ({
                                 key={page}
                                 variant={isActive ? 'default' : 'outline'}
                                 size="sm"
+                                className="h-8 w-8 p-0"
                                 onClick={() => onPageChange(page)}
-                                className={isActive ? 'pointer-events-none' : ''}
+                                disabled={isActive}
                             >
                                 {page}
                             </Button>
@@ -125,29 +108,26 @@ export const Pagination = ({
                     })}
                 </div>
 
-                {/* Info page mobile */}
-                <div className="md:hidden px-3 py-1.5 text-sm font-medium bg-muted rounded-md">
-                    {currentPage} / {lastPage}
+                <div className="md:hidden px-2 py-1 text-sm font-medium">
+                    {currentPage}/{lastPage}
                 </div>
 
-                {/* Page suivante */}
                 <Button
                     variant="outline"
                     size="icon"
+                    className="h-8 w-8"
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === lastPage}
-                    title="Page suivante"
                 >
                     <ChevronRight className="h-4 w-4" />
                 </Button>
 
-                {/* Dernière page */}
                 <Button
                     variant="outline"
                     size="icon"
+                    className="h-8 w-8"
                     onClick={() => onPageChange(lastPage)}
                     disabled={currentPage === lastPage}
-                    title="Dernière page"
                 >
                     <ChevronsRight className="h-4 w-4" />
                 </Button>

@@ -51,7 +51,7 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
 
     const validationMessage = getValidationMessage();
 
-    // ✅ Formater la contenance
+    // Formater la contenance
     const formatContenance = (contenance: number | null): string => {
         if (!contenance) return "-";
 
@@ -170,7 +170,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                     <SelectItem key={prop.id} value={String(prop.id)}>
                                         <div className="flex items-center gap-6 py-2 whitespace-nowrap">
 
-                                            {/* LOT + TITRE + BADGES */}
                                             <div className="flex items-center gap-2">
                                                 <Badge variant="outline" className="font-mono">
                                                     Lot {prop.lot}
@@ -204,10 +203,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                                 </Badge>
                                             </div>
 
-                                            {/* PROPRIÉTAIRE + COMMUNE */}
-                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                {prop.proprietaire} – {prop.dossier?.commune || "Commune N/A"}
-                                            </div>
                                         </div>
                                     </SelectItem>
 
@@ -217,7 +212,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Select>
                 </div>
 
-                {/* ✅ Affichage amélioré de la propriété sélectionnée avec style cohérent */}
                 {reqPropriete && selectedProprieteData && (
                     <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
                         <CardContent className="p-4 space-y-4">
@@ -277,7 +271,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Card>
                 )}
 
-                {/* Statut du document */}
                 {reqPropriete && hasRequisition && (
                     <Alert className="bg-green-500/10 border-green-500/50">
                         <FileCheck className="h-4 w-4 text-green-500" />
@@ -300,7 +293,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
 
                 <Separator />
 
-                {/* Message de validation */}
                 {validationMessage && !hasRequisition && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
@@ -308,7 +300,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Alert>
                 )}
 
-                {/* Explication */}
                 <Alert>
                     <FileOutput className="h-4 w-4" />
                     <AlertDescription>
@@ -318,7 +309,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </AlertDescription>
                 </Alert>
 
-                {/* Indicateur de génération */}
                 {isGenerating && (
                     <Alert className="bg-blue-500/10 border-blue-500/50">
                         <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
@@ -328,7 +318,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Alert>
                 )}
 
-                {/* Bouton de téléchargement/génération */}
                 {reqPropriete && (
                     hasRequisition ? (
                         <Button

@@ -1,4 +1,4 @@
-// pages/proprietes/components/ProprieteFilters.tsx
+// pages/proprietes/components/ProprieteFilters.tsx - VERSION COMPACTE
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -37,74 +37,71 @@ export default function ProprieteFilters({
     const hasActiveFilters = filtreStatut !== 'tous' || recherche !== '';
 
     return (
-        <div className="space-y-4 mb-6">
-            {/* Barre de recherche */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="text"
-                    placeholder="Rechercher par lot, titre, nature, propriétaire ou situation..."
-                    value={recherche}
-                    onChange={(e) => onRechercheChange(e.target.value)}
-                    className="pl-10 pr-10"
-                />
-                {recherche && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onRechercheChange('')}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
-            </div>
-
-            {/* Filtres et tri */}
-            <div className="flex flex-wrap gap-3 items-center">
-                {/* Filtre statut */}
-                <div className="flex-1 min-w-[200px]">
-                    <Select value={filtreStatut} onValueChange={onFiltreStatutChange}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filtrer par statut" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="tous">
-                                Toutes les propriétés ({totalProprietes})
-                            </SelectItem>
-                            <SelectItem value="actives">
-                                Avec demandeurs actifs
-                            </SelectItem>
-                            <SelectItem value="acquises">
-                                Acquises (archivées)
-                            </SelectItem>
-                            <SelectItem value="sans_demandeur">
-                                Sans demandeur
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+        <div className="mb-4">
+            {/* Ligne unique avec tous les contrôles */}
+            <div className="flex items-center gap-2">
+                {/* Barre de recherche - Flexible */}
+                <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="text"
+                        placeholder="Rechercher par lot, titre, nature..."
+                        value={recherche}
+                        onChange={(e) => onRechercheChange(e.target.value)}
+                        className="pl-9 pr-9 h-9"
+                    />
+                    {recherche && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRechercheChange('')}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
                 </div>
+
+                {/* Filtre statut */}
+                <Select value={filtreStatut} onValueChange={onFiltreStatutChange}>
+                    <SelectTrigger className="w-[160px] h-9">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="tous">
+                            Toutes ({totalProprietes})
+                        </SelectItem>
+                        <SelectItem value="actives">
+                            Avec demandeurs
+                        </SelectItem>
+                        <SelectItem value="acquises">
+                            Acquises
+                        </SelectItem>
+                        <SelectItem value="sans_demandeur">
+                            Sans demandeur
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
 
                 {/* Tri */}
-                <div className="flex-1 min-w-[200px]">
-                    <Select value={tri} onValueChange={onTriChange}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Trier par" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="date">Date de création</SelectItem>
-                            <SelectItem value="lot">Numéro de lot</SelectItem>
-                            <SelectItem value="contenance">Contenance</SelectItem>
-                            <SelectItem value="statut">Statut (incomplets d'abord)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+                <Select value={tri} onValueChange={onTriChange}>
+                    <SelectTrigger className="w-[140px] h-9">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="date">Date</SelectItem>
+                        <SelectItem value="lot">Lot</SelectItem>
+                        <SelectItem value="contenance">Contenance</SelectItem>
+                        <SelectItem value="statut">Statut</SelectItem>
+                    </SelectContent>
+                </Select>
 
                 {/* Bouton ordre */}
                 <Button
                     variant="outline"
                     size="icon"
                     onClick={onOrdreToggle}
+                    className="h-9 w-9 flex-shrink-0"
                     title={ordre === 'asc' ? 'Croissant' : 'Décroissant'}
                 >
                     {ordre === 'asc' ? (
@@ -123,18 +120,18 @@ export default function ProprieteFilters({
                             onFiltreStatutChange('tous');
                             onRechercheChange('');
                         }}
-                        className="text-muted-foreground"
+                        className="h-9 px-3 flex-shrink-0"
                     >
                         <X className="h-4 w-4 mr-1" />
-                        Réinitialiser
+                        <span className="hidden lg:inline">Réinitialiser</span>
                     </Button>
                 )}
             </div>
 
-            {/* Résumé des résultats */}
+            {/* Résumé des résultats - Compact */}
             {hasActiveFilters && (
-                <div className="text-sm text-muted-foreground">
-                    {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''} trouvé{totalFiltres > 1 ? 's' : ''} sur {totalProprietes}
+                <div className="text-xs text-muted-foreground mt-2 ml-1">
+                    {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''} sur {totalProprietes}
                 </div>
             )}
         </div>

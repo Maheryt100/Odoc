@@ -25,7 +25,6 @@ export const validateUserForm = (
 ): ValidationError[] => {
     const errors: ValidationError[] = [];
 
-    // Nom
     if (!data.name.trim()) {
         errors.push({ field: 'name', message: 'Le nom est obligatoire' });
     } else if (data.name.trim().length < 3) {
@@ -34,14 +33,12 @@ export const validateUserForm = (
         errors.push({ field: 'name', message: 'Le nom ne peut pas dépasser 255 caractères' });
     }
 
-    // Email
     if (!data.email.trim()) {
         errors.push({ field: 'email', message: "L'email est obligatoire" });
     } else if (!isValidEmail(data.email)) {
         errors.push({ field: 'email', message: "Format d'email invalide" });
     }
 
-    // Mot de passe (obligatoire uniquement en création)
     if (!isEdit) {
         if (!data.password) {
             errors.push({ field: 'password', message: 'Le mot de passe est obligatoire' });
@@ -50,12 +47,10 @@ export const validateUserForm = (
             errors.push(...passwordErrors);
         }
     } else if (data.password) {
-        // En édition, valider uniquement si un nouveau mot de passe est fourni
         const passwordErrors = validatePassword(data.password);
         errors.push(...passwordErrors);
     }
 
-    // Confirmation du mot de passe
     if (data.password && data.password !== data.password_confirmation) {
         errors.push({
             field: 'password_confirmation',
@@ -63,12 +58,10 @@ export const validateUserForm = (
         });
     }
 
-    // Rôle
     if (!data.role) {
         errors.push({ field: 'role', message: 'Le rôle est obligatoire' });
     }
 
-    // District (obligatoire pour certains rôles)
     if (data.role && requiresDistrict(data.role) && !data.id_district) {
         errors.push({
             field: 'id_district',
@@ -181,15 +174,14 @@ export const validateSearchFilters = (filters: {
 export const sanitizeInput = (input: string): string => {
     return input
         .trim()
-        .replace(/[<>]/g, '') // Supprime les balises HTML basiques
-        .slice(0, 255); // Limite à 255 caractères
+        .replace(/[<>]/g, '')
+        .slice(0, 255);
 };
 
 /**
  * Valide un CIN (Carte d'Identité Nationale)
  */
 export const validateCIN = (cin: string): boolean => {
-    // Format : 12 chiffres
     const cinRegex = /^\d{12}$/;
     return cinRegex.test(cin);
 };
@@ -198,7 +190,6 @@ export const validateCIN = (cin: string): boolean => {
  * Valide un numéro de téléphone
  */
 export const validatePhone = (phone: string): boolean => {
-    // Format : 10 chiffres commençant par 03
     const phoneRegex = /^03[0-9]{8}$/;
     return phoneRegex.test(phone);
 };

@@ -59,7 +59,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                     <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                         {safeStats.today_actions.toLocaleString()}
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
+                    {/* <div className="flex items-center gap-2 mt-2">
                         <TrendingUp className="h-3 w-3 text-blue-500" />
                         <p className="text-xs text-muted-foreground">
                             {todayPercentage}% du total
@@ -70,7 +70,7 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
                             className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
                             style={{ width: `${Math.min(todayPercentage, 100)}%` }}
                         />
-                    </div>
+                    </div> */}
                 </CardContent>
             </Card>
 

@@ -9,6 +9,8 @@ use App\Models\User;
 /**
  * Trait pour appliquer automatiquement le filtrage par district
  * À utiliser dans les modèles Dossier, Propriete, etc.
+ * 
+ * ✅ MODIFIÉ : Prend en compte les utilisateurs centraux (central_user)
  */
 trait HasDistrictScope
 {
@@ -27,13 +29,14 @@ trait HasDistrictScope
                 return;
             }
 
-            // Si super admin, ne pas filtrer
-            if ($user->isSuperAdmin()) {
+            // ✅ MODIFIÉ : Si super admin OU utilisateur central, ne pas filtrer
+            // Les deux rôles peuvent accéder à tous les districts
+            if ($user->canAccessAllDistricts()) {
                 return;
             }
 
-            // Si utilisateur district, filtrer par son district
-            if ($user->hasDistrictAccess()) {
+            // ✅ Si utilisateur district (admin_district ou user_district), filtrer par son district
+            if ($user->hasDistrictAccess() && $user->id_district) {
                 $tableName = $builder->getModel()->getTable();
                 
                 // Pour Dossier : filtrer directement
@@ -76,15 +79,16 @@ trait HasDistrictScope
     }
 
     /**
-     * Scope pour obtenir les données de tous les districts (super admin only)
+     * Scope pour obtenir les données de tous les districts
+     * ✅ MODIFIÉ : Accessible aux super_admin ET central_user
      */
     public function scopeAllDistricts(Builder $query): Builder
     {
         /** @var User|null $user */
         $user = Auth::user();
         
-        if (!$user || !$user->isSuperAdmin()) {
-            abort(403, 'Accès refusé : Super administrateur requis');
+        if (!$user || !$user->canAccessAllDistricts()) {
+            abort(403, 'Accès refusé : Super administrateur ou Utilisateur Central requis');
         }
         
         return $query->withoutGlobalScope('district');
@@ -102,7 +106,8 @@ trait HasDistrictScope
             return false;
         }
 
-        if ($user->isSuperAdmin()) {
+        // ✅ MODIFIÉ : super_admin et central_user peuvent accéder à tout
+        if ($user->canAccessAllDistricts()) {
             return true;
         }
 
@@ -145,8 +150,8 @@ trait HasDistrictScope
             return false;
         }
 
-        // Super admin peut tout faire
-        if ($user->isSuperAdmin()) {
+        // ✅ MODIFIÉ : super_admin et central_user peuvent tout faire
+        if ($user->canAccessAllDistricts()) {
             return true;
         }
 

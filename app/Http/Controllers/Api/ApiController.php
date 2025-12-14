@@ -12,6 +12,8 @@ use App\Services\DeletionValidationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
 
 /**
  * API Controller
@@ -467,5 +469,135 @@ class ApiController extends Controller
             'requisitions' => $req,
             'total' => $recus + $adv + $csf + $req,
         ];
+    }
+
+    /**
+     * ✅ Vérifier si un dossier peut être supprimé
+     */
+    public function checkDossierDelete($id)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            $dossier = Dossier::with([
+                'demandeurs',
+                'proprietes',
+                'piecesJointes'
+            ])->findOrFail($id);
+
+            // ✅ Vérifier les permissions de base
+            $canDelete = false;
+            
+            if ($user->isSuperAdmin()) {
+                $canDelete = true;
+            } elseif ($user->isAdminDistrict() && $user->id_district === $dossier->id_district) {
+                $canDelete = true;
+            }
+
+            // ✅ Compter les associations
+            $totalDemandeurs = $dossier->demandeurs()->count();
+            $totalProprietes = $dossier->proprietes()->count();
+            $totalPiecesJointes = $dossier->piecesJointes()->count();
+
+            // ✅ Conditions de suppression
+            $isEmpty = $totalDemandeurs === 0 
+                    && $totalProprietes === 0 
+                    && $totalPiecesJointes === 0;
+            
+            $isNotClosed = !$dossier->is_closed;
+            
+            $finalCanDelete = $canDelete && $isEmpty && $isNotClosed;
+
+            // ✅ Informations détaillées pour le frontend
+            return response()->json([
+                'can_delete' => $finalCanDelete,
+                'is_closed' => $dossier->is_closed,
+                'has_permission' => $canDelete,
+                'is_empty' => $isEmpty,
+                'total_demandeurs' => $totalDemandeurs,
+                'total_proprietes' => $totalProprietes,
+                'total_pieces_jointes' => $totalPiecesJointes,
+                'dossier' => [
+                    'id' => $dossier->id,
+                    'nom_dossier' => $dossier->nom_dossier,
+                    'numero_ouverture' => $dossier->numero_ouverture,
+                    'commune' => $dossier->commune,
+                    'date_ouverture' => $dossier->date_ouverture,
+                    'date_fermeture' => $dossier->date_fermeture,
+                ],
+                'blocking_reasons' => $this->getDossierBlockingReasons(
+                    $dossier, 
+                    $totalDemandeurs, 
+                    $totalProprietes, 
+                    $totalPiecesJointes,
+                    $canDelete
+                )
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur vérification suppression dossier', [
+                'dossier_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur lors de la vérification'
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ Obtenir les raisons qui bloquent la suppression
+     */
+    private function getDossierBlockingReasons(
+        Dossier $dossier,
+        int $totalDemandeurs,
+        int $totalProprietes,
+        int $totalPiecesJointes,
+        bool $hasPermission
+    ): array
+    {
+        $reasons = [];
+
+        if (!$hasPermission) {
+            $reasons[] = [
+                'type' => 'permission',
+                'message' => 'Vous n\'avez pas la permission de supprimer ce dossier'
+            ];
+        }
+
+        if ($dossier->is_closed) {
+            $reasons[] = [
+                'type' => 'closed',
+                'message' => 'Le dossier est fermé'
+            ];
+        }
+
+        if ($totalDemandeurs > 0) {
+            $reasons[] = [
+                'type' => 'demandeurs',
+                'count' => $totalDemandeurs,
+                'message' => "$totalDemandeurs demandeur(s) associé(s)"
+            ];
+        }
+
+        if ($totalProprietes > 0) {
+            $reasons[] = [
+                'type' => 'proprietes',
+                'count' => $totalProprietes,
+                'message' => "$totalProprietes propriété(s) enregistrée(s)"
+            ];
+        }
+
+        if ($totalPiecesJointes > 0) {
+            $reasons[] = [
+                'type' => 'pieces_jointes',
+                'count' => $totalPiecesJointes,
+                'message' => "$totalPiecesJointes pièce(s) jointe(s)"
+            ];
+        }
+
+        return $reasons;
     }
 }

@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
 
 class DossierController extends Controller
 {
@@ -74,12 +76,19 @@ class DossierController extends Controller
         
         $districts = $this->getAvailableDistricts($user);
 
+        // ✅ MODIFIÉ : Générer le prochain numéro suggéré GLOBAL
+        $suggestedNumero = Dossier::getNextNumeroOuverture();
+        $lastNumero = Dossier::getLastNumeroOuverture();
+
         return Inertia::render('dossiers/create', [
             'districts' => $districts,
             'defaultDistrict' => $user->id_district,
             'canSelectDistrict' => $user->canAccessAllDistricts(),
+            'suggested_numero' => $suggestedNumero,
+            'last_numero' => $lastNumero, // ✅ NOUVEAU : Pour affichage dans le formulaire
         ]);
     }
+
 
     public function store(Request $request)
     {
@@ -98,10 +107,28 @@ class DossierController extends Controller
             'date_descente_fin' => 'required|date|after_or_equal:date_descente_debut',
             'date_ouverture' => 'required|date',
             'id_district' => 'required|numeric|exists:districts,id',
-            'numero_ouverture' => 'nullable|string|max:50|unique:dossiers,numero_ouverture',
+            'numero_ouverture' => 'required|integer|min:1',
         ]);
         
         try {
+            // ✅ NOUVEAU : Vérifier si le numéro existe déjà (avant la validation Laravel)
+            if (Dossier::numeroOuvertureExists($validated['numero_ouverture'])) {
+                $existingDossier = Dossier::withoutGlobalScopes()
+                    ->where('numero_ouverture', $validated['numero_ouverture'])
+                    ->with('district:id,nom_district')
+                    ->first();
+                    
+                $districtInfo = $existingDossier?->district 
+                    ? " (District : {$existingDossier->district->nom_district})" 
+                    : '';
+                    
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'numero_ouverture' => "Le numéro d'ouverture {$validated['numero_ouverture']} est déjà utilisé par le dossier \"{$existingDossier?->nom_dossier}\"{$districtInfo}. Veuillez en choisir un autre."
+                    ]);
+            }
+            
             if (!$user->canAccessAllDistricts() && $validated['id_district'] != $user->id_district) {
                 return back()->withErrors([
                     'error' => 'Vous ne pouvez créer des dossiers que dans votre district.'
@@ -114,14 +141,30 @@ class DossierController extends Controller
 
             $validated['id_user'] = $user->id;
             
+            DB::beginTransaction();
+            
             $dossier = Dossier::create($validated);
 
-            $this->logAction('create', 'dossier', $dossier->id);
+            // ✅ LOGGER LA CRÉATION
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_DOSSIER,
+                $dossier->id,
+                [
+                    'nom_dossier' => $dossier->nom_dossier,
+                    'numero_ouverture' => $dossier->numero_ouverture,
+                    'commune' => $dossier->commune,
+                    'circonscription' => $dossier->circonscription,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+            
+            DB::commit();
             
             return Redirect::route('dossiers')
                 ->with('message', 'Dossier créé avec succès');
                 
         } catch (\Exception $exception) {
+            DB::rollBack();
             Log::error('Erreur création dossier', [
                 'error' => $exception->getMessage(),
                 'user_id' => $user->id,
@@ -135,9 +178,7 @@ class DossierController extends Controller
      */
     public function show($id)
     {
-        // ✅ AMÉLIORATION: Utiliser withCount pour les statistiques
         $dossier = Dossier::with([
-            // Demandeurs avec compteurs optimisés
             'demandeurs' => function($q) {
                 $q->select('demandeurs.*')
                   ->withCount([
@@ -148,7 +189,6 @@ class DossierController extends Controller
                   ]);
             },
             
-            // Propriétés avec demandes
             'proprietes' => function($q) {
                 $q->with([
                     'demandes' => function($query) {
@@ -180,11 +220,9 @@ class DossierController extends Controller
             'canGenerateDocuments' => !$dossier->is_closed
         ];
 
-        // ✅ Enrichir demandeurs côté serveur
         $enrichedDemandeurs = $dossier->demandeurs->map(function($demandeur) {
             $attrs = $demandeur->toArray();
             
-            // Calculer hasProperty côté serveur
             $attrs['hasProperty'] = ($attrs['proprietes_actives_count'] ?? 0) > 0
                                 || ($attrs['proprietes_acquises_count'] ?? 0) > 0;
             
@@ -216,7 +254,6 @@ class DossierController extends Controller
                 'proprietes_count' => $dossier->proprietes_count,
                 'pieces_jointes_count' => $dossier->pieces_jointes_count,
                 
-                // Relations
                 'demandeurs' => $enrichedDemandeurs,
                 'proprietes' => $dossier->proprietes,
                 'district' => $dossier->district,
@@ -293,8 +330,27 @@ class DossierController extends Controller
             'date_ouverture' => 'required|date', 
             'circonscription' => 'required|string|max:255',
             'id_district' => 'required|exists:districts,id',
-            'numero_ouverture' => 'nullable|string|max:50|unique:dossiers,numero_ouverture,' . $id,
+            'numero_ouverture' => 'required|integer|min:1',
         ]);
+        
+        // ✅ NOUVEAU : Vérifier si le numéro existe déjà (en mode édition)
+        if (Dossier::numeroOuvertureExists($validated['numero_ouverture'], $id)) {
+            $existingDossier = Dossier::withoutGlobalScopes()
+                ->where('numero_ouverture', $validated['numero_ouverture'])
+                ->where('id', '!=', $id)
+                ->with('district:id,nom_district')
+                ->first();
+                
+            $districtInfo = $existingDossier?->district 
+                ? " (District : {$existingDossier->district->nom_district})" 
+                : '';
+                
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'numero_ouverture' => "Le numéro d'ouverture {$validated['numero_ouverture']} est déjà utilisé par le dossier \"{$existingDossier?->nom_dossier}\"{$districtInfo}."
+                ]);
+        }
 
         if (!$user->canAccessAllDistricts() && $validated['id_district'] != $dossier->id_district) {
             return back()->withErrors([
@@ -302,12 +358,37 @@ class DossierController extends Controller
             ]);
         }
 
-        $dossier->update($validated);
-        $this->logAction('update', 'dossier', $id);
+        try {
+            DB::beginTransaction();
+            
+            $dossier->update($validated);
+            
+            // ✅ LOGGER LA MODIFICATION
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_DOSSIER,
+                $id,
+                [
+                    'nom_dossier' => $dossier->nom_dossier,
+                    'numero_ouverture' => $dossier->numero_ouverture,
+                    'commune' => $dossier->commune,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+            
+            DB::commit();
 
-        return redirect()
-            ->route('dossiers.show', $id)
-            ->with('message', 'Dossier modifié avec succès');
+            return redirect()
+                ->route('dossiers.show', $id)
+                ->with('message', 'Dossier modifié avec succès');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur modification dossier', [
+                'dossier_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -457,34 +538,6 @@ class DossierController extends Controller
         }
     }
 
-    public function destroy($id)
-    {
-        $this->authorizeDistrictAccess('delete');
-        
-        /** @var User $user */
-        $user = Auth::user();
-        $dossier = Dossier::findOrFail($id);
-        
-        if (!$this->canModifyDossier($dossier, $user)) {
-            return back()->withErrors([
-                'error' => 'Ce dossier est fermé et ne peut pas être supprimé.'
-            ]);
-        }
-        
-        $this->authorizeDistrictAccess('delete', $dossier);
-
-        try {
-            $this->logAction('delete', 'dossier', $id);
-            $dossier->delete();
-            
-            return Redirect::route('dossiers')
-                ->with('success', 'Dossier supprimé avec succès');
-                
-        } catch (\Exception $e) {
-            Log::error('Erreur suppression dossier', ['error' => $e->getMessage()]);
-            return back()->withErrors(['error' => $e->getMessage()]);
-        }
-    }
 
     private function canDeleteDossier(Dossier $dossier, User $user): bool
     {
@@ -544,5 +597,96 @@ class DossierController extends Controller
             'closed' => (clone $query)->whereNotNull('date_fermeture')->count(),
             'recent' => (clone $query)->where('created_at', '>=', now()->subDays(30))->count(),
         ];
+    }
+
+    
+    /**
+     * ✅ Supprimer un dossier (seulement si vide)
+     */
+    public function destroy($id)
+    {
+        $this->authorizeDistrictAccess('delete');
+        
+        /** @var User $user */
+        $user = Auth::user();
+        $dossier = Dossier::with(['demandeurs', 'proprietes', 'piecesJointes'])
+            ->findOrFail($id);
+        
+        // ✅ Vérifier que le dossier n'est pas fermé
+        if ($dossier->is_closed) {
+            return back()->withErrors([
+                'error' => 'Impossible de supprimer un dossier fermé.'
+            ]);
+        }
+        
+        // ✅ Vérifier les permissions
+        $canDelete = $user->isSuperAdmin() || 
+                    ($user->isAdminDistrict() && $user->id_district === $dossier->id_district);
+        
+        if (!$canDelete) {
+            return back()->withErrors([
+                'error' => 'Vous n\'avez pas la permission de supprimer ce dossier.'
+            ]);
+        }
+        
+        // ✅ Vérifier que le dossier est vide
+        $totalDemandeurs = $dossier->demandeurs()->count();
+        $totalProprietes = $dossier->proprietes()->count();
+        $totalPiecesJointes = $dossier->piecesJointes()->count();
+        
+        if ($totalDemandeurs > 0 || $totalProprietes > 0 || $totalPiecesJointes > 0) {
+            $message = 'Le dossier ne peut pas être supprimé car il contient : ';
+            $details = [];
+            
+            if ($totalDemandeurs > 0) {
+                $details[] = "$totalDemandeurs demandeur(s)";
+            }
+            if ($totalProprietes > 0) {
+                $details[] = "$totalProprietes propriété(s)";
+            }
+            if ($totalPiecesJointes > 0) {
+                $details[] = "$totalPiecesJointes pièce(s) jointe(s)";
+            }
+            
+            return back()->withErrors([
+                'error' => $message . implode(', ', $details) . '. Veuillez d\'abord supprimer ces éléments.'
+            ]);
+        }
+
+        try {
+            DB::beginTransaction();
+            
+            // ✅ LOGGER L'ACTION AVANT SUPPRESSION
+            ActivityLogger::logDeletion(
+                ActivityLog::ENTITY_DOSSIER,
+                $dossier->id,
+                [
+                    'nom_dossier' => $dossier->nom_dossier,
+                    'numero_ouverture' => $dossier->numero_ouverture,
+                    'commune' => $dossier->commune,
+                    'circonscription' => $dossier->circonscription,
+                    'type_commune' => $dossier->type_commune,
+                    'fokontany' => $dossier->fokontany,
+                    'date_ouverture' => $dossier->date_ouverture,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+            
+            $dossier->delete();
+            
+            DB::commit();
+            
+            return Redirect::route('dossiers')
+                ->with('success', 'Dossier vide supprimé avec succès');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur suppression dossier', [
+                'dossier_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return back()->withErrors(['error' => 'Erreur lors de la suppression : ' . $e->getMessage()]);
+        }
     }
 }

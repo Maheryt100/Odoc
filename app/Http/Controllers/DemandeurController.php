@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contenir;
 use App\Models\Demandeur;
 use App\Models\Dossier;
-use App\Services\DeletionValidationService; // ✅ NOUVEAU
+use App\Services\DeletionValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -15,10 +15,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Rules\ValidCIN;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
 
 class DemandeurController extends Controller
 {
-    // ✅ INJECTION DU SERVICE
+    // INJECTION DU SERVICE
     protected $deletionService;
 
     public function __construct(DeletionValidationService $deletionService)
@@ -107,6 +109,20 @@ class DemandeurController extends Controller
                 'id_dossier' => $request->id_dossier,
             ]);
 
+            $dossier = Dossier::find($request->id_dossier);
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_DEMANDEUR,
+                $demandeur->id,
+                [
+                    'nom' => $demandeur->nom_demandeur,
+                    'prenom' => $demandeur->prenom_demandeur,
+                    'cin' => $demandeur->cin,
+                    'dossier_id' => $request->id_dossier,
+                    'dossier_nom' => $dossier->nom_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Demandeur ajouté avec succès');
         } catch (\Exception $e) {
@@ -118,6 +134,9 @@ class DemandeurController extends Controller
         }
     }
 
+    /**
+     * Gère création ET mise à jour pour mode "demandeurs-only"
+     */
     public function storeMultiple(Request $request)
     {
         $demandeurs = is_string($request->demandeurs) 
@@ -128,15 +147,15 @@ class DemandeurController extends Controller
             'id_dossier' => 'required|exists:dossiers,id',
         ]);
 
+        // Validation de base (SANS unique sur CIN)
         $validator = Validator::make(['demandeurs' => $demandeurs], [
             'demandeurs' => 'required|array|min:1',
             'demandeurs.*.titre_demandeur' => 'required|string|max:15',
             'demandeurs.*.nom_demandeur' => 'required|string|max:40',
             'demandeurs.*.prenom_demandeur' => 'required|string|max:50',
             'demandeurs.*.date_naissance' => 'required|date|before:-18 years',
-            'demandeurs.*.cin' => ['required', new ValidCIN, 'unique:demandeurs,cin'],
+            'demandeurs.*.cin' => ['required', new ValidCIN],
             
-            // Champs optionnels...
             'demandeurs.*.lieu_naissance' => 'nullable|string|max:100',
             'demandeurs.*.sexe' => 'nullable|string|max:10',
             'demandeurs.*.occupation' => 'nullable|string|max:30',
@@ -161,14 +180,13 @@ class DemandeurController extends Controller
             'demandeurs.*.date_naissance.required' => 'La date de naissance est obligatoire (demandeur :position).',
             'demandeurs.*.date_naissance.before' => 'Le demandeur doit avoir au moins 18 ans (demandeur :position).',
             'demandeurs.*.cin.required' => 'Le CIN est obligatoire (demandeur :position).',
-            'demandeurs.*.cin.size' => 'Le CIN doit contenir exactement 12 chiffres (demandeur :position).',
         ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator->errors());
         }
 
-        // Vérifier doublons CIN dans la requête
+        // Vérifier doublons CIN INTERNES uniquement
         $cins = array_column($demandeurs, 'cin');
         if (count($cins) !== count(array_unique($cins))) {
             return back()->withErrors(['error' => 'Certains CIN sont dupliqués dans le formulaire']);
@@ -179,26 +197,36 @@ class DemandeurController extends Controller
         try {
             $created = 0;
             $updated = 0;
+            $dossier = Dossier::find($validated['id_dossier']);
             
-            foreach ($demandeurs as $demandeurData) {
+            foreach ($demandeurs as $index => $demandeurData) {
                 // Nettoyer les données
-                foreach ($demandeurData as $key => $value) {
-                    if ($value === '') {
-                        $demandeurData[$key] = null;
-                    }
-                }
+                $cleanData = array_map(fn($v) => ($v === '' || $v === null) ? null : $v, $demandeurData);
+                $cleanData['id_user'] = Auth::id();
                 
-                $demandeurData['id_user'] = Auth::id();
-                
-                $existant = Demandeur::where('cin', $demandeurData['cin'])->first();
+                $existant = Demandeur::where('cin', $cleanData['cin'])->first();
                 
                 if ($existant) {
-                    $existant->update($demandeurData);
+                    $updateData = array_filter($cleanData, fn($v) => $v !== null);
+                    $existant->update($updateData);
                     $demandeur = $existant;
                     $updated++;
+                    
+                    // Log::info('Demandeur mis à jour', [
+                    //     'id' => $existant->id,
+                    //     'cin' => $cleanData['cin'],
+                    //     'position' => $index + 1
+                    // ]);
                 } else {
-                    $demandeur = Demandeur::create($demandeurData);
+                    // Création
+                    $demandeur = Demandeur::create($cleanData);
                     $created++;
+                    
+                    // Log::info('Demandeur créé', [
+                    //     'id' => $demandeur->id,
+                    //     'cin' => $cleanData['cin'],
+                    //     'position' => $index + 1
+                    // ]);
                 }
                 
                 // Ajouter au dossier
@@ -209,6 +237,20 @@ class DemandeurController extends Controller
             }
 
             DB::commit();
+
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_DEMANDEUR,
+                null,
+                [
+                    'action_type' => 'bulk_create',
+                    'created_count' => $created,
+                    'updated_count' => $updated,
+                    'total_count' => $created + $updated,
+                    'dossier_id' => $validated['id_dossier'],
+                    'dossier_nom' => $dossier->nom_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
 
             $message = [];
             if ($created > 0) $message[] = "$created créé(s)";
@@ -223,7 +265,10 @@ class DemandeurController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur storeMultiple', ['error' => $e->getMessage()]);
+            Log::error('Erreur storeMultiple', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -244,66 +289,109 @@ class DemandeurController extends Controller
     }
 
     public function searchByCin(Request $request, $cin)
-    {
-        try {
-            $cleanCin = preg_replace('/[^0-9]/', '', $cin);
-            
-            if (strlen($cleanCin) !== 12) {
-                return response()->json([
-                    'found' => false,
-                    'message' => 'Le CIN doit contenir exactement 12 chiffres'
-                ], 200);
-            }
-            
-            $demandeur = Demandeur::where('cin', $cleanCin)->first();
-            
-            if (!$demandeur) {
-                return response()->json([
-                    'found' => false,
-                    'message' => 'Aucun demandeur trouvé avec ce CIN'
-                ], 200);
-            }
-            
+{
+    try {
+        // LOG 1 : CIN reçu
+        Log::info('Recherche CIN demandée', [
+            'cin_recu' => $cin,
+            'longueur' => strlen($cin),
+        ]);
+        
+        // Nettoyer le CIN
+        $cleanCin = preg_replace('/[^0-9]/', '', $cin);
+        
+        // LOG 2 : CIN nettoyé
+        Log::info(' CIN nettoyé', [
+            'cin_original' => $cin,
+            'cin_nettoye' => $cleanCin,
+            'longueur_apres' => strlen($cleanCin),
+        ]);
+        
+        if (strlen($cleanCin) !== 12) {
+            Log::warning('CIN invalide (pas 12 chiffres)');
             return response()->json([
-                'found' => true,
-                'message' => 'Demandeur trouvé ! Vérifiez et mettez à jour les informations si nécessaire.',
-                'demandeur' => [
-                    'titre_demandeur' => $demandeur->titre_demandeur,
-                    'nom_demandeur' => $demandeur->nom_demandeur,
-                    'prenom_demandeur' => $demandeur->prenom_demandeur,
-                    'date_naissance' => $demandeur->date_naissance,
-                    'lieu_naissance' => $demandeur->lieu_naissance,
-                    'sexe' => $demandeur->sexe,
-                    'occupation' => $demandeur->occupation,
-                    'nom_pere' => $demandeur->nom_pere,
-                    'nom_mere' => $demandeur->nom_mere,
-                    'date_delivrance' => $demandeur->date_delivrance,
-                    'lieu_delivrance' => $demandeur->lieu_delivrance,
-                    'date_delivrance_duplicata' => $demandeur->date_delivrance_duplicata,
-                    'lieu_delivrance_duplicata' => $demandeur->lieu_delivrance_duplicata,
-                    'domiciliation' => $demandeur->domiciliation,
-                    'nationalite' => $demandeur->nationalite ?? 'Malagasy',
-                    'situation_familiale' => $demandeur->situation_familiale ?? 'Non spécifiée',
-                    'regime_matrimoniale' => $demandeur->regime_matrimoniale ?? 'Non spécifié',
-                    'date_mariage' => $demandeur->date_mariage,
-                    'lieu_mariage' => $demandeur->lieu_mariage,
-                    'marie_a' => $demandeur->marie_a,
-                    'telephone' => $demandeur->telephone,
-                ]
+                'found' => false,
+                'message' => 'Le CIN doit contenir exactement 12 chiffres'
             ], 200);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur recherche CIN', [
-                'cin' => $cin,
-                'error' => $e->getMessage()
+        }
+        
+        // LOG 3 : Recherche en base
+        $demandeur = Demandeur::where('cin', $cleanCin)->first();
+        
+        Log::info('Résultat recherche', [
+            'cin_recherche' => $cleanCin,
+            'trouve' => $demandeur ? 'OUI' : 'NON',
+            'demandeur_id' => $demandeur?->id,
+            'demandeur_nom' => $demandeur?->nom_demandeur,
+        ]);
+        
+        if (!$demandeur) {
+            // LOG 4 : Vérifier si des demandeurs existent
+            $totalDemandeurs = Demandeur::count();
+            $cinsSimilaires = Demandeur::where('cin', 'like', substr($cleanCin, 0, 6) . '%')
+                ->pluck('cin')
+                ->toArray();
+        
+            Log::info('Statistiques BDD', [
+                'total_demandeurs' => $totalDemandeurs,
+                'cins_similaires' => $cinsSimilaires,
             ]);
             
             return response()->json([
                 'found' => false,
-                'message' => 'Erreur lors de la recherche'
-            ], 500);
+                'message' => 'Aucun demandeur trouvé avec ce CIN'
+            ], 200);
         }
+        
+        // LOG 5 : Demandeur trouvé, préparer les données
+        $data = [
+            'titre_demandeur' => $demandeur->titre_demandeur,
+            'nom_demandeur' => $demandeur->nom_demandeur,
+            'prenom_demandeur' => $demandeur->prenom_demandeur,
+            'date_naissance' => $demandeur->date_naissance,
+            'lieu_naissance' => $demandeur->lieu_naissance,
+            'sexe' => $demandeur->sexe,
+            'occupation' => $demandeur->occupation,
+            'nom_pere' => $demandeur->nom_pere,
+            'nom_mere' => $demandeur->nom_mere,
+            'date_delivrance' => $demandeur->date_delivrance,
+            'lieu_delivrance' => $demandeur->lieu_delivrance,
+            'date_delivrance_duplicata' => $demandeur->date_delivrance_duplicata,
+            'lieu_delivrance_duplicata' => $demandeur->lieu_delivrance_duplicata,
+            'domiciliation' => $demandeur->domiciliation,
+            'nationalite' => $demandeur->nationalite ?? 'Malagasy',
+            'situation_familiale' => $demandeur->situation_familiale ?? 'Non spécifiée',
+            'regime_matrimoniale' => $demandeur->regime_matrimoniale ?? 'Non spécifié',
+            'date_mariage' => $demandeur->date_mariage,
+            'lieu_mariage' => $demandeur->lieu_mariage,
+            'marie_a' => $demandeur->marie_a,
+            'telephone' => $demandeur->telephone,
+        ];
+        
+        // Log::info('Données préparées', [
+        //     'champs_non_null' => array_filter($data, fn($v) => $v !== null),
+        // ]);
+        
+        return response()->json([
+            'found' => true,
+            'message' => 'Demandeur trouvé ! Vérifiez et mettez à jour les informations si nécessaire.',
+            'demandeur' => $data
+        ], 200);
+        
+    } catch (\Exception $e) {
+        Log::error('Erreur recherche CIN', [
+            'cin' => $cin,
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
+        
+        return response()->json([
+            'found' => false,
+            'message' => 'Erreur lors de la recherche'
+        ], 500);
     }
+}
 
     public function edit($id_dossier, $id_demandeur)
     {
@@ -364,6 +452,19 @@ class DemandeurController extends Controller
             $existDemandeur->update(
                 collect($validateData)->except(['id_dossier'])->toArray()
             );
+
+            $dossier = Dossier::find($request->id_dossier);
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_DEMANDEUR,
+                $id,
+                [
+                    'nom' => $existDemandeur->nom_demandeur,
+                    'cin' => $existDemandeur->cin,
+                    'dossier_id' => $request->id_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Demandeur modifié avec succès');
         } catch (\Exception $e) {
@@ -406,6 +507,7 @@ class DemandeurController extends Controller
         }
     }
     
+    
     public function storeExist(Request $request)
     {
         Contenir::create(
@@ -417,7 +519,7 @@ class DemandeurController extends Controller
     }
     
     /**
-     * ✅ SIMPLIFIÉ : Retirer du dossier (utilise le service)
+     * SIMPLIFIÉ : Retirer du dossier (utilise le service)
      */
     public function destroy($id_dossier, $id_demandeur)
     {
@@ -427,6 +529,18 @@ class DemandeurController extends Controller
         );
 
         if ($result['success']) {
+
+            $dossier = Dossier::find($id_dossier);
+            ActivityLogger::logDeletion(
+                ActivityLog::ENTITY_DEMANDEUR,
+                $id_demandeur,
+                [
+                    'action_type' => 'remove_from_dossier',
+                    'dossier_id' => $id_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+
             return redirect()->route('dossiers.show', $id_dossier)
                 ->with('success', $result['message']);
         } else {
@@ -436,25 +550,29 @@ class DemandeurController extends Controller
     }
     
     /**
-     * ✅ SIMPLIFIÉ : Suppression définitive (utilise le service)
+     * SIMPLIFIÉ : Suppression définitive (utilise le service)
      */
     public function destroyDefinitive($id_demandeur)
     {
-        // ✅ AJOUT : Log d'entrée
-        Log::info('🗑️ Tentative suppression définitive demandeur', [
-            'demandeur_id' => $id_demandeur,
-            'user_id' => Auth::id()
-        ]);
-        
+        $demandeur = Demandeur::find($id_demandeur);
+        $demandeurData = $demandeur ? [
+            'nom' => $demandeur->nom_demandeur,
+            'prenom' => $demandeur->prenom_demandeur,
+            'cin' => $demandeur->cin,
+        ] : [];
+
         $result = $this->deletionService->deleteDemandeurDefinitive((int)$id_demandeur);
 
-        // ✅ AJOUT : Log du résultat
-        Log::info('Résultat suppression définitive', [
-            'success' => $result['success'],
-            'message' => $result['message']
-        ]);
-
         if ($result['success']) {
+            // AJOUT : Logger la suppression définitive
+            ActivityLogger::logDeletion(
+                ActivityLog::ENTITY_DEMANDEUR,
+                $id_demandeur,
+                array_merge([
+                    'action_type' => 'definitive_deletion',
+                ], $demandeurData)
+            );
+
             return back()->with('success', $result['message']);
         } else {
             return back()->with('error', $result['message']);

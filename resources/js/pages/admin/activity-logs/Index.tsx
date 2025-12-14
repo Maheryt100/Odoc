@@ -4,7 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { Download, FileText, Activity as ActivityIcon } from 'lucide-react';
+import { Download, FileText, Activity as ActivityIcon, Info, Sparkles } from 'lucide-react';
 
 // Types
 import { ActivityLogsIndexProps } from './types';
@@ -17,6 +17,7 @@ import { StatsCards } from './components/StatsCards';
 import { FiltersCard } from './components/FiltersCard';
 import { LogsTable } from './components/LogsTable';
 import { Pagination } from './components/Pagination';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function ActivityLogsIndex({
     logs,
@@ -103,7 +104,6 @@ export default function ActivityLogsIndex({
             <Head title="Logs d'activité" />
 
             <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
-                {/* ✅ En-tête moderne - Slate/Gray */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div>
@@ -117,7 +117,7 @@ export default function ActivityLogsIndex({
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <Button variant="outline" asChild className="gap-2 shadow-sm hover:shadow-md transition-all">
+                        {/* <Button variant="outline" asChild className="gap-2 shadow-sm hover:shadow-md transition-all">
                             <Link href="/admin/activity-logs/document-stats">
                                 <FileText className="h-4 w-4" />
                                 Stats Documents
@@ -130,12 +130,29 @@ export default function ActivityLogsIndex({
                         >
                             <Download className="h-4 w-4" />
                             Exporter CSV
-                        </Button>
+                        </Button> */}
                     </div>
                 </div>
 
                 {/* Cartes de statistiques */}
                 <StatsCards stats={stats} />
+
+                <Alert className="border-0 shadow-md bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg shrink-0">
+                            <Info className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        </div>
+                        <AlertDescription className="text-sm text-slate-900 dark:text-slate-100">
+                            <span className="font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Traçabilité complète du système
+                            </span>
+                            <span className="text-slate-700 dark:text-slate-300">
+                                — Auditez chaque action utilisateur et générez des rapports détaillés
+                            </span>
+                        </AlertDescription>
+                    </div>
+                </Alert>
 
                 {/* Filtres */}
                 <FiltersCard

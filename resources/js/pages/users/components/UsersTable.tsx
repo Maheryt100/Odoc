@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Edit, Trash2, Power, MapPin, Search, Ellipsis, Eye } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Power, MapPin, Search } from 'lucide-react';
 import { User } from '../types';
 import { ROLE_BADGE_CONFIG, STATUS_CONFIG } from '../config';
 import { EmptyState } from './EmptyState';
@@ -23,11 +23,11 @@ interface UsersTableProps {
 }
 
 export const UsersTable = ({ users, onToggleStatus, onDelete }: UsersTableProps) => {
-    const getRoleBadge = (role: string, roleName: string) => {
+    const getRoleBadge = (role: string, roleName?: string) => {
         const config = ROLE_BADGE_CONFIG[role as keyof typeof ROLE_BADGE_CONFIG];
         return (
             <Badge variant={config?.variant || 'outline'} className="text-xs">
-                {roleName}
+                {roleName || config?.label || role}
             </Badge>
         );
     };
@@ -69,79 +69,74 @@ export const UsersTable = ({ users, onToggleStatus, onDelete }: UsersTableProps)
             <table className="w-full">
                 <thead className="bg-muted/30 border-b">
                     <tr>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                             Utilisateur
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Email
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                             Rôle
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground uppercase hidden lg:table-cell">
                             Localisation
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                             Statut
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground uppercase hidden md:table-cell">
                             Créé le
                         </th>
-                        <th className="px-6 py-4 w-[50px]"></th>
+                        <th className="px-4 py-2 w-[50px]"></th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                     {users.map((user) => (
                         <tr 
                             key={user.id} 
-                            className="hover:bg-muted/30 cursor-pointer transition-colors"
+                            className="hover:bg-muted/30 transition-colors"
                         >
-                            <td className="px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                    <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${getAvatarColor(user.name)} flex items-center justify-center text-white text-sm font-semibold shadow-lg`}>
+                            <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                    <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${getAvatarColor(user.name)} flex items-center justify-center text-white text-xs font-semibold shadow`}>
                                         {getInitials(user.name)}
                                     </div>
-                                    <span className="font-medium">{user.name}</span>
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-sm truncate">{user.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                    </div>
                                 </div>
                             </td>
-                            <td className="px-6 py-4">
-                                <span className="text-sm text-muted-foreground font-mono">
-                                    {user.email}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-3">
                                 {getRoleBadge(user.role, user.role_name)}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-3 hidden lg:table-cell">
                                 {user.district ? (
                                     <div className="flex items-start gap-2">
-                                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                        <div className="text-sm">
-                                            <div className="font-medium">{user.district.nom_district}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {user.district.nom_region}, {user.district.nom_province}
+                                        <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                        <div className="text-xs min-w-0">
+                                            <div className="font-medium truncate">{user.district.nom_district}</div>
+                                            <div className="text-muted-foreground truncate">
+                                                {user.district.nom_region || 'Région inconnue'}
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <span className="text-sm text-muted-foreground italic">
+                                    <span className="text-xs text-muted-foreground italic">
                                         Tous les districts
                                     </span>
                                 )}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-3">
                                 {getStatusBadge(user.status)}
                             </td>
-                            <td className="px-6 py-4">
-                                <span className="text-sm text-muted-foreground">
+                            <td className="px-4 py-3 hidden md:table-cell">
+                                <span className="text-xs text-muted-foreground">
                                     {user.created_at}
                                 </span>
                             </td>
-                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-3">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <Ellipsis className="h-4 w-4" />
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreVertical className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">

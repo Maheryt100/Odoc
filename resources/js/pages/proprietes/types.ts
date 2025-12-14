@@ -1,4 +1,4 @@
-// pages/proprietes/types.ts - ✅ VERSION COMPLÈTE
+// pages/proprietes/types.ts - ✅ VERSION CORRIGÉE ET COMPLÈTE
 
 import type { Dossier, Demandeur, Nature, Vocation, TypeOperation, Propriete } from '@/types';
 
@@ -14,6 +14,7 @@ export type TriProprieteType = 'date' | 'lot' | 'contenance' | 'statut';
 
 /**
  * ✅ Propriété avec détails complets et calculs
+ * CORRECTION : Type maintenant défini et exporté
  */
 export interface ProprieteWithDetails extends Propriete {
     demandeurs?: Demandeur[];

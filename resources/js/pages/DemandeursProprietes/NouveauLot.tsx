@@ -7,7 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast, Toaster } from 'sonner';
-import { Save, Plus, ArrowLeft, LandPlot, Users, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Save, Plus, ArrowLeft, LandPlot, Users, Sparkles, CheckCircle2, FileText } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ import DemandeurCreate, {
     DemandeurFormData, 
     emptyDemandeur 
 } from '@/pages/demandeurs/create';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type CreationMode = 'lot-demandeur' | 'lots-only' | 'demandeurs-only';
 
@@ -430,6 +431,26 @@ export default function NouveauLot() {
                         </RadioGroup>
                     </CardContent>
                 </Card>
+
+                
+                <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <AlertDescription>
+                                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                    Documents justificatifs
+                                </p>
+                                <p className="text-xs text-blue-700 dark:text-blue-400">
+                                    Les pièces jointes (CIN, actes, etc.) pourront être ajoutées après création
+                                </p>
+                            </AlertDescription>
+                        </div>
+                    </div>
+                </Alert>
+            
 
                 {/* ✅ SECTION PROPRIÉTÉS */}
                 {(creationMode === 'lots-only' || creationMode === 'lot-demandeur') && (

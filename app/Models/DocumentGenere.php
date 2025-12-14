@@ -132,7 +132,7 @@ class DocumentGenere extends Model
             ->where('id_propriete', $idPropriete)
             ->where('status', self::STATUS_ACTIVE);
 
-        // ✅ AJOUT : Vérification du district pour éviter les conflits
+        // ✅ Vérification du district
         if ($idDistrict) {
             $query->where('id_district', $idDistrict);
         }
@@ -145,10 +145,8 @@ class DocumentGenere extends Model
         // Pour les autres, vérifier le demandeur
         if ($idDemandeur) {
             $query->where(function($q) use ($idDemandeur) {
-                // Soit c'est le demandeur principal
                 $q->where('id_demandeur', $idDemandeur)
-                  // Soit il fait partie des consorts
-                  ->orWhereJsonContains('demandeurs_ids', $idDemandeur);
+                ->orWhereJsonContains('demandeurs_ids', $idDemandeur);
             });
         }
 

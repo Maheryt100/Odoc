@@ -39,19 +39,31 @@ class Demandeur extends Model
         'id_user'
     ];
 
-    protected $casts = [
-        'date_naissance' => 'date',
-        'date_delivrance' => 'date',
-        'date_delivrance_duplicata' => 'date',
-        'date_mariage' => 'date',
+    /**
+     * ✅ SIMPLIFIÉ : Une seule déclaration des dates
+     * Pas besoin de $casts ET $dates simultanément
+     */
+    protected $dates = [
+        'date_naissance',
+        'date_delivrance',
+        'date_delivrance_duplicata',
+        'date_mariage',
+        'created_at',
+        'updated_at'
     ];
+
+    /**
+     * ✅ SUPPRIMÉ : Les accessors qui font double emploi
+     * Laravel gère automatiquement avec $dates
+     */
+    // ❌ ANCIEN CODE REDONDANT (supprimé):
+    // public function getDateNaissanceAttribute($value) { ... }
+    // public function getDateDelivranceAttribute($value) { ... }
 
     protected $appends = [
         'nom_complet',
         'is_incomplete',
-        'hasProperty', // ✅ AJOUT
-        // 'proprietes_actives_count', // ✅ AJOUT
-        // 'proprietes_acquises_count', // ✅ AJOUT
+        'hasProperty',
     ];
 
     // ============ RELATIONS ============
@@ -69,25 +81,16 @@ class Demandeur extends Model
             ->withTimestamps();
     }
 
-    /**
-     * ✅ NOUVEAU : Relation directe vers les demandes (associations)
-     */
     public function demandes(): HasMany
     {
         return $this->hasMany(Demander::class, 'id_demandeur');
     }
 
-    /**
-     * ✅ Demandes actives uniquement
-     */
     public function demandesActives(): HasMany
     {
         return $this->demandes()->where('status', 'active');
     }
 
-    /**
-     * ✅ Demandes archivées (acquises)
-     */
     public function demandesArchivees(): HasMany
     {
         return $this->demandes()->where('status', 'archive');
@@ -126,6 +129,14 @@ class Demandeur extends Model
             || !$this->nom_mere;
     }
 
+    /**
+     * ✅ Vérifier si a des propriétés
+     */
+    public function getHasPropertyAttribute(): bool
+    {
+        return $this->demandes()->exists();
+    }
+
     // ============ SCOPES ============
 
     public function scopeIncomplete($query)
@@ -154,9 +165,6 @@ class Demandeur extends Model
         });
     }
 
-    /**
-     * ✅ NOUVEAU : Scope avec stats chargées
-     */
     public function scopeWithStats($query)
     {
         return $query->withCount([
@@ -165,39 +173,10 @@ class Demandeur extends Model
         ]);
     }
 
-
     // ============ MÉTHODES MÉTIER ============
 
-    /**
-     * ✅ CORRECTION : Vérifier si a des propriétés (actives OU archivées)
-     */
-    public function getHasPropertyAttribute(): bool
-    {
-        return $this->demandes()->exists();
-    }
-
-    /**
-     * ✅ NOUVEAU : Nombre de propriétés actives
-     */
-    public function getProprietes_actives_countAttribute(): int
-    {
-        return $this->demandesActives()->count();
-    }
-
-    /**
-     * ✅ NOUVEAU : Nombre de propriétés acquises (archivées)
-     */
-    public function getProprietes_acquises_countAttribute(): int
-    {
-        return $this->demandesArchivees()->count();
-    }
-
-    /**
-     * ✅ Vérifier si peut être dissocié d'une propriété
-     */
     public function canBeDissociatedFrom(Propriete $propriete): bool
     {
-        // Trouver la demande active
         $demande = $this->demandesActives()
             ->where('id_propriete', $propriete->id)
             ->first();
@@ -209,33 +188,21 @@ class Demandeur extends Model
         return $demande->canBeDissociated();
     }
 
-    /**
-     * ✅ Obtenir le nombre de propriétés actives
-     */
     public function getActiveProprietesCount(): int
     {
         return $this->demandesActives()->count();
     }
 
-    /**
-     * ✅ Obtenir le nombre de propriétés acquises
-     */
     public function getAcquiredProprietesCount(): int
     {
         return $this->demandesArchivees()->count();
     }
 
-    /**
-     * ✅ Vérifier si a des propriétés
-     */
     public function hasProprietes(): bool
     {
         return $this->demandes()->exists();
     }
 
-    /**
-     * ✅ Obtenir les statistiques du demandeur
-     */
     public function getStats(): array
     {
         return [
@@ -247,14 +214,19 @@ class Demandeur extends Model
             'hasProperty' => $this->hasProperty,
         ];
     }
-    public function getProprietesActivesCountAttribute()
+
+    /**
+     * ✅ NOUVEAU : Formater une date pour les documents
+     */
+    public function formatDateForDocument(string $field): string
     {
-        return $this->attributes['proprietes_actives_count'] ?? 0;
+        if (!$this->{$field}) {
+            return '';
+        }
+
+        return $this->{$field}->translatedFormat('d F Y');
     }
-    public function getProprietesAcquisesCountAttribute()
-    {
-        return $this->attributes['proprietes_acquises_count'] ?? 0;
-    }
+
     /**
      * ✅ Formater pour export
      */
@@ -272,9 +244,8 @@ class Demandeur extends Model
             'Domiciliation' => $this->domiciliation ?? '',
             'Téléphone' => $this->telephone ?? '',
             'Situation' => $this->situation_familiale ?? '',
-            'Nb propriétés' => $this->getActiveProprietesCount(),
-            'Nb propriétés actives' => $this->proprietes_actives_count,
-            'Nb propriétés acquises' => $this->proprietes_acquises_count,
+            'Nb propriétés actives' => $this->getActiveProprietesCount(),
+            'Nb propriétés acquises' => $this->getAcquiredProprietesCount(),
         ];
     }
 
@@ -284,7 +255,6 @@ class Demandeur extends Model
     {
         parent::boot();
 
-        // Normaliser les noms avant sauvegarde
         static::saving(function ($demandeur) {
             if ($demandeur->nom_demandeur) {
                 $demandeur->nom_demandeur = strtoupper($demandeur->nom_demandeur);

@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
 
 class ProprieteController extends Controller
 {
@@ -99,18 +101,35 @@ class ProprieteController extends Controller
         try {
             $request->merge(['id_user' => Auth::id()]);
             
-            // ✅ Convertir chaînes vides en null
+            // Convertir chaînes vides en null
             $data = array_map(fn($v) => ($v === '' ? null : $v), $request->all());
             
-            Propriete::create($data);
+            $propriete = Propriete::create($data);
+
+
+            $dossier = Dossier::find($request->id_dossier);
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_PROPRIETE,
+                $propriete->id,
+                [
+                    'lot' => $propriete->lot,
+                    'titre' => $propriete->titre,
+                    'contenance' => $propriete->contenance,
+                    'nature' => $propriete->nature,
+                    'vocation' => $propriete->vocation,
+                    'dossier_id' => $request->id_dossier,
+                    'dossier_nom' => $dossier->nom_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
             
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Propriété ajoutée avec succès');
         } catch (\Exception $exception) {
-            Log::error('Erreur création propriété', [
-                'error' => $exception->getMessage(),
-                'data' => $request->all()
-            ]);
+            // Log::error('Erreur création propriété', [
+            //     'error' => $exception->getMessage(),
+            //     'data' => $request->all()
+            // ]);
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
     }
@@ -163,9 +182,9 @@ class ProprieteController extends Controller
 
         try {
             $createdCount = 0;
+            $dossier = Dossier::find($validated['id_dossier']);
             
             foreach ($proprietes as $proprieteData) {
-                // ✅ Convertir chaînes vides en null
                 $proprieteData = array_map(fn($v) => ($v === '' ? null : $v), $proprieteData);
                 
                 $proprieteData['id_user'] = Auth::id();
@@ -178,11 +197,23 @@ class ProprieteController extends Controller
 
             DB::commit();
 
-            Log::info('Propriétés multiples créées', [
-                'count' => $createdCount,
-                'dossier_id' => $validated['id_dossier'],
-                'user_id' => Auth::id()
-            ]);
+            ActivityLogger::logCreation(
+                ActivityLog::ENTITY_PROPRIETE,
+                null,
+                [
+                    'action_type' => 'bulk_create',
+                    'count' => $createdCount,
+                    'dossier_id' => $validated['id_dossier'],
+                    'dossier_nom' => $dossier->nom_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
+
+            // Log::info('Propriétés multiples créées', [
+            //     'count' => $createdCount,
+            //     'dossier_id' => $validated['id_dossier'],
+            //     'user_id' => Auth::id()
+            // ]);
 
             return Redirect::route('dossiers.show', $validated['id_dossier'])
                 ->with('success', "{$createdCount} propriété(s) créée(s) avec succès");
@@ -190,11 +221,11 @@ class ProprieteController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erreur création multiple propriétés', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'data' => $proprietes
-            ]);
+            // Log::error('Erreur création multiple propriétés', [
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString(),
+            //     'data' => $proprietes
+            // ]);
 
             return back()->withErrors(['error' => 'Erreur lors de la création: ' . $e->getMessage()]);
         }
@@ -216,7 +247,6 @@ class ProprieteController extends Controller
         $propriete = Propriete::findOrFail($id);
         $dossier = Dossier::findOrFail($propriete->id_dossier);
         
-        // ✅ Vérifier si peut être modifiée
         if (!$propriete->canBeModified()) {
             return Redirect::route('dossiers.show', $dossier->id)
                 ->with('error', 'Impossible de modifier cette propriété : elle est acquise (toutes les demandes sont archivées).');
@@ -236,7 +266,6 @@ class ProprieteController extends Controller
             return back()->with('error', 'Propriété introuvable');
         }
         
-        // ✅ Vérifier si peut être modifiée
         if (!$existPropriete->canBeModified()) {
             return back()->with('error', 'Impossible de modifier cette propriété : elle est acquise.');
         }
@@ -277,13 +306,23 @@ class ProprieteController extends Controller
         DB::beginTransaction();
         
         try {
-            // ✅ Convertir chaînes vides en null
             $validate = array_map(fn($v) => ($v === '' ? null : $v), $validate);
             
-            // L'Observer gère automatiquement le recalcul du prix si nécessaire
             $existPropriete->update($validate);
             
             DB::commit();
+
+            $dossier = Dossier::find($request->id_dossier);
+            ActivityLogger::logUpdate(
+                ActivityLog::ENTITY_PROPRIETE,
+                $id,
+                [
+                    'lot' => $existPropriete->lot,
+                    'titre' => $existPropriete->titre,
+                    'dossier_id' => $request->id_dossier,
+                    'id_district' => $dossier->id_district,
+                ]
+            );
             
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Propriété modifiée avec succès');
@@ -291,27 +330,42 @@ class ProprieteController extends Controller
         } catch (\Exception $exception) {
             DB::rollBack();
             
-            Log::error('Erreur modification propriété', [
-                'propriete_id' => $id,
-                'error' => $exception->getMessage()
-            ]);
+            // Log::error('Erreur modification propriété', [
+            //     'propriete_id' => $id,
+            //     'error' => $exception->getMessage()
+            // ]);
             
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
     }
 
     /**
-     * ✅ Suppression (utilise le service)
+     * Suppression (utilise le service)
      */
     public function destroy(string $id)
     {
         try {
             $propriete = Propriete::findOrFail($id);
             $dossierId = $propriete->id_dossier;
+            $districtId = $propriete->dossier->id_district;
+            $proprieteData = [
+                'lot' => $propriete->lot,
+                'titre' => $propriete->titre,
+            ];
             
             $result = $this->deletionService->deletePropriete((int)$id);
 
             if ($result['success']) {
+                
+                ActivityLogger::logDeletion(
+                    ActivityLog::ENTITY_PROPRIETE,
+                    $id,
+                    array_merge($proprieteData, [
+                        'dossier_id' => $dossierId,
+                        'id_district' => $districtId,
+                    ])
+                );
+
                 return Redirect::route('dossiers.show', $dossierId)
                     ->with('success', $result['message']);
             } else {
@@ -319,23 +373,35 @@ class ProprieteController extends Controller
             }
             
         } catch (\Exception $e) {
-            Log::error('❌ Erreur destroy propriété', [
-                'propriete_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur destroy propriété', [
+            //     'propriete_id' => $id,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return back()->with('error', 'Erreur : ' . $e->getMessage());
         }
     }
 
     /**
-     * ✅ Archiver (utilise le service)
+     * Archiver (utilise le service)
      */
-    public function archive(Request $request)
+     public function archive(Request $request)
     {
-        $request->validate(['id' => 'required|exists:proprietes,id']);
+        $propriete = Propriete::find($request->id);
         
         $result = $this->proprieteService->archivePropriete($request->id);
+        
+        if ($result['success']) {
+            ActivityLogger::logArchive(
+                ActivityLog::ENTITY_PROPRIETE,
+                $request->id,
+                [
+                    'lot' => $propriete->lot,
+                    'titre' => $propriete->titre,
+                    'id_district' => $propriete->dossier->id_district,
+                ]
+            );
+        }
         
         return $result['success']
             ? back()->with('success', $result['message'])
@@ -343,15 +409,25 @@ class ProprieteController extends Controller
     }
 
     /**
-     * ✅ Désarchiver (utilise le service)
+     * Désarchiver (utilise le service)
      */
     public function unarchive(Request $request)
     {
-        $request->validate([
-            'id' => 'required|exists:proprietes,id',
-        ]);
+        $propriete = Propriete::find($request->id);
 
         $result = $this->proprieteService->unarchivePropriete($request->id);
+
+        if ($result['success']) {
+            ActivityLogger::logUnarchive(
+                ActivityLog::ENTITY_PROPRIETE,
+                $request->id,
+                [
+                    'lot' => $propriete->lot,
+                    'titre' => $propriete->titre,
+                    'id_district' => $propriete->dossier->id_district,
+                ]
+            );
+        }
 
         return $result['success']
             ? back()->with('success', $result['message'])

@@ -1,4 +1,4 @@
-// users/Create.tsx - AVEC SUPPORT CENTRAL_USER - STYLED
+// users/Create.tsx
 import { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';

@@ -4,14 +4,15 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Save, Calendar, Hash, MapPin } from 'lucide-react';
+import { Save, Calendar, Hash, MapPin, AlertCircle } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { District, Dossier } from '@/types';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 // Import des fichiers JSON
 import communesData from '@/data/liste_commune_par_district.json';
@@ -19,8 +20,9 @@ import districtsData from '@/data/liste_district_par_region.json';
 
 interface DossierFormProps {
     districts: District[];
-    dossier?: Dossier; // ✅ Optionnel pour le mode création
-    suggested_numero?: string;
+    dossier?: Dossier;
+    suggested_numero?: number;
+    last_numero?: number | null;
     mode: 'create' | 'edit';
     onCancel?: () => void;
 }
@@ -38,18 +40,27 @@ type DistrictsStructure = {
 export default function DossierForm({ 
     districts, 
     dossier, 
-    suggested_numero, 
+    suggested_numero,
+    last_numero,
     mode,
     onCancel 
 }: DossierFormProps) {
     const [openDistrict, setOpenDistrict] = useState(false);
     const [openCirconscription, setOpenCirconscription] = useState(false);
     const [openCommune, setOpenCommune] = useState(false);
+    const [numeroWarning, setNumeroWarning] = useState<string | null>(null);
 
-    // ✅ Initialisation selon le mode
+    // ✅ Convertir l'ancien string en number si nécessaire
+    const initialNumero = mode === 'create' 
+        ? (suggested_numero || 1)
+        : (typeof dossier?.numero_ouverture === 'number' 
+            ? dossier.numero_ouverture 
+            : parseInt(dossier?.numero_ouverture as unknown as string) || 0);
+
+    // ✅ Initialisation avec le type number
     const { data, setData, post, put, processing, errors } = useForm({
         nom_dossier: dossier?.nom_dossier || '',
-        numero_ouverture: dossier?.numero_ouverture || suggested_numero || '',
+        numero_ouverture: initialNumero,
         type_commune: dossier?.type_commune || '',
         commune: dossier?.commune || '',
         fokontany: dossier?.fokontany || '',
@@ -59,6 +70,26 @@ export default function DossierForm({
         circonscription: dossier?.circonscription || '',
         id_district: dossier?.id_district || 0,
     });
+
+    // ✅ Validation du numéro d'ouverture avec messages améliorés
+    useEffect(() => {
+        if (mode === 'create' && data.numero_ouverture) {
+            const num = data.numero_ouverture;
+            
+            if (num < 1) {
+                setNumeroWarning('Le numéro doit être supérieur à 0');
+            } else if (suggested_numero && num < suggested_numero) {
+                const lastInfo = last_numero ? ` (dernier utilisé : ${last_numero})` : '';
+                setNumeroWarning(`⚠️ Le prochain numéro suggéré est ${suggested_numero}${lastInfo}. Vous pouvez le modifier si nécessaire.`);
+            } else if (suggested_numero && num > suggested_numero) {
+                const skipped = num - suggested_numero;
+                const plural = skipped > 1 ? 's' : '';
+                setNumeroWarning(`ℹ️ Vous sautez ${skipped} numéro${plural}. Les numéros ${suggested_numero} à ${num - 1} seront disponibles.`);
+            } else {
+                setNumeroWarning(null);
+            }
+        }
+    }, [data.numero_ouverture, suggested_numero, last_numero, mode]);
 
     const allDistrictsFromJson = useMemo(() => {
         const typedData = districtsData as DistrictsStructure;
@@ -135,6 +166,12 @@ export default function DossierForm({
             return;
         }
 
+        // ✅ Validation du numéro d'ouverture (avec message personnalisé si erreur)
+        if (mode === 'create' && (!data.numero_ouverture || data.numero_ouverture < 1)) {
+            toast.error("Le numéro d'ouverture doit être supérieur à 0");
+            return;
+        }
+
         const dateDebut = new Date(data.date_descente_debut);
         const dateFin = new Date(data.date_descente_fin);
 
@@ -148,21 +185,40 @@ export default function DossierForm({
             post(route('dossiers.store'), {
                 onError: (errors) => {
                     const messages = Object.values(errors).flat();
-                    toast.error('Erreur de validation', {
-                        description: messages.join('\n'),
-                    });
+                    
+                    // ✅ Message spécifique amélioré si le numéro existe déjà
+                    if (errors.numero_ouverture) {
+                        toast.error('Numéro d\'ouverture déjà utilisé', {
+                            description: errors.numero_ouverture,
+                            duration: 6000,
+                        });
+                    } else {
+                        toast.error('Erreur de validation', {
+                            description: messages.join('\n'),
+                        });
+                    }
                 },
                 onSuccess: () => {
-                    toast.success('Dossier créé avec succès !');
+                    toast.success('Dossier créé avec succès !', {
+                        description: `Numéro d'ouverture : ${data.numero_ouverture}`
+                    });
                 },
             });
         } else {
             put(route('dossiers.update', dossier!.id), {
                 onError: (errors) => {
                     const messages = Object.values(errors).flat();
-                    toast.error('Erreur de validation', {
-                        description: messages.join('\n'),
-                    });
+                    
+                    if (errors.numero_ouverture) {
+                        toast.error('Numéro d\'ouverture déjà utilisé', {
+                            description: errors.numero_ouverture,
+                            duration: 6000,
+                        });
+                    } else {
+                        toast.error('Erreur de validation', {
+                            description: messages.join('\n'),
+                        });
+                    }
                 },
                 onSuccess: () => {
                     toast.success('Dossier modifié avec succès !');
@@ -214,23 +270,73 @@ export default function DossierForm({
                                 )}
                             </div>
 
+                            {/* ✅ MODIFIÉ : Champ numéro d'ouverture avec validation améliorée */}
                             <div className="space-y-2">
-                                <Label className="text-sm font-medium">Numéro d'ouverture</Label>
+                                <Label className="text-sm font-medium">
+                                    Numéro d'ouverture <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
-                                    type="text"
+                                    type="number"
+                                    min="1"
                                     value={data.numero_ouverture}
-                                    onChange={(e) => setData('numero_ouverture', e.target.value)}
-                                    placeholder="Laissez vide pour génération automatique"
-                                    className="h-11"
-                                    disabled={mode === 'edit'} // ✅ Désactiver en édition
+                                    onChange={(e) => setData('numero_ouverture', parseInt(e.target.value) || 1)}
+                                    placeholder={mode === 'create' ? `Suggéré: ${suggested_numero}` : ''}
+                                    required
+                                    className={cn(
+                                        "h-11",
+                                        errors.numero_ouverture && "border-red-500",
+                                        numeroWarning && "border-yellow-500"
+                                    )}
+                                    disabled={mode === 'edit'}
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    {mode === 'create' 
-                                        ? 'Un numéro sera généré automatiquement si laissé vide'
-                                        : 'Le numéro ne peut pas être modifié'}
-                                </p>
+                                
+                                {mode === 'create' && last_numero !== null && (
+                                    <div className="text-xs space-y-1">
+                                        <p className="text-muted-foreground">
+                                            Dernier numéro utilisé : <strong className="text-blue-600">{last_numero}</strong>
+                                        </p>
+                                        <p className="text-emerald-600 font-medium">
+                                            Prochain suggéré : <strong>{suggested_numero}</strong>
+                                            {' '}(vous pouvez le modifier)
+                                        </p>
+                                    </div>
+                                )}
+                                
+                                {mode === 'edit' && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Le numéro d'ouverture ne peut pas être modifié après création
+                                    </p>
+                                )}
+
+                                {/* ✅ Avertissement dynamique */}
+                                {numeroWarning && mode === 'create' && (
+                                    <Alert 
+                                        variant="default" 
+                                        className={cn(
+                                            "border",
+                                            numeroWarning.includes('⚠️') ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20" : "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                                        )}
+                                    >
+                                        <AlertCircle className={cn(
+                                            "h-4 w-4",
+                                            numeroWarning.includes('⚠️') ? "text-yellow-600 dark:text-yellow-400" : "text-blue-600 dark:text-blue-400"
+                                        )} />
+                                        <AlertDescription className={cn(
+                                            "text-xs",
+                                            numeroWarning.includes('⚠️') ? "text-yellow-800 dark:text-yellow-200" : "text-blue-800 dark:text-blue-200"
+                                        )}>
+                                            {numeroWarning}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                                
                                 {errors.numero_ouverture && (
-                                    <p className="text-sm text-red-500">{errors.numero_ouverture}</p>
+                                    <Alert variant="destructive" className="border-red-500">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription className="text-sm">
+                                            {errors.numero_ouverture}
+                                        </AlertDescription>
+                                    </Alert>
                                 )}
                             </div>
                         </div>

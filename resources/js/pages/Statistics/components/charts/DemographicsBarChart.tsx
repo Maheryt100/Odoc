@@ -1,4 +1,5 @@
 // Statistics/components/charts/DemographicsBarChart.tsx
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -24,6 +25,10 @@ export function DemographicsBarChart({
     pourcentageHommes,
     pourcentageFemmes,
 }: Props) {
+    // Calculer les sans propriété
+    const hommesSansPropriete = totalHommes - hommesActifs - hommesAcquis;
+    const femmesSansPropriete = totalFemmes - femmesActifs - femmesAcquis;
+
     return (
         <Card>
             <CardHeader>
@@ -51,7 +56,7 @@ export function DemographicsBarChart({
                             </Badge>
                         </div>
 
-                        {/* Barre avec sections côte à côte */}
+                        {/* Légende */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm mb-2">
                                 <div className="flex gap-4">
@@ -60,38 +65,61 @@ export function DemographicsBarChart({
                                         <span className="text-muted-foreground">Acquis: {hommesAcquis}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-blue-400" />
+                                        <div className="w-3 h-3 rounded-full bg-blue-600/50" />
                                         <span className="text-muted-foreground">En cours: {hommesActifs}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-blue-600/20" />
+                                        <span className="text-muted-foreground">Sans propriété: {hommesSansPropriete}</span>
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* Barre complètement remplie avec sections */}
+                            {/* Barre avec 3 sections */}
                             <div className="flex w-full h-8 rounded-full overflow-hidden border border-border">
                                 {totalHommes > 0 ? (
                                     <>
-                                        {/* Section Acquis (gauche) */}
-                                        <div 
-                                            className="bg-blue-600 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                            style={{ 
-                                                width: `${(hommesAcquis / totalHommes) * 100}%` 
-                                            }}
-                                        >
-                                            {hommesAcquis > 0 && (
-                                                <span className="px-2">Acquis: {hommesAcquis}</span>
-                                            )}
-                                        </div>
-                                        {/* Section En cours (droite) */}
-                                        <div 
-                                            className="bg-blue-400 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                            style={{ 
-                                                width: `${(hommesActifs / totalHommes) * 100}%` 
-                                            }}
-                                        >
-                                            {hommesActifs > 0 && (
-                                                <span className="px-2">En cours: {hommesActifs}</span>
-                                            )}
-                                        </div>
+                                        {/* Section Acquis (opacity=1) */}
+                                        {hommesAcquis > 0 && (
+                                            <div 
+                                                className="bg-blue-600 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                style={{ 
+                                                    width: `${(hommesAcquis / totalHommes) * 100}%`,
+                                                }}
+                                            >
+                                                {hommesAcquis > 0 && (
+                                                    <span className="px-2">{hommesAcquis}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Section En cours (opacity=0.5) */}
+                                        {hommesActifs > 0 && (
+                                            <div 
+                                                className="bg-blue-600/50 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                style={{ 
+                                                    width: `${(hommesActifs / totalHommes) * 100}%`,
+                                                }}
+                                            >
+                                                {hommesActifs > 0 && (
+                                                    <span className="px-2">{hommesActifs}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Section Sans propriété (opacity=0.2) */}
+                                        {hommesSansPropriete > 0 && (
+                                            <div 
+                                                className="bg-blue-600/20 flex items-center justify-center text-xs text-blue-900 dark:text-blue-100 font-medium transition-all"
+                                                style={{ 
+                                                    width: `${(hommesSansPropriete / totalHommes) * 100}%`,
+                                                }}
+                                            >
+                                                {hommesSansPropriete > 0 && (
+                                                    <span className="px-2">{hommesSansPropriete}</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <div className="w-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
@@ -123,7 +151,7 @@ export function DemographicsBarChart({
                             </Badge>
                         </div>
 
-                        {/* Barre avec sections côte à côte */}
+                        {/* Légende */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm mb-2">
                                 <div className="flex gap-4">
@@ -132,38 +160,61 @@ export function DemographicsBarChart({
                                         <span className="text-muted-foreground">Acquis: {femmesAcquis}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-pink-400" />
+                                        <div className="w-3 h-3 rounded-full bg-pink-600/50" />
                                         <span className="text-muted-foreground">En cours: {femmesActifs}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-pink-600/20" />
+                                        <span className="text-muted-foreground">Sans propriété: {femmesSansPropriete}</span>
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* Barre complètement remplie avec sections */}
+                            {/* Barre avec 3 sections */}
                             <div className="flex w-full h-8 rounded-full overflow-hidden border border-border">
                                 {totalFemmes > 0 ? (
                                     <>
-                                        {/* Section Acquis (gauche) */}
-                                        <div 
-                                            className="bg-pink-600 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                            style={{ 
-                                                width: `${(femmesAcquis / totalFemmes) * 100}%` 
-                                            }}
-                                        >
-                                            {femmesAcquis > 0 && (
-                                                <span className="px-2">Acquis: {femmesAcquis}</span>
-                                            )}
-                                        </div>
-                                        {/* Section En cours (droite) */}
-                                        <div 
-                                            className="bg-pink-400 flex items-center justify-center text-xs text-white font-medium transition-all"
-                                            style={{ 
-                                                width: `${(femmesActifs / totalFemmes) * 100}%` 
-                                            }}
-                                        >
-                                            {femmesActifs > 0 && (
-                                                <span className="px-2">En cours: {femmesActifs}</span>
-                                            )}
-                                        </div>
+                                        {/* Section Acquis (opacity=1) */}
+                                        {femmesAcquis > 0 && (
+                                            <div 
+                                                className="bg-pink-600 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                style={{ 
+                                                    width: `${(femmesAcquis / totalFemmes) * 100}%`,
+                                                }}
+                                            >
+                                                {femmesAcquis > 0 && (
+                                                    <span className="px-2">{femmesAcquis}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Section En cours (opacity=0.5) */}
+                                        {femmesActifs > 0 && (
+                                            <div 
+                                                className="bg-pink-600/50 flex items-center justify-center text-xs text-white font-medium transition-all"
+                                                style={{ 
+                                                    width: `${(femmesActifs / totalFemmes) * 100}%`,
+                                                }}
+                                            >
+                                                {femmesActifs > 0 && (
+                                                    <span className="px-2">{femmesActifs}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Section Sans propriété (opacity=0.2) */}
+                                        {femmesSansPropriete > 0 && (
+                                            <div 
+                                                className="bg-pink-600/20 flex items-center justify-center text-xs text-pink-900 dark:text-pink-100 font-medium transition-all"
+                                                style={{ 
+                                                    width: `${(femmesSansPropriete / totalFemmes) * 100}%`,
+                                                }}
+                                            >
+                                                {femmesSansPropriete > 0 && (
+                                                    <span className="px-2">{femmesSansPropriete}</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <div className="w-full bg-muted flex items-center justify-center text-xs text-muted-foreground">

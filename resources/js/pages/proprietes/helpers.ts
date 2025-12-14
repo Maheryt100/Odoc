@@ -1,4 +1,4 @@
-// pages/proprietes/helpers.ts - ✅ VERSION COMPLÈTE
+// pages/proprietes/helpers.ts - ✅ VERSION CORRIGÉE
 
 import type { Propriete } from '@/types';
 import type { 
@@ -64,13 +64,14 @@ export const filterProprietesByStatus = (
 };
 
 /**
- * Recherche dans propriété
+ * ✅ CORRECTION : Recherche dans propriété (utilise dep_vol_complet du backend)
  */
 export const matchesSearch = (prop: Propriete, search: string): boolean => {
     const searchLower = search.toLowerCase();
     return (
         prop.lot?.toLowerCase().includes(searchLower) ||
         prop.titre?.toLowerCase().includes(searchLower) ||
+        prop.titre_complet?.toLowerCase().includes(searchLower) ||
         prop.nature?.toLowerCase().includes(searchLower) ||
         prop.proprietaire?.toLowerCase().includes(searchLower) ||
         prop.situation?.toLowerCase().includes(searchLower) ||
@@ -101,7 +102,6 @@ export const sortProprietes = (
                 comparison = (a.contenance || 0) - (b.contenance || 0);
                 break;
             case 'statut':
-                // Incomplets d'abord, puis acquis, puis actifs, puis vides
                 const getStatutScore = (prop: Propriete) => {
                     if (isPropertyArchived(prop)) return 2;
                     if (hasActiveDemandeurs(prop)) return 3;
@@ -186,11 +186,41 @@ export function formatDateForDisplay(dateValue: string | Date | null | undefined
 }
 
 // ============================================
+// 🎨 FORMATAGE POUR AFFICHAGE
+// ============================================
+
+/**
+ * ✅ NOTE : Le formatage dep/vol est maintenant géré côté backend
+ * via l'accessor `dep_vol_complet` du modèle Propriete
+ * Format backend: "254 n°054" ou "254"
+ * 
+ * Cette fonction est conservée pour compatibilité mais n'est plus nécessaire
+ * car le backend retourne déjà `dep_vol_complet` formaté
+ */
+
+/**
+ * Formater le titre complet
+ * Note: Le backend retourne déjà `titre_complet` formaté
+ */
+export function formatTitre(titre?: string | null): string {
+    if (!titre) return '-';
+    return `TNº${titre}`;
+}
+
+/**
+ * Formater la contenance
+ */
+export function formatContenance(contenance?: number | null): string {
+    if (!contenance) return '-';
+    return `${new Intl.NumberFormat('fr-FR').format(contenance)} m²`;
+}
+
+// ============================================
 // 🔄 CONVERSION DE DONNÉES
 // ============================================
 
 /**
- * Convertir une propriété du serveur en données de formulaire
+ * ✅ CORRECTION : Convertir une propriété du serveur en données de formulaire
  */
 export function proprieteToFormData(propriete: ProprieteWithDetails, dossierId?: number): ProprieteFormData {
     return {
@@ -221,35 +251,6 @@ export function proprieteToFormData(propriete: ProprieteWithDetails, dossierId?:
 export function parseSelectedCharges(chargeString: string | null | undefined): string[] {
     if (!chargeString) return [];
     return chargeString.split(',').map(c => c.trim()).filter(Boolean);
-}
-
-// ============================================
-// 🎨 FORMATAGE POUR AFFICHAGE
-// ============================================
-
-/**
- * Formater le dep/vol complet
- */
-export function formatDepVol(depVol?: string, numeroDepVol?: string): string {
-    if (!depVol) return '-';
-    if (numeroDepVol) return `${depVol} n°${numeroDepVol}`;
-    return depVol;
-}
-
-/**
- * Formater le titre complet
- */
-export function formatTitre(titre?: string): string {
-    if (!titre) return '-';
-    return `TNº${titre}`;
-}
-
-/**
- * Formater la contenance
- */
-export function formatContenance(contenance?: number): string {
-    if (!contenance) return '-';
-    return `${new Intl.NumberFormat('fr-FR').format(contenance)} m²`;
 }
 
 // ============================================
