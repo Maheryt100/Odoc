@@ -1,4 +1,4 @@
-// documents/tabs/ActeVenteTab.tsx
+// documents/tabs/ActeVenteTab.tsx - VERSION CORRIGÉE
 import React, { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
     Lock, Receipt, Clock, Eye, Loader2, Crown, FileCheck, MapPin, Coins
 } from 'lucide-react';
 import { Demandeur, Dossier } from '@/types';
-import { ProprieteWithDemandeurs, DocumentGenere } from '../types';
+import { ProprieteWithDemandeurs, DocumentGenere, DemandeurWithCSF } from '../types';
 import { 
     isProprieteComplete, 
     isDemandeurComplete, 
@@ -23,11 +23,12 @@ import {
     getConsorts
 } from '../validation';
 import { safePrix, formatMontant } from '../helpers';
-
+import DocumentStatusBadge from '../components/DocumentStatusBadge';
+import SecureDownloadButton from '../components/SecureDownloadButton';
 
 interface ActeVenteTabProps {
     proprietes: ProprieteWithDemandeurs[];
-    demandeurs: Demandeur[];
+    demandeurs: DemandeurWithCSF[];
     dossier: Dossier;
 }
 
@@ -37,7 +38,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
 
     const selectedProprieteData = proprietes.find(p => p.id === Number(selectedPropriete));
 
-    // Récupérer automatiquement le demandeur principal
     const demandeurPrincipal = useMemo(() => {
         if (!selectedProprieteData?.demandeurs_lies) return null;
         return getDemandeurPrincipal(selectedProprieteData.demandeurs_lies);
@@ -59,19 +59,21 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
     const hasRecu = !!documentRecu;
     const hasAdv = !!documentAdv;
 
-    const canGenerateRecu = () => {
-        if (!selectedPropriete || !demandeurPrincipal || hasRecu) return false;
-        const prop = selectedProprieteData;
-        if (!prop) return false;
-        return isProprieteComplete(prop) && isPrincipalComplete;
-    };
+    // ✅ CORRIGÉ : Conditions simplifiées
+    const canGenerateRecu = selectedPropriete && 
+                           demandeurPrincipal && 
+                           !hasRecu && 
+                           selectedProprieteData &&
+                           isProprieteComplete(selectedProprieteData) && 
+                           isPrincipalComplete;
 
-    const canGenerateActeVente = () => {
-        if (!selectedPropriete || !demandeurPrincipal || hasAdv) return false;
-        const prop = selectedProprieteData;
-        if (!prop) return false;
-        return isProprieteComplete(prop) && isPrincipalComplete && hasRecu;
-    };
+    const canGenerateActeVente = selectedPropriete && 
+                                demandeurPrincipal && 
+                                !hasAdv && 
+                                hasRecu &&
+                                selectedProprieteData &&
+                                isProprieteComplete(selectedProprieteData) && 
+                                isPrincipalComplete;
 
     const validationMessage = getValidationMessage(
         selectedProprieteData || null,
@@ -79,7 +81,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
         'acte_vente'
     );
 
-    // ✅ Formater la contenance
     const formatContenance = (contenance: number | null): string => {
         if (!contenance) return '-';
         
@@ -96,33 +97,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
         return parts.join(' ');
     };
 
-    // ✅ CORRIGÉ : preserveUrl
-    const handleDownloadExisting = async (document: DocumentGenere, typeName: string) => {
-        if (isGenerating) return;
-        
-        setIsGenerating(true);
-        try {
-            const url = route('documents.recu.download', document.id);
-            window.location.href = url;
-            
-            toast.success(`Téléchargement du ${typeName} en cours...`);
-            
-            setTimeout(() => {
-                router.reload({ 
-                    only: ['proprietes'],
-                    preserveUrl: true, // ✅ CORRIGÉ
-                    onFinish: () => setIsGenerating(false)
-                });
-            }, 1000);
-            
-        } catch (error) {
-            console.error('Erreur téléchargement:', error);
-            toast.error('Erreur lors du téléchargement');
-            setIsGenerating(false);
-        }
-    };
-
-    // ✅ CORRIGÉ : preserveUrl
     const handleGenerate = async (type: 'recu' | 'acte_vente') => {
         if (!selectedPropriete || !demandeurPrincipal) {
             toast.warning('Sélection incomplète');
@@ -194,6 +168,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
+                {/* Sélection propriété */}
                 <div className="space-y-2">
                     <Label className="text-sm font-semibold">Propriété</Label>
                     <Select 
@@ -213,7 +188,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                 return (
                                     <SelectItem key={prop.id} value={String(prop.id)}>
                                         <div className="flex items-center gap-4 py-2">
-
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <Badge variant="outline" className="font-mono">
                                                     Lot {prop.lot}
@@ -221,7 +195,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                                 <Badge variant="outline">
                                                     TN°{prop.titre}
                                                 </Badge>
-
                                                 {prop.document_recu && (
                                                     <Badge variant="default" className="bg-green-500 text-xs">
                                                         <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -244,14 +217,12 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
 
                                             {principal && (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-
                                                     <div className="flex items-center gap-1">
                                                         <Crown className="h-3 w-3 text-yellow-500" />
                                                         <span className="font-medium">
                                                             {principal.nom} {principal.prenom}
                                                         </span>
                                                     </div>
-
                                                     {consortsList.length > 0 && (
                                                         <div className="flex items-center gap-1">
                                                             <Users className="h-3 w-3" />
@@ -264,17 +235,16 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                             )}
                                         </div>
                                     </SelectItem>
-
                                 );
                             })}
                         </SelectContent>
                     </Select>
                 </div>
 
+                {/* Carte d'info propriété */}
                 {selectedPropriete && selectedProprieteData && (
                     <Card className="border-2 border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
                         <CardContent className="p-4 space-y-4">
-                            {/* Infos propriété */}
                             <div className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-violet-600 dark:text-violet-400 flex-shrink-0 mt-1" />
                                 <div className="space-y-2 flex-1">
@@ -341,13 +311,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                                     </ul>
                                                 </div>
                                             )}
-
-                                            <div className="text-xs text-muted-foreground">
-                                                {consorts.length > 0 
-                                                    ? `Document généré avec ${consorts.length + 1} demandeurs`
-                                                    : 'Document généré avec un seul demandeur'
-                                                }
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -366,13 +329,24 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                     </div>
                                 </div>
                             )}
+                            
+                            <div className="pt-3 border-t">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Statut Reçu:</span>
+                                    <DocumentStatusBadge document={selectedProprieteData?.document_recu} />
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className="text-sm text-muted-foreground">Statut ADV:</span>
+                                    <DocumentStatusBadge document={selectedProprieteData?.document_adv} />
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 )}
 
+                {/* Alertes de statut */}
                 {selectedPropriete && (
                     <>
-                        {/* Statut du reçu */}
                         {!hasRecu ? (
                             <Alert className="bg-amber-500/10 border-amber-500/50">
                                 <AlertCircle className="h-4 w-4 text-amber-500" />
@@ -392,16 +366,11 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                             <Clock className="h-3 w-3" />
                                             Généré le {documentRecu?.generated_at}
                                         </div>
-                                        <div className="text-xs opacity-75 flex items-center gap-2">
-                                            <Eye className="h-3 w-3" />
-                                            Téléchargé {documentRecu?.download_count || 0} fois
-                                        </div>
                                     </div>
                                 </AlertDescription>
                             </Alert>
                         )}
 
-                        {/* Statut ADV */}
                         {hasAdv && (
                             <Alert className="bg-blue-500/10 border-blue-500/50">
                                 <FileCheck className="h-4 w-4 text-blue-500" />
@@ -414,10 +383,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                             <Clock className="h-3 w-3" />
                                             Généré le {documentAdv?.generated_at}
                                         </div>
-                                        <div className="text-xs opacity-75 flex items-center gap-2">
-                                            <Eye className="h-3 w-3" />
-                                            Téléchargé {documentAdv?.download_count || 0} fois
-                                        </div>
                                     </div>
                                 </AlertDescription>
                             </Alert>
@@ -427,7 +392,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
 
                 <Separator />
 
-                {/* Messages de validation */}
                 {validationMessage && !hasRecu && !hasAdv && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
@@ -435,83 +399,99 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                     </Alert>
                 )}
 
-                {/* Indicateur de génération */}
                 {isGenerating && (
                     <Alert className="bg-blue-500/10 border-blue-500/50">
                         <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                         <AlertDescription className="text-blue-700 dark:text-blue-300">
-                            {hasRecu || hasAdv ? 'Téléchargement en cours...' : 'Génération en cours...'}
+                            Génération en cours...
                         </AlertDescription>
                     </Alert>
                 )}
 
-                {/* Boutons d'action */}
+                {/* ✅ SECTION CORRIGÉE : Boutons d'action */}
                 {selectedPropriete && demandeurPrincipal && (
                     <div className="space-y-3">
-                        {/* Bouton Reçu */}
-                        {hasRecu ? (
-                            <Button
-                                onClick={() => handleDownloadExisting(documentRecu!, 'reçu')}
-                                className="w-full"
-                                size="lg"
+                        {/* Bouton Télécharger Reçu (si existe) */}
+                        {hasRecu && documentRecu && (
+                            <SecureDownloadButton
+                                document={documentRecu}
+                                downloadRoute={route('documents.recu.download', documentRecu.id)}
+                                regenerateRoute={route('documents.recu.regenerate', documentRecu.id)}
+                                typeName="Reçu"
                                 variant="outline"
-                                disabled={isGenerating}
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                Télécharger le Reçu
-                                <Badge variant="secondary" className="ml-2">
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    {documentRecu?.download_count || 0}
-                                </Badge>
-                            </Button>
-                        ) : (
+                            />
+                        )}
+
+                        {/* Bouton Générer Reçu (si n'existe pas) */}
+                        {!hasRecu && (
                             <Button
                                 onClick={() => handleGenerate('recu')}
-                                className="w-full"
+                                disabled={!canGenerateRecu || isGenerating}
+                                variant="default"
                                 size="lg"
-                                variant="outline"
-                                disabled={!canGenerateRecu() || isGenerating}
+                                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                             >
-                                <Receipt className="h-4 w-4 mr-2" />
-                                Générer le Reçu de Paiement
+                                {isGenerating ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Génération...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Receipt className="h-4 w-4 mr-2" />
+                                        Générer le Reçu
+                                    </>
+                                )}
                             </Button>
                         )}
 
-                        {/* Bouton ADV */}
-                        {hasAdv ? (
-                            <Button
-                                onClick={() => handleDownloadExisting(documentAdv!, 'acte de vente')}
-                                className="w-full"
-                                size="lg"
-                                disabled={isGenerating}
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                Télécharger l'Acte de Vente
-                                <Badge variant="secondary" className="ml-2">
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    {documentAdv?.download_count || 0}
-                                </Badge>
-                            </Button>
-                        ) : (
+                        {/* Bouton Télécharger ADV (si existe) */}
+                        {hasAdv && documentAdv && (
+                            <SecureDownloadButton
+                                document={documentAdv}
+                                downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
+                                regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
+                                typeName="Acte de Vente"
+                                variant="default"
+                            />
+                        )}
+
+                        {/* Bouton Générer ADV (si reçu existe mais pas ADV) */}
+                        {hasRecu && !hasAdv && (
                             <Button
                                 onClick={() => handleGenerate('acte_vente')}
-                                disabled={!canGenerateActeVente() || isGenerating}
-                                className="w-full"
+                                disabled={!canGenerateActeVente || isGenerating}
+                                variant="default"
                                 size="lg"
+                                className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
                             >
-                                {!hasRecu ? (
+                                {isGenerating ? (
                                     <>
-                                        <Lock className="h-4 w-4 mr-2" />
-                                        Reçu requis pour continuer
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Génération...
                                     </>
                                 ) : (
                                     <>
                                         <FileText className="h-4 w-4 mr-2" />
                                         Générer l'Acte de Vente
-                                        {consorts.length > 0 && ` (${consorts.length + 1} demandeurs)`}
+                                        {consorts.length > 0 && (
+                                            <Badge variant="secondary" className="ml-2">
+                                                {consorts.length + 1} demandeurs
+                                            </Badge>
+                                        )}
                                     </>
                                 )}
                             </Button>
+                        )}
+
+                        {/* Message de blocage si données incomplètes */}
+                        {!canGenerateRecu && !hasRecu && selectedPropriete && (
+                            <Alert variant="destructive">
+                                <Lock className="h-4 w-4" />
+                                <AlertDescription>
+                                    Impossible de générer : {validationMessage}
+                                </AlertDescription>
+                            </Alert>
                         )}
                     </div>
                 )}

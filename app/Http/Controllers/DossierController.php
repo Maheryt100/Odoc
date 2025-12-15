@@ -8,7 +8,7 @@ use App\Traits\ManagesDistrictAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
@@ -76,7 +76,7 @@ class DossierController extends Controller
         
         $districts = $this->getAvailableDistricts($user);
 
-        // ✅ MODIFIÉ : Générer le prochain numéro suggéré GLOBAL
+ 
         $suggestedNumero = Dossier::getNextNumeroOuverture();
         $lastNumero = Dossier::getLastNumeroOuverture();
 
@@ -85,7 +85,7 @@ class DossierController extends Controller
             'defaultDistrict' => $user->id_district,
             'canSelectDistrict' => $user->canAccessAllDistricts(),
             'suggested_numero' => $suggestedNumero,
-            'last_numero' => $lastNumero, // ✅ NOUVEAU : Pour affichage dans le formulaire
+            'last_numero' => $lastNumero, 
         ]);
     }
 
@@ -111,7 +111,6 @@ class DossierController extends Controller
         ]);
         
         try {
-            // ✅ NOUVEAU : Vérifier si le numéro existe déjà (avant la validation Laravel)
             if (Dossier::numeroOuvertureExists($validated['numero_ouverture'])) {
                 $existingDossier = Dossier::withoutGlobalScopes()
                     ->where('numero_ouverture', $validated['numero_ouverture'])
@@ -145,7 +144,6 @@ class DossierController extends Controller
             
             $dossier = Dossier::create($validated);
 
-            // ✅ LOGGER LA CRÉATION
             ActivityLogger::logCreation(
                 ActivityLog::ENTITY_DOSSIER,
                 $dossier->id,
@@ -165,10 +163,7 @@ class DossierController extends Controller
                 
         } catch (\Exception $exception) {
             DB::rollBack();
-            Log::error('Erreur création dossier', [
-                'error' => $exception->getMessage(),
-                'user_id' => $user->id,
-            ]);
+
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
     }
@@ -333,7 +328,6 @@ class DossierController extends Controller
             'numero_ouverture' => 'required|integer|min:1',
         ]);
         
-        // ✅ NOUVEAU : Vérifier si le numéro existe déjà (en mode édition)
         if (Dossier::numeroOuvertureExists($validated['numero_ouverture'], $id)) {
             $existingDossier = Dossier::withoutGlobalScopes()
                 ->where('numero_ouverture', $validated['numero_ouverture'])
@@ -363,7 +357,6 @@ class DossierController extends Controller
             
             $dossier->update($validated);
             
-            // ✅ LOGGER LA MODIFICATION
             ActivityLogger::logUpdate(
                 ActivityLog::ENTITY_DOSSIER,
                 $id,
@@ -383,16 +376,13 @@ class DossierController extends Controller
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur modification dossier', [
-                'dossier_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
     /**
-     * ✅ RÈGLE : Fermeture/réouverture
+     * RÈGLE : Fermeture/réouverture
      * AUTORISÉS : super_admin, central_user, admin_district (leur district)
      */
     private function canCloseDossier(Dossier $dossier, User $user): bool
@@ -413,7 +403,7 @@ class DossierController extends Controller
     }
 
     /**
-     * ✅ NOUVELLE MÉTHODE : Génération de documents sur dossiers fermés
+     * Génération de documents sur dossiers fermés
      * AUTORISÉS : super_admin, admin_district (leur district uniquement)
      * INTERDITS : central_user, user_district
      */
@@ -463,8 +453,8 @@ class DossierController extends Controller
                 'motif_fermeture' => $validated['motif_fermeture'] ?? null,
             ]);
 
-            if (class_exists(\App\Models\ActivityLog::class)) {
-                \App\Models\ActivityLog::create([
+            if (class_exists(ActivityLog::class)) {
+               ActivityLog::create([
                     'id_user' => $user->id,
                     'action' => 'close',
                     'entity_type' => 'dossier',
@@ -485,7 +475,7 @@ class DossierController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur fermeture dossier', ['error' => $e->getMessage()]);
+
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     } 
@@ -515,8 +505,8 @@ class DossierController extends Controller
                 'motif_fermeture' => null,
             ]);
 
-            if (class_exists(\App\Models\ActivityLog::class)) {
-                \App\Models\ActivityLog::create([
+            if (class_exists(ActivityLog::class)) {
+                ActivityLog::create([
                     'id_user' => $user->id,
                     'action' => 'reopen',
                     'entity_type' => 'dossier',
@@ -533,7 +523,7 @@ class DossierController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur réouverture dossier', ['error' => $e->getMessage()]);
+    
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -601,7 +591,7 @@ class DossierController extends Controller
 
     
     /**
-     * ✅ Supprimer un dossier (seulement si vide)
+     * Supprimer un dossier (seulement si vide)
      */
     public function destroy($id)
     {
@@ -612,14 +602,12 @@ class DossierController extends Controller
         $dossier = Dossier::with(['demandeurs', 'proprietes', 'piecesJointes'])
             ->findOrFail($id);
         
-        // ✅ Vérifier que le dossier n'est pas fermé
         if ($dossier->is_closed) {
             return back()->withErrors([
                 'error' => 'Impossible de supprimer un dossier fermé.'
             ]);
         }
         
-        // ✅ Vérifier les permissions
         $canDelete = $user->isSuperAdmin() || 
                     ($user->isAdminDistrict() && $user->id_district === $dossier->id_district);
         
@@ -629,7 +617,6 @@ class DossierController extends Controller
             ]);
         }
         
-        // ✅ Vérifier que le dossier est vide
         $totalDemandeurs = $dossier->demandeurs()->count();
         $totalProprietes = $dossier->proprietes()->count();
         $totalPiecesJointes = $dossier->piecesJointes()->count();
@@ -656,7 +643,6 @@ class DossierController extends Controller
         try {
             DB::beginTransaction();
             
-            // ✅ LOGGER L'ACTION AVANT SUPPRESSION
             ActivityLogger::logDeletion(
                 ActivityLog::ENTITY_DOSSIER,
                 $dossier->id,
@@ -681,10 +667,6 @@ class DossierController extends Controller
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur suppression dossier', [
-                'dossier_id' => $id,
-                'error' => $e->getMessage()
-            ]);
             
             return back()->withErrors(['error' => 'Erreur lors de la suppression : ' . $e->getMessage()]);
         }

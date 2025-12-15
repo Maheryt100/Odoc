@@ -35,7 +35,7 @@ class AuthController extends Controller
 
             ActivityLogger::logLogin($user);
 
-            // ✅ Vérifier si le compte est actif
+            // Vérifier si le compte est actif
             if (!$user->status) {
                 Auth::logout();
                 return back()->withErrors([
@@ -43,7 +43,7 @@ class AuthController extends Controller
                 ]);
             }
 
-            // ✅ Vérifier si un district est requis et assigné
+            //  Vérifier si un district est requis et assigné
             if (in_array($user->role, [User::ROLE_ADMIN_DISTRICT, User::ROLE_USER_DISTRICT])) {
                 if (!$user->id_district) {
                     Auth::logout();
@@ -56,7 +56,7 @@ class AuthController extends Controller
             // Régénère la session
             $request->session()->regenerate();
 
-            // ✅ Tous les rôles vont au même dashboard
+            // Tous les rôles vont au même dashboard
             return redirect()->intended('/dashboard');
         }
 

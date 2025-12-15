@@ -10,7 +10,7 @@ use App\Models\Demander;
 use App\Models\DocumentGenere;
 use App\Services\DeletionValidationService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -59,11 +59,11 @@ class ApiController extends Controller
                 'associations' => array_values($grouped),
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur getDemandeurAssociations', [
-                'demandeur_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            // Log::error('Erreur getDemandeurAssociations', [
+            //     'demandeur_id' => $id,
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString()
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -108,10 +108,10 @@ class ApiController extends Controller
                 'demandeurs' => $demandeurs,
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur getProprieteDemandeursFull', [
-                'propriete_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur getProprieteDemandeursFull', [
+            //     'propriete_id' => $id,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -149,11 +149,11 @@ class ApiController extends Controller
                 'details' => $validation['details'],
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur checkDemandeurRemove', [
-                'demandeur_id' => $id,
-                'dossier_id' => $dossierId,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur checkDemandeurRemove', [
+            //     'demandeur_id' => $id,
+            //     'dossier_id' => $dossierId,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -189,10 +189,10 @@ class ApiController extends Controller
                 'dossiers' => $validation['details']['dossiers'] ?? [],
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur checkDemandeurDelete', [
-                'demandeur_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur checkDemandeurDelete', [
+            //     'demandeur_id' => $id,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -294,10 +294,10 @@ class ApiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur getProprieteAvailability', [
-                'propriete_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur getProprieteAvailability', [
+            //     'propriete_id' => $id,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -365,10 +365,10 @@ class ApiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur getDossierDocumentsStats', [
-                'dossier_id' => $dossierId,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur getDossierDocumentsStats', [
+            //     'dossier_id' => $dossierId,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -472,7 +472,7 @@ class ApiController extends Controller
     }
 
     /**
-     * ✅ Vérifier si un dossier peut être supprimé
+     * Vérifier si un dossier peut être supprimé
      */
     public function checkDossierDelete($id)
     {
@@ -486,7 +486,7 @@ class ApiController extends Controller
                 'piecesJointes'
             ])->findOrFail($id);
 
-            // ✅ Vérifier les permissions de base
+            // Vérifier les permissions de base
             $canDelete = false;
             
             if ($user->isSuperAdmin()) {
@@ -495,12 +495,12 @@ class ApiController extends Controller
                 $canDelete = true;
             }
 
-            // ✅ Compter les associations
+            // Compter les associations
             $totalDemandeurs = $dossier->demandeurs()->count();
             $totalProprietes = $dossier->proprietes()->count();
             $totalPiecesJointes = $dossier->piecesJointes()->count();
 
-            // ✅ Conditions de suppression
+            // Conditions de suppression
             $isEmpty = $totalDemandeurs === 0 
                     && $totalProprietes === 0 
                     && $totalPiecesJointes === 0;
@@ -509,7 +509,7 @@ class ApiController extends Controller
             
             $finalCanDelete = $canDelete && $isEmpty && $isNotClosed;
 
-            // ✅ Informations détaillées pour le frontend
+            // Informations détaillées pour le frontend
             return response()->json([
                 'can_delete' => $finalCanDelete,
                 'is_closed' => $dossier->is_closed,
@@ -536,10 +536,10 @@ class ApiController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur vérification suppression dossier', [
-                'dossier_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur vérification suppression dossier', [
+            //     'dossier_id' => $id,
+            //     'error' => $e->getMessage()
+            // ]);
 
             return response()->json([
                 'error' => 'Erreur lors de la vérification'
@@ -548,7 +548,7 @@ class ApiController extends Controller
     }
 
     /**
-     * ✅ Obtenir les raisons qui bloquent la suppression
+     *  Obtenir les raisons qui bloquent la suppression
      */
     private function getDossierBlockingReasons(
         Dossier $dossier,

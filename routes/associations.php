@@ -3,13 +3,6 @@
 use App\Http\Controllers\AssociationController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Associations Demandeur-Propriété Routes
-|--------------------------------------------------------------------------
-| Gestion des liens entre demandeurs et propriétés
-*/
-
 // ============================================================================
 // LIAISON (CREATE)
 // ============================================================================
@@ -17,7 +10,6 @@ Route::post('/association/link', [AssociationController::class, 'link'])
     ->middleware([
         'district.access:create', 
         'check.dossier.closed:modify',
-        'validate.ordre'
     ])
     ->name('association.link');
 
@@ -25,4 +17,8 @@ Route::post('/association/link', [AssociationController::class, 'link'])
 // DISSOCIATION (DELETE)
 // ============================================================================
 Route::post('/association/dissociate', [AssociationController::class, 'dissociate'])
+    ->middleware([
+        'district.access:delete',
+        'check.dossier.closed:modify',
+    ])
     ->name('association.dissociate');

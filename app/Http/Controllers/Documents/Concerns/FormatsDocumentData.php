@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 trait FormatsDocumentData
 {
     /**
-     * ✅ Formater un montant en lettres
+     * Formater un montant en lettres
      */
     protected function formatMontantEnLettres(int $montant): string
     {
@@ -18,7 +18,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater un CIN avec points (123.456.789.012)
+     * Formater un CIN avec points (123.456.789.012)
      */
     protected function formatCin(string $cin): string
     {
@@ -26,15 +26,15 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Déterminer le titre (M./Mme) selon le sexe
+     * Déterminer le titre (M./Mme) selon le sexe
      */
     protected function getTitreDemandeur(string $sexe): string
     {
-        return $sexe === 'Homme' ? 'M.' : 'Mme';
+        return $sexe === 'Homme' ? 'Mr' : 'Mme';
     }
     
     /**
-     * ✅ Déterminer "fils" ou "fille" selon le sexe
+     * Déterminer "fils" ou "fille" selon le sexe
      */
     protected function getEnfantDe(string $sexe): string
     {
@@ -42,7 +42,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Déterminer "au demandeur" ou "à la demanderesse"
+     * Déterminer "au demandeur" ou "à la demanderesse"
      */
     protected function getDemandeurPreposition(string $sexe): string
     {
@@ -50,7 +50,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater "marié(e) à ..."
+     * Formater "marié(e) à ..."
      */
     protected function getMarieA(
         ?string $marie_a, 
@@ -78,7 +78,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater le nom complet d'un demandeur
+     * Formater le nom complet d'un demandeur
      */
     protected function formatNomComplet(string $nom, ?string $prenom = null): string
     {
@@ -86,7 +86,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater le nom des parents "de [père] et de [mère]"
+     * Formater le nom des parents "de [père] et de [mère]"
      */
     protected function formatNomParents(?string $nom_pere, string $nom_mere): string
     {
@@ -97,7 +97,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater une date pour les documents (format français long)
+     * Formater une date pour les documents (format français long)
      */
     protected function formatDateDocument(?Carbon $date): string
     {
@@ -110,7 +110,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater une date courte pour les documents (jj/mm/aaaa)
+     * Formater une date courte pour les documents (jj/mm/aaaa)
      */
     protected function formatDateCourte(?Carbon $date): string
     {
@@ -122,7 +122,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater une période de dates (du X au Y)
+     * Formater une période de dates (du X au Y)
      */
     protected function formatPeriodeDates(Carbon $dateDebut, Carbon $dateFin): string
     {
@@ -135,7 +135,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater un montant avec séparateurs de milliers
+     * Formater un montant avec séparateurs de milliers
      */
     protected function formatMontantChiffres(int $montant): string
     {
@@ -143,7 +143,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Déterminer l'article "d'" ou "de" selon la première lettre
+     * Déterminer l'article "d'" ou "de" selon la première lettre
      */
     protected function getArticle(string $mot, bool $majuscule = false): string
     {
@@ -156,7 +156,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Obtenir les articles pour district et commune
+     * Obtenir les articles pour district et commune
      */
     protected function getArticles(string $district, string $commune): array
     {
@@ -168,7 +168,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater le Dep/Vol complet
+     * Formater le Dep/Vol complet
      */
     protected function formatDepVol(?string $dep_vol, ?string $numero_dep_vol): string
     {
@@ -186,7 +186,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Nettoyer et normaliser un texte
+     * Nettoyer et normaliser un texte
      */
     protected function normalizeText(?string $text): string
     {
@@ -198,7 +198,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Obtenir une valeur par défaut si null
+     * Obtenir une valeur par défaut si null
      */
     protected function getOrDefault(?string $value, string $default = 'Non renseigné'): string
     {
@@ -206,7 +206,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater le numéro de titre (TN°XXXXX)
+     * Formater le numéro de titre (TN°XXXXX)
      */
     protected function formatNumeroTitre(?string $titre): string
     {
@@ -218,7 +218,7 @@ trait FormatsDocumentData
     }
     
     /**
-     * ✅ Formater la situation matrimoniale pour les documents
+     * Formater la situation matrimoniale pour les documents
      */
     protected function formatSituationMatrimoniale(
         ?string $situation_familiale,

@@ -11,9 +11,11 @@ use App\Services\UploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use App\Services\ActivityLogger;
+use App\Models\ActivityLog;
 
 class PieceJointeController extends Controller
 {
@@ -22,13 +24,12 @@ class PieceJointeController extends Controller
      */
     public function index(Request $request)
     {
-        // ✅ CORRECTION: Validation plus permissive pour include_related
         $request->validate([
             'attachable_type' => 'required|in:Dossier,Demandeur,Propriete',
             'attachable_id' => 'required|integer',
             'categorie' => 'nullable|string',
             'type_document' => 'nullable|string',
-            'include_related' => 'nullable|string|in:true,false,1,0', // ✅ Accepte string
+            'include_related' => 'nullable|string|in:true,false,1,0', 
         ]);
 
         try {
@@ -77,7 +78,6 @@ class PieceJointeController extends Controller
             // PJ des entités liées (pour Dossier)
             $relatedPieces = [];
             
-            // ✅ CORRECTION: Vérifier plusieurs formats de valeur
             $includeRelated = in_array($request->input('include_related'), ['true', '1', true, 1], true);
             
             if ($includeRelated && $entity instanceof Dossier) {
@@ -94,11 +94,6 @@ class PieceJointeController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur liste pièces jointes', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request' => $request->all()
-            ]);
             
             return response()->json([
                 'success' => false,
@@ -161,6 +156,9 @@ class PieceJointeController extends Controller
                 default => PieceJointe::CATEGORIE_GLOBAL,
             };
 
+            // ✅ CORRECTION : Obtenir le districtId AVANT la boucle
+            $districtId = $this->getEntityDistrictId($entity);
+
             $uploaded = [];
             $errors = [];
             
@@ -179,8 +177,8 @@ class PieceJointeController extends Controller
 
                 try {
                     $description = $request->descriptions[$index] ?? null;
-                    $districtId = $this->getEntityDistrictId($entity);
 
+                    // ✅ Créer la pièce jointe
                     $piece = $entity->ajouterPieceJointe(
                         $file,
                         $request->type_document,
@@ -190,14 +188,20 @@ class PieceJointeController extends Controller
                         $categorie
                     );
 
+                    // ✅ CORRECTION : Logger immédiatement après la création
+                    ActivityLogger::logPieceJointeUpload(
+                        $piece->id,
+                        $piece->nom_original,
+                        $piece->taille,
+                        get_class($entity),
+                        $entity->id,
+                        $districtId,
+                        $request->type_document
+                    );
+
                     $uploaded[] = $this->formatPieceJointe($piece);
 
                 } catch (\Exception $fileException) {
-                    Log::error('Erreur upload fichier individuel', [
-                        'file' => $file->getClientOriginalName(),
-                        'error' => $fileException->getMessage()
-                    ]);
-                    
                     $errors[] = [
                         'file' => $file->getClientOriginalName(),
                         'errors' => [$fileException->getMessage()]
@@ -221,11 +225,6 @@ class PieceJointeController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('Erreur upload pièces jointes', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
 
             return response()->json([
                 'success' => false,
@@ -233,6 +232,7 @@ class PieceJointeController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Récupérer les PJ des entités liées d'un dossier
@@ -290,10 +290,7 @@ class PieceJointeController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération des PJ liées', [
-                'dossier_id' => $dossier->id,
-                'error' => $e->getMessage()
-            ]);
+
         }
 
         return $related;
@@ -348,10 +345,7 @@ class PieceJointeController extends Controller
             }
 
             if (!$piece->fileExists()) {
-                Log::error('Fichier introuvable', [
-                    'piece_id' => $id,
-                    'chemin' => $piece->chemin
-                ]);
+ 
                 abort(404, 'Fichier introuvable');
             }
 
@@ -364,10 +358,7 @@ class PieceJointeController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Erreur téléchargement', [
-                'piece_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+
             abort(500, 'Erreur lors du téléchargement');
         }
     }
@@ -395,10 +386,7 @@ class PieceJointeController extends Controller
                 ->header('Content-Disposition', 'inline; filename="' . $piece->nom_original . '"');
 
         } catch (\Exception $e) {
-            Log::error('Erreur visualisation', [
-                'piece_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+
             abort(500, 'Erreur lors de la visualisation');
         }
     }
@@ -418,14 +406,20 @@ class PieceJointeController extends Controller
                 ], 403);
             }
 
+            // ✅ CORRECTION : Récupérer les infos AVANT la suppression
             $nomFichier = $piece->nom_original;
+            $pieceId = $piece->id;
+            $districtId = $this->getEntityDistrictId($piece->attachable);
+
+            // Supprimer le fichier
             $piece->deleteFile();
 
-            Log::info('Pièce jointe supprimée', [
-                'piece_id' => $id,
-                'nom' => $nomFichier,
-                'user_id' => Auth::id()
-            ]);
+            // ✅ Logger APRÈS la suppression (avec les infos sauvegardées)
+            ActivityLogger::logPieceJointeDeletion(
+                $pieceId,
+                $nomFichier,
+                $districtId
+            );
 
             return response()->json([
                 'success' => true,
@@ -433,11 +427,6 @@ class PieceJointeController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur suppression pièce jointe', [
-                'piece_id' => $id,
-                'error' => $e->getMessage()
-            ]);
-            
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur: ' . $e->getMessage()
@@ -462,12 +451,16 @@ class PieceJointeController extends Controller
 
         try {
             $piece = PieceJointe::findOrFail($id);
+            
+            // ✅ Vérifier le document
             $piece->verify($user->id);
 
-            Log::info('Pièce jointe vérifiée', [
-                'piece_id' => $id,
-                'verified_by' => $user->id
-            ]);
+            // ✅ CORRECTION : Logger APRÈS la vérification
+            ActivityLogger::logPieceJointeVerification(
+                $piece->id,
+                $piece->nom_original,
+                $this->getEntityDistrictId($piece->attachable)
+            );
 
             return response()->json([
                 'success' => true,

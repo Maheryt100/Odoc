@@ -5,11 +5,11 @@ namespace App\Http\Requests;
 use App\Models\Demandeur;
 use App\Rules\ValidCIN;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 
 /**
- * ✅ CORRIGÉ : Validation intelligente CIN
+ * Validation intelligente CIN
  * - Autorise les CIN existants (pour mise à jour)
  * - Bloque uniquement les doublons INTERNES (dans la même requête)
  */
@@ -48,7 +48,7 @@ class StoreDemandeurRequest extends FormRequest
             // ========== DEMANDEURS ==========
             'demandeurs_json' => 'required|string',
             
-            // ✅ Validation de base (sans unique sur CIN)
+            //  Validation de base (sans unique sur CIN)
             'demandeurs' => 'required|array|min:1',
             'demandeurs.*.titre_demandeur' => 'required|string|max:15',
             'demandeurs.*.nom_demandeur' => 'required|string|max:40',
@@ -98,7 +98,7 @@ class StoreDemandeurRequest extends FormRequest
     }
 
     /**
-     * ✅ Préparer les données avant validation
+     *  Préparer les données avant validation
      */
     protected function prepareForValidation(): void
     {
@@ -114,7 +114,7 @@ class StoreDemandeurRequest extends FormRequest
     }
 
     /**
-     * ✅ VALIDATION INTELLIGENTE CIN
+     * VALIDATION INTELLIGENTE CIN
      * Vérifie uniquement les doublons INTERNES dans la requête
      */
     public function withValidator($validator): void
@@ -128,7 +128,7 @@ class StoreDemandeurRequest extends FormRequest
             $demandeurs = $this->demandeurs;
             $cins = array_column($demandeurs, 'cin');
             
-            // ✅ 1. Vérifier doublons INTERNES (même CIN plusieurs fois dans le formulaire)
+            //  1. Vérifier doublons INTERNES (même CIN plusieurs fois dans le formulaire)
             $cinCounts = array_count_values($cins);
             
             foreach ($demandeurs as $index => $demandeur) {
@@ -143,17 +143,6 @@ class StoreDemandeurRequest extends FormRequest
                         "Ce CIN apparaît plusieurs fois dans le formulaire (demandeur {$position})"
                     );
                 }
-            }
-
-            // ✅ 2. Log pour debug (peut être retiré en production)
-            if (!$validator->errors()->has('demandeurs')) {
-                Log::info('✅ Validation CIN réussie', [
-                    'count' => count($demandeurs),
-                    'cins' => $cins,
-                    'demandeurs_existants' => Demandeur::whereIn('cin', $cins)
-                        ->pluck('nom_demandeur', 'cin')
-                        ->toArray()
-                ]);
             }
         });
     }

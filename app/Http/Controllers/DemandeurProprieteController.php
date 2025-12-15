@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Rules\ValidCIN;
 use App\Http\Requests\StoreDemandeurRequest;
@@ -19,7 +19,7 @@ use App\Http\Requests\StoreDemandeurRequest;
 class DemandeurProprieteController extends Controller
 {
     /**
-     * 1. NOUVEAU LOT : Afficher le formulaire
+     *  NOUVEAU LOT : Afficher le formulaire
      */
     public function create($id)
     {
@@ -31,12 +31,11 @@ class DemandeurProprieteController extends Controller
     }
 
     /**
-     * 1. NOUVEAU LOT : Enregistrer
-     * ✅ AMÉLIORATION: Utilisation de Form Request
+     *  NOUVEAU LOT
      */
     public function store(StoreDemandeurRequest $request)
     {
-        // ✅ Données déjà validées par StoreDemandeurRequest
+        // Données déjà validées par StoreDemandeurRequest
         $validated = $request->validated();
         
         DB::beginTransaction();
@@ -58,44 +57,30 @@ class DemandeurProprieteController extends Controller
                 ]
             );
 
-            // ✅ AMÉLIORATION: Convertir chaînes vides en null
+            //  AMÉLIORATION: Convertir chaînes vides en null
             $proprieteData = $this->convertEmptyToNull($proprieteData);
 
-            Log::info('Création propriété', ['data' => $proprieteData]);
-            $propriete = Propriete::create($proprieteData);
-
+ 
             // 2. Traiter les demandeurs
             $demandeursTraites = [];
             
             foreach ($validated['demandeurs'] as $index => $demandeurData) {
                 $num = $index + 1;
-                Log::info("👤 Traitement demandeur $num", [
-                    'cin' => $demandeurData['cin'],
-                    'nom' => $demandeurData['nom_demandeur'],
-                ]);
-
-                // ✅ Convertir chaînes vides en null
+    
+                // Convertir chaînes vides en null
                 $cleanData = $this->convertEmptyToNull($demandeurData);
 
                 // Vérifier si demandeur existe
                 $demandeurExistant = Demandeur::where('cin', $cleanData['cin'])->first();
                 
                 if ($demandeurExistant) {
-                    Log::info("Demandeur existant trouvé, mise à jour", [
-                        'id' => $demandeurExistant->id,
-                        'cin' => $demandeurExistant->cin
-                    ]);
                     
-                    // ✅ Mise à jour sélective (garde les valeurs existantes si nouvelles sont null)
+                    // Mise à jour sélective (garde les valeurs existantes si nouvelles sont null)
                     $updateData = array_filter($cleanData, fn($v) => $v !== null);
                     $demandeurExistant->update($updateData);
                     $demandeur = $demandeurExistant;
                     
                 } else {
-                    Log::info("Création nouveau demandeur", [
-                        'cin' => $cleanData['cin'],
-                        'nom' => $cleanData['nom_demandeur']
-                    ]);
                     
                     $demandeur = Demandeur::create(array_merge($cleanData, [
                         'id_user' => $id_user,
@@ -104,11 +89,6 @@ class DemandeurProprieteController extends Controller
                         'regime_matrimoniale' => $cleanData['regime_matrimoniale'] ?? 'Non spécifié',
                     ]));
                 }
-
-                Log::info("Demandeur traité", [
-                    'id' => $demandeur->id,
-                    'action' => $demandeurExistant ? 'mis à jour' : 'créé'
-                ]);
 
                 // 3. Ajouter au dossier
                 Contenir::firstOrCreate([
@@ -138,12 +118,6 @@ class DemandeurProprieteController extends Controller
 
             DB::commit();
             
-            Log::info('🎉 Création complète réussie', [
-                'propriete_id' => $propriete->id,
-                'demandeurs_count' => count($demandeursTraites),
-                'demandeurs' => $demandeursTraites
-            ]);
-            
             $message = count($validated['demandeurs']) > 1 
                 ? count($validated['demandeurs']) . ' demandeurs liés à la propriété avec succès'
                 : 'Demandeur et propriété créés avec succès';
@@ -153,18 +127,13 @@ class DemandeurProprieteController extends Controller
                 
         } catch (\Exception $e) {
             DB::rollBack();
-        
-            Log::error('Erreur création', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
 
     /**
-     * ✅ CORRECTION : Vérifier via demandes
+     *  Vérifier via demandes
      */
     private function isPropertyArchived(Propriete $propriete): bool
     {
@@ -384,7 +353,7 @@ class DemandeurProprieteController extends Controller
             $id_user = Auth::id();
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            // ✅ Vérification métier
+            // Vérification métier
             if ($propriete->is_archived) {
                 DB::rollBack();
                 return back()->withErrors(['error' => "❌ Impossible d'ajouter : la propriété Lot {$propriete->lot} est archivée (acquise)."]);
@@ -481,7 +450,7 @@ class DemandeurProprieteController extends Controller
         try {
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            // ✅ Vérification métier
+            // Vérification métier
             if ($propriete->is_archived) {
                 DB::rollBack();
                 return back()->with('error', "❌ Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
@@ -506,7 +475,7 @@ class DemandeurProprieteController extends Controller
     }
  
     /**
-     * ✅ HELPER : Convertir chaînes vides en null
+     *  Convertir chaînes vides en null
      */
     private function convertEmptyToNull(array $data): array
     {

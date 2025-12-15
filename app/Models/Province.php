@@ -1,7 +1,7 @@
 <?php
 
 // ========================================
-// Province.php - CORRECT ✅
+// Province.php 
 // ========================================
 
 namespace App\Models;

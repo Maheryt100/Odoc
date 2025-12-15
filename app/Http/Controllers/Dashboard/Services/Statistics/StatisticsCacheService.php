@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Dashboard\Services\Statistics;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 
@@ -70,12 +70,6 @@ class StatisticsCacheService
         return Cache::remember($key, $ttl, function() use ($callback, $key) {
             $result = $callback();
             
-            // Log pour monitoring
-            Log::info("✅ Cache MISS: Calcul et stockage", [
-                'key' => $key,
-                'size' => strlen(json_encode($result)) . ' bytes'
-            ]);
-            
             return $result;
         });
     }
@@ -86,8 +80,6 @@ class StatisticsCacheService
     public function forget(string $type, array $params = []): bool
     {
         $key = $this->buildKey($type, $params);
-        
-        Log::info("🗑️ Cache INVALIDATED", ['key' => $key]);
         
         return Cache::forget($key);
     }
@@ -102,10 +94,6 @@ class StatisticsCacheService
         
         $this->forgetPattern($pattern);
         
-        Log::info("🗑️ Cache utilisateur INVALIDATED", [
-            'user_id' => $userId,
-            'pattern' => $pattern
-        ]);
     }
     
     /**
@@ -117,10 +105,6 @@ class StatisticsCacheService
         
         $this->forgetPattern($pattern);
         
-        Log::info("🗑️ Cache district INVALIDATED", [
-            'district_id' => $districtId,
-            'pattern' => $pattern
-        ]);
     }
     
     /**
@@ -132,7 +116,6 @@ class StatisticsCacheService
         
         $this->forgetPattern($pattern);
         
-        Log::info("🗑️ TOUS les caches statistiques INVALIDATED");
     }
     
     /**
@@ -148,20 +131,13 @@ class StatisticsCacheService
                 
                 if (!empty($keys)) {
                     $redis->del($keys);
-                    Log::info("🗑️ Pattern invalidé", [
-                        'pattern' => $pattern,
-                        'count' => count($keys)
-                    ]);
                 }
             } else {
                 // Pour les autres drivers, clear tout
                 Cache::flush();
             }
         } catch (\Exception $e) {
-            Log::error("❌ Erreur invalidation cache", [
-                'pattern' => $pattern,
-                'error' => $e->getMessage()
-            ]);
+
         }
     }
     
@@ -282,11 +258,6 @@ class StatisticsCacheService
     {
         $user = Auth::user();
         
-        Log::info("🔥 Préchauffage du cache démarré", [
-            'user_id' => $user->id,
-            'periods' => $periods
-        ]);
-        
         $statisticsService = app(StatisticsService::class);
         
         foreach ($periods as $period) {
@@ -309,15 +280,10 @@ class StatisticsCacheService
                     self::TTL_VERY_LONG
                 );
                 
-                Log::info("✅ Cache préchauffé", ['period' => $period]);
             } catch (\Exception $e) {
-                Log::error("❌ Erreur préchauffage", [
-                    'period' => $period,
-                    'error' => $e->getMessage()
-                ]);
+  
             }
         }
         
-        Log::info("🔥 Préchauffage du cache terminé");
     }
 }

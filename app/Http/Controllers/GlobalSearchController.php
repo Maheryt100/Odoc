@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class GlobalSearchController extends Controller
 {
@@ -187,11 +187,6 @@ class GlobalSearchController extends Controller
                 });
 
             // Log de la recherche pour analytics
-            Log::info('Global search', [
-                'user_id' => $user->id,
-                'query' => $query,
-                'results_count' => $dossiers->count() + $proprietes->count() + $demandeurs->count() + $communes->count()
-            ]);
 
             return response()->json([
                 'dossiers' => $dossiers,
@@ -201,11 +196,6 @@ class GlobalSearchController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Global search error', [
-                'query' => $query,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
 
             return response()->json([
                 'dossiers' => [],
@@ -256,7 +246,7 @@ class GlobalSearchController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Search suggestions error', ['error' => $e->getMessage()]);
+            
             return response()->json(['suggestions' => []]);
         }
     }

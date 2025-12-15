@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Documents\Concerns;
 use App\Models\Propriete;
 use App\Models\Demandeur;
 use App\Models\DocumentGenere;
+use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -13,13 +15,115 @@ use Carbon\Carbon;
 trait HandlesDocumentGeneration
 {
     /**
-     * ✅ Construire le chemin de stockage standardisé
+     * Téléchargement sécurisé avec vérification complète
      */
-    protected function buildStoragePath(
-        string $type, 
-        Propriete $propriete, 
-        ?Demandeur $demandeur = null
-    ): string {
+    protected function downloadExisting(DocumentGenere $document, string $typeName)
+    {
+        $fileStatus = $document->checkFileStatus();
+        
+        if (!$fileStatus['valid']) {
+            Log::warning("Fichier invalide détecté", [
+                'document_id' => $document->id,
+                'type' => $document->type_document,
+                'status' => $fileStatus,
+            ]);
+
+            $document->markForRegeneration($fileStatus['error'] ?? 'file_invalid');
+
+            return response()->json([
+                'success' => false,
+                'error' => 'file_missing',
+                'message' => "Le fichier {$typeName} est introuvable ou endommagé",
+                'details' => $fileStatus['error'],
+                'document' => [
+                    'id' => $document->id,
+                    'type' => $document->type_document,
+                    'numero_document' => $document->numero_document,
+                    'nom_fichier' => $document->nom_fichier,
+                ],
+                'can_regenerate' => in_array($document->type_document, [
+                    DocumentGenere::TYPE_RECU,
+                    DocumentGenere::TYPE_CSF,
+                    DocumentGenere::TYPE_REQ
+                ]),
+            ], 404);
+        }
+
+        $document->incrementDownloadCount();
+
+        Log::info("Téléchargement document", [
+            'document_id' => $document->id,
+            'type' => $document->type_document,
+            'download_count' => $document->download_count,
+            'file_size' => $fileStatus['size'],
+        ]);
+
+        ActivityLogger::logDocumentDownload(
+            $this->getActivityLogType($document->type_document),
+            $document->id,
+            [
+                'numero_document' => $document->numero_document,
+                'action_type' => 'download_existing',
+                'download_count' => $document->download_count,
+            ]
+        );
+
+        $validatedPath = $document->getValidatedPath();
+        
+        return response()->download($validatedPath, $document->nom_fichier, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'attachment; filename="' . $document->nom_fichier . '"',
+            'Content-Length' => $fileStatus['size'],
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+
+    /**
+     * Sauvegarder le document
+     */
+    protected function saveDocument(string $tempFilePath, string $type, Propriete $propriete, ?Demandeur $demandeur = null): string
+    {
+        if (!file_exists($tempFilePath)) {
+            throw new \Exception("Fichier temporaire introuvable: {$tempFilePath}");
+        }
+
+        $storagePath = $this->buildStoragePath($type, $propriete, $demandeur);
+        $directory = dirname($storagePath);
+
+        $fullDirectory = Storage::disk('public')->path($directory);
+        if (!file_exists($fullDirectory)) {
+            mkdir($fullDirectory, 0755, true);
+        }
+
+        $fileContent = file_get_contents($tempFilePath);
+        if ($fileContent === false) {
+            throw new \Exception("Impossible de lire: {$tempFilePath}");
+        }
+
+        $written = Storage::disk('public')->put($storagePath, $fileContent);
+        if (!$written) {
+            throw new \Exception("Échec écriture: {$storagePath}");
+        }
+
+        $fullPath = Storage::disk('public')->path($storagePath);
+        if (file_exists($fullPath)) {
+            chmod($fullPath, 0644);
+        }
+
+        Log::info("Document sauvegardé", [
+            'type' => $type,
+            'path' => $storagePath,
+            'size' => Storage::disk('public')->size($storagePath),
+        ]);
+
+        return $storagePath;
+    }
+
+    /**
+     *  Construire le chemin de stockage
+     */
+    protected function buildStoragePath(string $type, Propriete $propriete, ?Demandeur $demandeur = null): string
+    {
         $district = $propriete->dossier->district;
         $districtSlug = Str::slug($district->nom_district);
         $date = Carbon::now()->format('Y/m');
@@ -42,91 +146,19 @@ trait HandlesDocumentGeneration
         return "pieces_jointes/documents/{$type}/{$districtSlug}/{$date}/{$baseName}";
     }
 
-    /**
-     * ✅ Sauvegarder le document avec vérifications
-     */
-    protected function saveDocument(
-        string $tempFilePath, 
-        string $type, 
-        Propriete $propriete, 
-        ?Demandeur $demandeur = null
-    ): string {
-        if (!file_exists($tempFilePath)) {
-            throw new \Exception("Fichier temporaire introuvable: {$tempFilePath}");
-        }
-
-        $storagePath = $this->buildStoragePath($type, $propriete, $demandeur);
-        $directory = dirname($storagePath);
-
-        // Créer le répertoire si nécessaire
-        if (!Storage::disk('public')->exists($directory)) {
-            Storage::disk('public')->makeDirectory($directory, 0755, true);
-        }
-
-        // Lire et écrire le fichier
-        $fileContent = file_get_contents($tempFilePath);
-        if ($fileContent === false) {
-            throw new \Exception("Impossible de lire: {$tempFilePath}");
-        }
-
-        $written = Storage::disk('public')->put($storagePath, $fileContent);
-        if (!$written) {
-            throw new \Exception("Échec écriture: {$storagePath}");
-        }
-
-        // Vérifier l'existence
-        if (!Storage::disk('public')->exists($storagePath)) {
-            throw new \Exception("Fichier non trouvé après sauvegarde");
-        }
-
-        // Permissions
-        $fullPath = Storage::disk('public')->path($storagePath);
-        if (file_exists($fullPath)) {
-            chmod($fullPath, 0644);
-        }
-
-        Log::info("✅ Document sauvegardé", [
-            'type' => $type,
-            'path' => $storagePath,
-            'size' => Storage::disk('public')->size($storagePath),
-        ]);
-
-        return $storagePath;
-    }
-
-    /**
-     * ✅ Télécharger un document existant avec logs
-     */
-    protected function downloadExisting(DocumentGenere $document, string $typeName)
+    protected function getPrixFromDistrict(Propriete $propriete): int
     {
-        if (!$document->fileExists()) {
-            Log::warning("⚠️ Fichier manquant, régénération", [
-                'document_id' => $document->id,
-                'path' => $document->file_path,
-            ]);
-            return $this->regenerateDocument($document);
+        $vocationColumn = $this->normalizeVocation($propriete->vocation);
+        $district = $propriete->dossier->district;
+        $prix = $district->{$vocationColumn} ?? 0;
+
+        if ($prix <= 0) {
+            throw new \Exception("Prix non configuré pour '{$propriete->vocation}' dans '{$district->nom_district}'");
         }
 
-        $document->incrementDownloadCount();
-
-        Log::info("📥 Téléchargement document", [
-            'document_id' => $document->id,
-            'type' => $document->type_document,
-            'download_count' => $document->download_count,
-        ]);
-
-        return response()->download($document->full_path, $document->nom_fichier, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition' => 'attachment; filename="' . $document->nom_fichier . '"',
-            'Content-Length' => filesize($document->full_path),
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'X-Document-ID' => $document->id,
-        ]);
+        return (int) $prix;
     }
 
-    /**
-     * ✅ Normaliser la vocation pour le prix
-     */
     protected function normalizeVocation(string $vocation): string
     {
         $mapping = [
@@ -140,30 +172,15 @@ trait HandlesDocumentGeneration
         return $mapping[$vocation] ?? 'edilitaire';
     }
 
-    /**
-     * ✅ Obtenir le prix depuis le district avec validation
-     */
-    protected function getPrixFromDistrict(Propriete $propriete): int
+    protected function formatContenance(?int $contenance): array
     {
-        $vocationColumn = $this->normalizeVocation($propriete->vocation);
-        
-        $district = $propriete->dossier->district;
-        $prix = $district->{$vocationColumn} ?? 0;
-
-        if ($prix <= 0) {
-            throw new \Exception(
-                "Le prix pour '{$propriete->vocation}' n'est pas configuré dans le district '{$district->nom_district}'"
-            );
+        if ($contenance === null || $contenance === 0) {
+            return [
+                'format' => '00Ha 00A 00Ca',
+                'lettres' => 'ZÉRO HECTARE ZÉRO ARE ZÉRO CENTIARE',
+            ];
         }
 
-        return (int) $prix;
-    }
-
-    /**
-     * ✅ Formater la contenance en Ha A Ca
-     */
-    protected function formatContenance(int $contenance): array
-    {
         $hectares = intdiv($contenance, 10000);
         $reste = $contenance % 10000;
         $ares = intdiv($reste, 100);
@@ -191,9 +208,6 @@ trait HandlesDocumentGeneration
         ];
     }
 
-    /**
-     * ✅ Obtenir les données de localisation
-     */
     protected function getLocationData(Propriete $propriete): array
     {
         $dossier = $propriete->dossier;
@@ -201,28 +215,22 @@ trait HandlesDocumentGeneration
         $region = $district->region;
         $province = $region->province;
 
-        $firstLetterDistrict = strtolower(mb_substr($district->nom_district, 0, 1));
-        $firstLetterCommune = strtolower(mb_substr($dossier->commune, 0, 1));
-
         return [
             'province' => $province->nom_province,
             'region' => $region->nom_region,
             'district' => $district->nom_district,
             'DISTRICT' => Str::upper($district->nom_district),
-            'D_dis' => in_array($firstLetterDistrict, ['a', 'e', 'i', 'o', 'u', 'y']) ? 'D' : 'DE',
-            'd_dis' => in_array($firstLetterDistrict, ['a', 'e', 'i', 'o', 'u', 'y']) ? 'd' : 'de',
-            'd_com' => in_array($firstLetterCommune, ['a', 'e', 'i', 'o', 'u', 'y']) ? 'd' : 'de',
         ];
     }
 
-    /**
-     * ✅ Formater les dates pour les documents
-     */
-    protected function formatDateForDocument(?\Carbon\Carbon $date): string
+    protected function getActivityLogType(string $docType): string
     {
-        if (!$date) return '';
-        
-        Carbon::setLocale('fr');
-        return $date->translatedFormat('d F Y');
+        return match($docType) {
+            DocumentGenere::TYPE_RECU => ActivityLog::DOC_RECU,
+            DocumentGenere::TYPE_ADV => ActivityLog::DOC_ACTE_VENTE,
+            DocumentGenere::TYPE_CSF => ActivityLog::DOC_CSF,
+            DocumentGenere::TYPE_REQ => ActivityLog::DOC_REQUISITION,
+            default => 'document'
+        };
     }
 }

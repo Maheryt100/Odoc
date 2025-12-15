@@ -17,7 +17,6 @@ class DistrictController extends Controller
 {
     /**
      * Afficher la hiérarchie complète des localisations
-     * ✅ CORRIGÉ : Utilise 'location/index' au lieu de 'circonscription/index'
      */
     public function index(): Response
     {
@@ -43,7 +42,7 @@ class DistrictController extends Controller
             ->orderBy('nom_province')
             ->get();
 
-            // ✅ Statistiques globales optimisées avec une seule requête
+            // Statistiques globales optimisées avec une seule requête
             $stats = District::selectRaw('
                 COUNT(*) as total_districts,
                 SUM(CASE 
@@ -56,7 +55,7 @@ class DistrictController extends Controller
                 END) as districts_with_prices
             ')->first();
 
-            // ✅ CORRECTION PRINCIPALE : Utiliser 'location/index' au lieu de 'circonscription/index'
+            //  CORRECTION PRINCIPALE : Utiliser 'location/index' au lieu de 'circonscription/index'
             return Inertia::render('location/index', [
                 'provinces' => $provinces,
                 'stats' => [
@@ -83,11 +82,11 @@ class DistrictController extends Controller
     }
 
     /**
-     * ✅ Mettre à jour les prix d'un district avec validation améliorée
+     * Mettre à jour les prix d'un district avec validation améliorée
      */
     public function update(Request $request): RedirectResponse
     {
-        // ✅ Validation améliorée avec messages personnalisés
+        // Validation améliorée avec messages personnalisés
         $validated = $request->validate([
             'id' => 'required|integer|exists:districts,id',
             'edilitaire' => 'required|numeric|min:0|max:999999999',
@@ -107,7 +106,7 @@ class DistrictController extends Controller
         try {
             $district = District::findOrFail($validated['id']);
             
-            // ✅ Log des anciennes valeurs pour audit
+            // Log des anciennes valeurs pour audit
             $oldPrices = [
                 'edilitaire' => $district->edilitaire,
                 'agricole' => $district->agricole,
@@ -115,7 +114,7 @@ class DistrictController extends Controller
                 'touristique' => $district->touristique,
             ];
 
-            // ✅ Mise à jour avec arrondi à 2 décimales
+            //  Mise à jour avec arrondi à 2 décimales
             $district->update([
                 'edilitaire' => round($validated['edilitaire'], 2),
                 'agricole' => round($validated['agricole'], 2),
@@ -123,7 +122,7 @@ class DistrictController extends Controller
                 'touristique' => round($validated['touristique'], 2),
             ]);
 
-            // ✅ Log d'activité si disponible
+            // Log d'activité si disponible
             $this->logDistrictActivity($district, 'update_prices', [
                 'old' => $oldPrices, 
                 'new' => $validated
@@ -145,11 +144,11 @@ class DistrictController extends Controller
     }
 
     /**
-     * ✅ Mettre à jour les prix de plusieurs districts en masse (optimisé)
+     * Mettre à jour les prix de plusieurs districts en masse (optimisé)
      */
     public function bulkUpdate(Request $request): RedirectResponse
     {
-        // ✅ Validation améliorée
+        // Validation améliorée
         $validated = $request->validate([
             'districts' => 'required|array|min:1|max:100',
             'districts.*.id' => 'required|integer|exists:districts,id',
@@ -167,14 +166,14 @@ class DistrictController extends Controller
         try {
             $updated = 0;
             
-            // ✅ Vérification des permissions si nécessaire
+            // Vérification des permissions si nécessaire
             if (!$this->canUpdateDistricts()) {
                 throw ValidationException::withMessages([
                     'permission' => 'Vous n\'avez pas la permission de modifier ces districts'
                 ]);
             }
 
-            // ✅ Update en batch pour optimiser les performances
+            // Update en batch pour optimiser les performances
             foreach ($validated['districts'] as $districtData) {
                 District::where('id', $districtData['id'])
                     ->update([
@@ -207,7 +206,7 @@ class DistrictController extends Controller
     }
 
     /**
-     * ✅ Réinitialiser les prix d'un district avec confirmation
+     * Réinitialiser les prix d'un district avec confirmation
      */
     public function resetPrices(Request $request): RedirectResponse
     {
@@ -222,7 +221,7 @@ class DistrictController extends Controller
         try {
             $district = District::findOrFail($validated['id']);
             
-            // ✅ Log avant réinitialisation
+            // Log avant réinitialisation
             $oldPrices = [
                 'edilitaire' => $district->edilitaire,
                 'agricole' => $district->agricole,
@@ -237,7 +236,7 @@ class DistrictController extends Controller
                 'touristique' => 0,
             ]);
 
-            // ✅ Log d'activité
+            // Log d'activité
             $this->logDistrictActivity($district, 'reset_prices', ['old' => $oldPrices]);
 
             DB::commit();
@@ -256,7 +255,7 @@ class DistrictController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : Obtenir les détails d'un district (API)
+     * Obtenir les détails d'un district (API)
      */
     public function show(int $id): JsonResponse
     {
@@ -295,7 +294,7 @@ class DistrictController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : Exporter les prix au format CSV
+     * Exporter les prix au format CSV
      */
     public function export(): StreamedResponse|RedirectResponse
     {
@@ -369,7 +368,7 @@ class DistrictController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU : Rechercher des districts par nom
+     * Rechercher des districts par nom
      */
     public function search(Request $request): JsonResponse
     {

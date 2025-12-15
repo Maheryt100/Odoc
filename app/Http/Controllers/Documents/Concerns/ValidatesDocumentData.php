@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 trait ValidatesDocumentData
 {
     /**
-     * ✅ Valider les données pour un reçu
+     * Valider les données pour un reçu
      */
     protected function validateRecuData(Propriete $propriete, Demandeur $demandeur): array
     {
@@ -76,7 +76,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Valider les données pour un acte de vente
+     * alider les données pour un acte de vente
      */
     protected function validateActeVenteData(Propriete $propriete, Demandeur $demandeur): array
     {
@@ -120,7 +120,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Valider les demandeurs pour un acte de vente avec consorts
+     *  Valider les demandeurs pour un acte de vente avec consorts
      */
     protected function validateConsortsData(Collection $demandeurs): array
     {
@@ -175,7 +175,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Valider les données pour un CSF
+     * Valider les données pour un CSF
      */
     protected function validateCsfData(Demandeur $demandeur, ?Propriete $propriete = null): array
     {
@@ -208,7 +208,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Valider les données pour une réquisition
+     * Valider les données pour une réquisition
      */
     protected function validateRequisitionData(Propriete $propriete): array
     {
@@ -265,7 +265,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Lancer une exception si des erreurs sont trouvées
+     * Lancer une exception si des erreurs sont trouvées
      */
     protected function throwIfErrors(array $errors): void
     {
@@ -275,7 +275,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Valider et retourner les erreurs ou lancer une exception
+     * Valider et retourner les erreurs ou lancer une exception
      */
     protected function validateOrThrow(array $errors): void
     {

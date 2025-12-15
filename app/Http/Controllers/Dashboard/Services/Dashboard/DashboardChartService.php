@@ -10,12 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
-/**
- * ✅ VERSION HARMONISÉE avec Statistics
- * 
- * Changement majeur : Tous les comptages sont maintenant basés sur date_ouverture des dossiers
- * pour assurer la cohérence avec le module Statistics
- */
+
 class DashboardChartService
 {
     use QueryFilterTrait;
@@ -24,7 +19,7 @@ class DashboardChartService
     private const PERIOD_MONTHS = 12;
 
     /**
-     * 📊 Récupérer tous les graphiques du dashboard
+     * Récupérer tous les graphiques du dashboard
      */
     public function getAllCharts(): array
     {
@@ -35,8 +30,8 @@ class DashboardChartService
                 'dossiers_timeline' => $this->getDossiersTimeline(),
                 'proprietes_status' => $this->getProprietesStatus(),
                 'top_communes' => $this->getTopCommunes(5),
-                'evolution_mensuelle' => $this->getDossiersTimeline(), // Compatibilité
-                'evolution_complete' => $this->getEvolutionComplete(), // ✅ HARMONISÉ
+                'evolution_mensuelle' => $this->getDossiersTimeline(),
+                'evolution_complete' => $this->getEvolutionComplete(), 
                 'revenus_par_vocation' => $this->getRevenuParVocation(),
                 'performance_trimestrielle' => $this->getPerformanceQuarterly(),
             ];
@@ -44,7 +39,7 @@ class DashboardChartService
     }
 
     /**
-     * 🔑 Clé de cache
+     * Clé de cache
      */
     private function getCacheKey(string $type): string
     {
@@ -58,7 +53,7 @@ class DashboardChartService
     }
 
     /**
-     * 📈 Timeline des dossiers (12 derniers mois)
+     * Timeline des dossiers (12 derniers mois)
      */
     private function getDossiersTimeline(): array
     {
@@ -79,9 +74,7 @@ class DashboardChartService
     }
 
     /**
-     * ✅ HARMONISÉ : Évolution complète avec MÊME LOGIQUE que Statistics
-     * 
-     * Règle unifiée : On compte par date_ouverture des dossiers associés
+     * HARMONISÉ : Évolution complète avec MÊME LOGIQUE que Statistics
      */
     private function getEvolutionComplete(): array
     {
@@ -89,13 +82,13 @@ class DashboardChartService
         $months = $this->getLast12Months();
         
         return collect($months)->map(function($month) use ($user) {
-            // ✅ Dossiers ouverts dans le mois
+            // Dossiers ouverts dans le mois
             $dossiers = Dossier::query()
                 ->when(!$user->canAccessAllDistricts(), fn($q) => $q->where('id_district', $user->id_district))
                 ->whereBetween('date_ouverture', [$month['start'], $month['end']])
                 ->count();
             
-            // ✅ Propriétés liées aux dossiers ouverts ce mois
+            // Propriétés liées aux dossiers ouverts ce mois
             $proprietes = Propriete::query()
                 ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                     $q->whereHas('dossier', fn($q2) => $q2->where('id_district', $user->id_district));
@@ -105,7 +98,7 @@ class DashboardChartService
                 })
                 ->count();
             
-            // ✅ CORRIGÉ : Demandeurs liés aux dossiers ouverts ce mois
+            // CORRIGÉ : Demandeurs liés aux dossiers ouverts ce mois
             // On utilise la même logique que Statistics
             $demandeurs = Demandeur::query()
                 ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
@@ -154,7 +147,7 @@ class DashboardChartService
     }
 
     /**
-     * 🗺️ Top 5 communes
+     * Top 5 communes
      */
     private function getTopCommunes(int $limit = 5): array
     {
@@ -172,7 +165,7 @@ class DashboardChartService
     }
 
     /**
-     * 💰 Revenus par vocation (actifs uniquement)
+     * Revenus par vocation (actifs uniquement)
      */
     private function getRevenuParVocation(): array
     {
@@ -197,7 +190,7 @@ class DashboardChartService
     }
 
     /**
-     * 📉 Performance trimestrielle (4 derniers trimestres)
+     * Performance trimestrielle (4 derniers trimestres)
      */
     private function getPerformanceQuarterly(): array
     {
@@ -227,7 +220,7 @@ class DashboardChartService
     // ========================================
 
     /**
-     * 📅 Générer les 12 derniers mois
+     * Générer les 12 derniers mois
      */
     private function getLast12Months(): array
     {
@@ -246,7 +239,7 @@ class DashboardChartService
     }
 
     /**
-     * 📅 Générer les 4 derniers trimestres
+     * Générer les 4 derniers trimestres
      */
     private function getLast4Quarters(): array
     {

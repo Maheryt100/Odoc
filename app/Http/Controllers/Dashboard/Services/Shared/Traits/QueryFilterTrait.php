@@ -28,7 +28,7 @@ trait QueryFilterTrait
         
         $query = Dossier::query();
         
-        // ✅ LOGIQUE HIÉRARCHIQUE : District > Région > Province
+        // LOGIQUE HIÉRARCHIQUE : District > Région > Province
         
         // Si l'utilisateur ne peut accéder qu'à son district
         if (!$user->canAccessAllDistricts()) {

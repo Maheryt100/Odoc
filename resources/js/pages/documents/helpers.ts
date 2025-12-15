@@ -1,5 +1,7 @@
 // documents/helpers.ts - FONCTIONS CORRIGÉES
 
+import { DocumentGenere } from "./types";
+
 /**
  * ✅ CORRIGÉ : Gérer undefined au lieu de null
  */
@@ -51,4 +53,72 @@ export const formatDate = (date: string | Date | undefined): string => {
 export const calculatePercentage = (part: number, total: number): number => {
     if (total === 0) return 0;
     return Math.round((part / total) * 100);
+};
+
+/**
+ * ✅ Vérifier si un document nécessite une régénération
+ */
+export const needsRegeneration = (document: DocumentGenere | null | undefined): boolean => {
+    return document?.metadata?.needs_regeneration === true;
+};
+
+/**
+ * ✅ Vérifier si la régénération a échoué
+ */
+export const hasRegenerationFailed = (document: DocumentGenere | null | undefined): boolean => {
+    return document?.metadata?.regeneration_failed === true;
+};
+
+/**
+ * ✅ Obtenir le nombre de régénérations
+ */
+export const getRegenerationCount = (document: DocumentGenere | null | undefined): number => {
+    return document?.metadata?.regeneration_count ?? 0;
+};
+
+/**
+ * ✅ Obtenir le statut d'un document pour l'UI
+ */
+export const getDocumentStatus = (
+    document: DocumentGenere | null | undefined
+): {
+    status: 'missing' | 'needs_regen' | 'failed' | 'valid';
+    label: string;
+    variant: 'outline' | 'destructive' | 'default';
+    color: string;
+} => {
+    if (!document) {
+        return {
+            status: 'missing',
+            label: 'Non généré',
+            variant: 'outline',
+            color: 'text-gray-500',
+        };
+    }
+
+    if (hasRegenerationFailed(document)) {
+        return {
+            status: 'failed',
+            label: 'Échec régénération',
+            variant: 'destructive',
+            color: 'text-red-500',
+        };
+    }
+
+    if (needsRegeneration(document)) {
+        return {
+            status: 'needs_regen',
+            label: 'Régénération requise',
+            variant: 'outline',
+            color: 'text-amber-500',
+        };
+    }
+
+    const regenCount = getRegenerationCount(document);
+    return {
+        status: 'valid',
+        label: regenCount > 0 ? `Disponible (×${regenCount})` : 'Disponible',
+        variant: 'default',
+        color: 'text-green-500',
+    };
 };

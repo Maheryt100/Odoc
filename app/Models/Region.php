@@ -22,11 +22,11 @@ class Region extends Model
 
     /**
      * Une région a plusieurs districts
-     * ✅ CORRECTION : Utiliser 'id_region' au lieu de 'id_district'
+     * : Utiliser 'id_region' au lieu de 'id_district'
      */
     public function districts()
     {
-        return $this->hasMany(District::class, 'id_region'); // ✅ CORRIGÉ
+        return $this->hasMany(District::class, 'id_region');
     }
 }
 

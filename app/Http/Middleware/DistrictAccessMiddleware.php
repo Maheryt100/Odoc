@@ -29,14 +29,12 @@ class DistrictAccessMiddleware
                 ->with('error', 'Vous devez être connecté pour accéder à cette page.');
         }
 
-        // ✅ CRITIQUE : Vérifier si le compte est actif
         if (!$user->status) {
             Auth::logout();
             return redirect()->route('login')
                 ->with('error', 'Votre compte a été désactivé. Contactez un administrateur.');
         }
 
-        // ✅ CORRIGÉ : Vérifier si l'utilisateur a un district 
         // (sauf super_admin ET central_user qui ont accès à tous les districts)
         if (!$user->canAccessAllDistricts() && !$user->id_district) {
             Auth::logout();

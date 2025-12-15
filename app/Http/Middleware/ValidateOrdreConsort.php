@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Models\Demander;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class ValidateOrdreConsort
 {
@@ -19,11 +19,7 @@ class ValidateOrdreConsort
                     ->max('ordre') ?? 0;
                 
                 $request->merge(['ordre' => $maxOrdre + 1]);
-                
-                Log::info('🔢 Ordre auto-calculé par middleware', [
-                    'propriete_id' => $request->id_propriete,
-                    'ordre' => $maxOrdre + 1
-                ]);
+
             }
         }
 

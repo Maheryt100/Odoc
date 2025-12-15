@@ -32,7 +32,6 @@ class CheckDossierAccess
             abort(400, 'ID du dossier manquant');
         }
 
-        // ✅ CORRECTION : Ne PAS spécifier les colonnes à sélectionner
         // Laisser Eloquent gérer les accessors
         $dossier = Dossier::find($dossierId);
 

@@ -20,7 +20,7 @@ class Dossier extends Model
 
     protected $fillable = [
         'nom_dossier',
-        'numero_ouverture', // ✅ Maintenant un integer
+        'numero_ouverture', 
         'date_descente_debut',
         'date_descente_fin',
         'date_ouverture',
@@ -50,7 +50,7 @@ class Dossier extends Model
         'date_descente_fin' => 'date',
         'date_ouverture' => 'date',
         'date_fermeture' => 'date',
-        'numero_ouverture' => 'integer', // ✅ Cast en integer
+        'numero_ouverture' => 'integer',
     ];
 
     protected $with = ['closedBy'];
@@ -129,7 +129,7 @@ class Dossier extends Model
     }
 
     /**
-     * ✅ MODIFIÉ : Affichage simple du numéro
+     * Affichage simple du numéro
      */
     public function getNumeroOuvertureDisplayAttribute(): string
     {
@@ -198,7 +198,7 @@ class Dossier extends Model
     }
 
     /**
-     * ✅ MODIFIÉ : Recherche par numéro d'ouverture (integer)
+     *  Recherche par numéro d'ouverture (integer)
      */
     public function scopeByNumeroOuverture(Builder $query, int $numero): Builder
     {
@@ -369,12 +369,12 @@ class Dossier extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Génération automatique du prochain numéro global
+     *  Génération automatique du prochain numéro global
      * Retourne simplement le prochain numéro incrémental
      */
     public static function getNextNumeroOuverture(): int
     {
-        // ✅ Désactiver temporairement tous les scopes pour obtenir le vrai maximum global
+        // Désactiver temporairement tous les scopes pour obtenir le vrai maximum global
         $maxNumero = static::withoutGlobalScopes()->max('numero_ouverture');
         return ($maxNumero ?? 0) + 1;
     }
@@ -385,7 +385,7 @@ class Dossier extends Model
     }
 
     /**
-     * ✅ MODIFIÉ : Vérifier si un numéro existe déjà
+     * MODIFIÉ : Vérifier si un numéro existe déjà
      */
     public static function numeroOuvertureExists(int $numero, ?int $excludeId = null): bool
     {
@@ -405,7 +405,7 @@ class Dossier extends Model
         parent::boot();
 
         /**
-         * ✅ MODIFIÉ : Ne plus générer automatiquement le numéro
+         *MODIFIÉ : Ne plus générer automatiquement le numéro
          * L'utilisateur doit le saisir manuellement (pré-rempli dans le formulaire)
          */
         static::creating(function ($dossier) {
@@ -414,7 +414,7 @@ class Dossier extends Model
                 $dossier->date_ouverture = $dossier->date_descente_debut ?? now();
             }
             
-            // ✅ Le numéro doit être fourni par l'utilisateur via le formulaire
+            //Le numéro doit être fourni par l'utilisateur via le formulaire
             // On ne le génère plus automatiquement ici
         });
     }

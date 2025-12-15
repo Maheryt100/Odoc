@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
-
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -17,25 +16,26 @@ use Illuminate\Support\Facades\Cache;
  * 
  * LOGIQUE MÉTIER CONFIRMÉE :
  * 
- * ✅ STATUS :
+ * STATUS :
  *    - 'active' : Demande en cours d'acquisition
  *    - 'archive' : Propriété ACQUISE par le demandeur
  * 
- * ✅ ORDRE :
+ *  ORDRE :
  *    - AUTOMATIQUE (1, 2, 3...)
  *    - ordre = 1 : Demandeur principal
  *    - ordre > 1 : Consorts
  *    - Calculé automatiquement à la création
  *    - Réorganisé automatiquement après suppression
  * 
- * ✅ ARCHIVAGE :
+ *  ARCHIVAGE :
  *    - Archiver une propriété = archiver TOUTES ses demandes actives
  *    - Désarchiver = réactiver TOUTES les demandes archivées
  * 
- * ✅ SUPPRESSION :
+ *  SUPPRESSION :
  *    - Propriété archivée = NON supprimable
  *    - Demandeur avec propriétés (actives OU archivées) = NON supprimable
  */
+
 class Demander extends Model
 {
     protected $table = 'demander';
@@ -182,6 +182,7 @@ class Demander extends Model
      * - Une demande ARCHIVÉE ne peut PAS être dissociée
      * - Le dossier ne doit pas être fermé
      */
+    
     public function canBeDissociated(): bool
     {
         // ❌ Ne peut pas dissocier si demande archivée (propriété acquise)
@@ -403,27 +404,21 @@ class Demander extends Model
         parent::boot();
 
         /**
-         * ✅ CRÉATION : Calcul automatique de l'ordre
+         * CRÉATION : Calcul automatique de l'ordre
          * RÈGLE : L'ordre est automatique (1, 2, 3...)
          */
         static::creating(function ($demande) {
             if (!$demande->ordre) {
-                // ✅ Trouver le prochain ordre disponible
+                // Trouver le prochain ordre disponible
                 $maxOrdre = static::where('id_propriete', $demande->id_propriete)
                     ->where('status', self::STATUS_ACTIVE)
                     ->max('ordre') ?? 0;
                 
                 $demande->ordre = $maxOrdre + 1;
-                
-                Log::info('✅ Ordre automatique attribué', [
-                    'demande_id' => 'creating',
-                    'propriete_id' => $demande->id_propriete,
-                    'demandeur_id' => $demande->id_demandeur,
-                    'ordre' => $demande->ordre,
-                ]);
+    
             }
 
-            // ✅ Auto-calculer status_consort basé sur l'ordre
+            // Auto-calculer status_consort basé sur l'ordre
             $demande->status_consort = $demande->ordre > 1;
         });
 
@@ -433,11 +428,11 @@ class Demander extends Model
         });
 
         /**
-         * ✅ SUPPRESSION : Réorganisation automatique des ordres
+         * SUPPRESSION : Réorganisation automatique des ordres
          * RÈGLE : Après suppression d'une demande, réorganiser les ordres (1, 2, 3...)
          */
         static::deleted(function ($demande) {
-            // ✅ Ne réorganiser que si la demande était active
+            // Ne réorganiser que si la demande était active
             if ($demande->status !== self::STATUS_ACTIVE) {
                 return;
             }
@@ -447,7 +442,7 @@ class Demander extends Model
                 ->orderBy('ordre')
                 ->get();
 
-            // ✅ Réorganiser seulement s'il reste des demandes
+            // Réorganiser seulement s'il reste des demandes
             if ($remaining->count() > 0) {
                 foreach ($remaining as $index => $d) {
                     $newOrdre = $index + 1;
@@ -457,28 +452,16 @@ class Demander extends Model
                             'status_consort' => $newOrdre > 1
                         ]);
                         
-                        Log::info('✅ Ordre réorganisé après suppression', [
-                            'demande_id' => $d->id,
-                            'ancien_ordre' => $d->ordre,
-                            'nouveau_ordre' => $newOrdre,
-                        ]);
                     }
                 }
             }
         });
         
         /**
-         * ✅ LOG : Après création
+         *  LOG : Après création
          */
         static::created(function ($demande) {
-            Log::info('✅ Demande créée', [
-                'demande_id' => $demande->id,
-                'propriete_id' => $demande->id_propriete,
-                'demandeur_id' => $demande->id_demandeur,
-                'ordre' => $demande->ordre,
-                'status' => $demande->status,
-                'total_prix' => $demande->total_prix,
-            ]);
+
         });
     }
 }

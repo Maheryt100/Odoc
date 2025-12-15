@@ -22,8 +22,8 @@ class RecuPaiement extends Model
     ];
 
     protected $casts = [
-        'date_recu' => 'datetime', // ✅ CORRIGÉ : datetime au lieu de date
-        'montant' => 'integer',    // ✅ CORRIGÉ : integer au lieu de decimal:2
+        'date_recu' => 'datetime',
+        'montant' => 'integer',   
     ];
 
     /**

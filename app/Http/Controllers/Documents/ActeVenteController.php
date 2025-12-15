@@ -25,9 +25,6 @@ class ActeVenteController extends Controller
 {
     use HandlesDocumentGeneration, ValidatesDocumentData, FormatsDocumentData;
 
-    /**
-     * ✅ Générer ou télécharger un acte de vente existant
-     */
     public function generate(Request $request)
     {
         $request->validate([
@@ -38,20 +35,19 @@ class ActeVenteController extends Controller
         try {
             $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
 
-            // Vérifier qu'un reçu existe
-            $recuExists = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
+            // ✅ MODIFICATION : Récupérer le document reçu
+            $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
                 ->where('id_propriete', $request->id_propriete)
                 ->where('id_district', $propriete->dossier->id_district)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
-                ->exists();
+                ->first();
 
-            if (!$recuExists) {
+            if (!$documentRecu) {
                 return back()->withErrors([
                     'error' => 'Vous devez d\'abord générer le reçu de paiement.'
                 ]);
             }
 
-            // Vérifier si l'ADV existe déjà
             $documentExistant = DocumentGenere::where('type_document', DocumentGenere::TYPE_ADV)
                 ->where('id_propriete', $request->id_propriete)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -62,7 +58,8 @@ class ActeVenteController extends Controller
                 return $this->downloadExisting($documentExistant, 'acte de vente');
             }
 
-            return $this->createNewActeVente($propriete, $request->id_demandeur);
+            // ✅ MODIFICATION : Passer le reçu à la méthode
+            return $this->createNewActeVente($propriete, $request->id_demandeur, $documentRecu);
 
         } catch (\Exception $e) {
             Log::error('❌ Erreur génération ADV', [
@@ -73,9 +70,6 @@ class ActeVenteController extends Controller
         }
     }
 
-    /**
-     * ✅ Télécharger un acte de vente par son ID
-     */
     public function download($id)
     {
         try {
@@ -96,15 +90,12 @@ class ActeVenteController extends Controller
         }
     }
 
-    /**
-     * ✅ SÉCURISÉ : Créer un nouvel acte de vente
-     */
-    private function createNewActeVente(Propriete $propriete, int $idDemandeur)
+    // ✅ MODIFICATION : Ajouter paramètre $documentRecu
+    private function createNewActeVente(Propriete $propriete, int $idDemandeur, DocumentGenere $documentRecu)
     {
         DB::beginTransaction();
 
         try {
-            // ✅ Lock pour éviter les doublons
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_ADV)
                 ->where('id_propriete', $propriete->id)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -117,7 +108,6 @@ class ActeVenteController extends Controller
                 return $this->downloadExisting($existingDoc, 'acte de vente');
             }
 
-            // Charger tous les demandeurs actifs de la propriété
             $tousLesDemandeurs = $propriete->demandesActives()
                 ->with('demandeur')
                 ->orderBy('ordre', 'asc')
@@ -134,7 +124,6 @@ class ActeVenteController extends Controller
                 throw new \Exception("Demandeur principal introuvable");
             }
 
-            // Validation des données
             if ($hasConsorts) {
                 $errors = $this->validateConsortsData($tousLesDemandeurs);
             } else {
@@ -143,14 +132,12 @@ class ActeVenteController extends Controller
 
             $this->validateOrThrow($errors);
 
-            // Créer le fichier Word
-            $tempFilePath = $this->createActeVenteDocument($propriete, $tousLesDemandeurs, $hasConsorts);
+            // ✅ MODIFICATION : Passer le reçu au template
+            $tempFilePath = $this->createActeVenteDocument($propriete, $tousLesDemandeurs, $hasConsorts, $documentRecu);
 
-            // Sauvegarder
             $savedPath = $this->saveDocument($tempFilePath, 'ADV', $propriete, $demandeurPrincipal->demandeur);
             $nomFichier = basename($savedPath);
 
-            // Créer l'enregistrement
             $document = DocumentGenere::create([
                 'type_document' => DocumentGenere::TYPE_ADV,
                 'id_propriete' => $propriete->id,
@@ -168,7 +155,6 @@ class ActeVenteController extends Controller
 
             DB::commit();
 
-            // Log d'activité
             ActivityLogger::logDocumentGeneration(ActivityLog::DOC_ACTE_VENTE, $document->id, [
                 'lot' => $propriete->lot,
                 'has_consorts' => $hasConsorts,
@@ -187,13 +173,12 @@ class ActeVenteController extends Controller
         }
     }
 
-    /**
-     * ✅ CORRIGÉ : Créer le document Word ADV
-     */
+    // ✅ MODIFICATION : Ajouter paramètre $documentRecu
     private function createActeVenteDocument(
         Propriete $propriete, 
         $tousLesDemandeurs, 
-        bool $hasConsorts
+        bool $hasConsorts,
+        DocumentGenere $documentRecu
     ): string {
         Carbon::setLocale('fr');
         $formatter = new NumberFormatter('fr', NumberFormatter::SPELLOUT);
@@ -201,20 +186,16 @@ class ActeVenteController extends Controller
         $dossier = $propriete->dossier;
         $type_operation = $propriete->type_operation;
 
-        // Calcul du prix
         $prix = $this->getPrixFromDistrict($propriete);
         $prixLettre = $this->formatMontantEnLettres($prix);
         $prixTotal = $prix * $propriete->contenance;
         $totalLettre = $this->formatMontantEnLettres($prixTotal);
 
-        // Formater la contenance
-        $contenanceData = $this->formatContenance($propriete->contenance);
+        $contenanceData = $this->formatContenance((int) $propriete->contenance);
 
-        // Localisation
         $locationData = $this->getLocationData($propriete);
         $articles = $this->getArticles($locationData['district'], $dossier->commune);
 
-        // Dates
         $dateDescente = $this->formatPeriodeDates(
             Carbon::parse($dossier->date_descente_debut),
             Carbon::parse($dossier->date_descente_fin)
@@ -222,8 +203,14 @@ class ActeVenteController extends Controller
         $dateRequisition = $this->formatDateDocument($propriete->date_requisition ? Carbon::parse($propriete->date_requisition) : null);
         $dateInscription = $this->formatDateDocument($propriete->date_inscription ? Carbon::parse($propriete->date_inscription) : null);
 
+        // ✅ AJOUT : Données du reçu
+        $numeroQuittance = $documentRecu->numero_document ?? 'N/A';
+        $dateQuittance = $documentRecu->date_document 
+            ? $this->formatDateDocument(Carbon::parse($documentRecu->date_document))
+            : 'N/A';
+
         if (!$hasConsorts) {
-            // ===== SANS CONSORT =====
+            // SANS CONSORT
             $demandeur = $tousLesDemandeurs->first()->demandeur;
 
             $templatePath = $type_operation == 'morcellement'
@@ -235,22 +222,15 @@ class ActeVenteController extends Controller
             }
 
             $modele = new TemplateProcessor($templatePath);
-
-            // Données du demandeur
             $demandeurData = $this->buildDemandeurData($demandeur);
 
             $modele->setValues(array_merge([
-                // Contenance
                 'ContenanceFormatLettre' => $contenanceData['lettres'],
                 'ContenanceFormat' => $contenanceData['format'],
-                
-                // Prix
                 'Prix' => $prixLettre,
                 'PrixTotal' => $this->formatMontantChiffres($prixTotal),
                 'TotalLettre' => $totalLettre,
                 'PrixCarre' => $this->formatMontantChiffres($prix),
-                
-                // Propriété
                 'Nature' => $propriete->nature,
                 'Vocation' => $propriete->vocation,
                 'Situation' => $propriete->situation,
@@ -264,21 +244,20 @@ class ActeVenteController extends Controller
                 'Requisition' => $dateRequisition ?: 'Non renseignée',
                 'Inscription' => $dateInscription ?: 'Non renseignée',
                 'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
-                
-                // Propriétaire
                 'Proprietaire' => Str::upper($propriete->proprietaire),
-                
-                // Localisation
                 'Province' => $locationData['province'],
                 'Region' => $locationData['region'],
                 'District' => $locationData['district'],
                 'DISTRICT' => $locationData['DISTRICT'],
+                // ✅ AJOUT : Variables quittance
+                'NumeroQuittance' => $numeroQuittance,
+                'DateQuittance' => $dateQuittance,
             ], $demandeurData, $articles));
 
             $fileName = 'ADV_' . uniqid() . '_' . Str::slug($demandeur->nom_demandeur) . '.docx';
 
         } else {
-            // ===== AVEC CONSORTS =====
+            // AVEC CONSORTS
             $templatePath = $type_operation == 'morcellement'
                 ? storage_path('app/public/modele_odoc/avec_consort/morcellement.docx')
                 : storage_path('app/public/modele_odoc/avec_consort/immatriculation.docx');
@@ -293,7 +272,6 @@ class ActeVenteController extends Controller
             $modele->cloneBlock('consort_block_1', $nombreDemandeurs, true, true);
             $modele->cloneBlock('consort_block_2', $nombreDemandeurs, true, true);
 
-            // Remplir les données de chaque demandeur
             foreach ($tousLesDemandeurs as $key => $demande) {
                 $n = $key + 1;
                 $dmdr = $demande->demandeur;
@@ -302,7 +280,6 @@ class ActeVenteController extends Controller
                 $modele->setValues($demandeurData);
             }
 
-            // Données communes
             $modele->setValues(array_merge([
                 'ContenanceFormatLettre' => $contenanceData['lettres'],
                 'ContenanceFormat' => $contenanceData['format'],
@@ -319,7 +296,7 @@ class ActeVenteController extends Controller
                 'Propriete_mere' => Str::upper($this->getOrDefault($propriete->propriete_mere, 'NON RENSEIGNÉE')),
                 'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
                 'Titre' => $propriete->titre,
-                'Date_descente' => $dateDescente, // Note: underscore pour compatibilité template
+                'Date_descente' => $dateDescente,
                 'Requisition' => $dateRequisition ?: 'Non renseignée',
                 'Inscription' => $dateInscription ?: 'Non renseignée',
                 'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
@@ -328,6 +305,9 @@ class ActeVenteController extends Controller
                 'Region' => $locationData['region'],
                 'District' => $locationData['district'],
                 'DISTRICT' => $locationData['DISTRICT'],
+                // ✅ AJOUT : Variables quittance
+                'NumeroQuittance' => $numeroQuittance,
+                'DateQuittance' => $dateQuittance,
             ], $articles));
 
             $premierDemandeur = $tousLesDemandeurs->first()->demandeur;
@@ -340,9 +320,6 @@ class ActeVenteController extends Controller
         return $filePath;
     }
 
-    /**
-     * ✅ Construire les données d'un demandeur pour le template (sans consort)
-     */
     private function buildDemandeurData($demandeur): array
     {
         return [
@@ -372,9 +349,6 @@ class ActeVenteController extends Controller
         ];
     }
 
-    /**
-     * ✅ Construire les données d'un demandeur avec index (consorts)
-     */
     private function buildDemandeurDataWithIndex($demandeur, int $index): array
     {
         $data = $this->buildDemandeurData($demandeur);
@@ -384,10 +358,43 @@ class ActeVenteController extends Controller
             $indexedData[$key . '#' . $index] = $value;
         }
 
-        // Ajouter le numéro et le "ET"
         $indexedData['Numero#' . $index] = $index;
         $indexedData['ET#' . $index] = ($index == 1) ? 'ET - ' : '';
 
         return $indexedData;
+    }
+
+    public function regenerate($id)
+    {
+        try {
+            $document = DocumentGenere::findOrFail($id);
+
+            if ($document->type_document !== DocumentGenere::TYPE_ADV) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'invalid_type',
+                    'message' => 'Ce document n\'est pas un acte de vente',
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => 'regeneration_not_supported',
+                'message' => 'Les Actes de Vente nécessitent une validation manuelle en raison des consorts',
+                'details' => 'Veuillez générer un nouvel acte depuis l\'interface principale',
+            ], 400);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Erreur régénération ADV', [
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'regeneration_error',
+                'message' => 'Erreur lors de la tentative de régénération',
+            ], 500);
+        }
     }
 }

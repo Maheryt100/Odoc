@@ -40,7 +40,7 @@ class Demandeur extends Model
     ];
 
     /**
-     * ✅ SIMPLIFIÉ : Une seule déclaration des dates
+     * SIMPLIFIÉ : Une seule déclaration des dates
      * Pas besoin de $casts ET $dates simultanément
      */
     protected $dates = [
@@ -53,10 +53,10 @@ class Demandeur extends Model
     ];
 
     /**
-     * ✅ SUPPRIMÉ : Les accessors qui font double emploi
+     * SUPPRIMÉ : Les accessors qui font double emploi
      * Laravel gère automatiquement avec $dates
      */
-    // ❌ ANCIEN CODE REDONDANT (supprimé):
+    // ANCIEN CODE REDONDANT (supprimé):
     // public function getDateNaissanceAttribute($value) { ... }
     // public function getDateDelivranceAttribute($value) { ... }
 
@@ -130,7 +130,7 @@ class Demandeur extends Model
     }
 
     /**
-     * ✅ Vérifier si a des propriétés
+     * Vérifier si a des propriétés
      */
     public function getHasPropertyAttribute(): bool
     {
@@ -216,7 +216,7 @@ class Demandeur extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Formater une date pour les documents
+     * NOUVEAU : Formater une date pour les documents
      */
     public function formatDateForDocument(string $field): string
     {
@@ -228,7 +228,7 @@ class Demandeur extends Model
     }
 
     /**
-     * ✅ Formater pour export
+     *  Formater pour export
      */
     public function toExportArray(): array
     {

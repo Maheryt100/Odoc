@@ -7,32 +7,32 @@ use App\Models\Demandeur;
 use App\Models\Demander;
 use App\Models\Contenir;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🗑️ SERVICE DE VALIDATION ET SUPPRESSION
+ * SERVICE DE VALIDATION ET SUPPRESSION
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * RÈGLES DE SUPPRESSION CONFIRMÉES :
  * 
- * ✅ PROPRIÉTÉ SUPPRIMABLE SI :
+ * PROPRIÉTÉ SUPPRIMABLE SI :
  *    - Aucune demande (ni active, ni archivée)
  * 
- * ❌ PROPRIÉTÉ NON SUPPRIMABLE SI :
+ * PROPRIÉTÉ NON SUPPRIMABLE SI :
  *    - Au moins une demande active OU archivée
  * 
- * ✅ DEMANDEUR SUPPRIMABLE SI :
+ * DEMANDEUR SUPPRIMABLE SI :
  *    - Aucune propriété liée (ni active, ni archivée)
  * 
- * ❌ DEMANDEUR NON SUPPRIMABLE SI :
+ * DEMANDEUR NON SUPPRIMABLE SI :
  *    - Au moins une demande active OU archivée
  */
 class DeletionValidationService
 {
     /**
      * ═══════════════════════════════════════════════════════════════════════
-     * 🏠 VALIDATION SUPPRESSION PROPRIÉTÉ
+     * VALIDATION SUPPRESSION PROPRIÉTÉ
      * ═══════════════════════════════════════════════════════════════════════
      */
     
@@ -46,7 +46,7 @@ class DeletionValidationService
                 'demandes as total_demandes' // Compte TOUTES les demandes (actives + archivées)
             ])->findOrFail($proprieteId);
             
-            // ✅ RÈGLE : Supprimable UNIQUEMENT si AUCUNE demande
+            //  RÈGLE : Supprimable UNIQUEMENT si AUCUNE demande
             if ($propriete->total_demandes > 0) {
                 $demandesActives = $propriete->demandes()
                     ->where('status', Demander::STATUS_ACTIVE)
@@ -76,18 +76,14 @@ class DeletionValidationService
                 ];
             }
             
-            // ✅ Peut être supprimée
+            //  Peut être supprimée
             return [
                 'can_delete' => true,
                 'reason' => 'no_demandes',
-                'message' => "✅ La propriété Lot {$propriete->lot} peut être supprimée (aucune demande).",
+                'message' => " La propriété Lot {$propriete->lot} peut être supprimée (aucune demande).",
             ];
             
         } catch (\Exception $e) {
-            Log::error('❌ Erreur validation suppression propriété', [
-                'propriete_id' => $proprieteId,
-                'error' => $e->getMessage()
-            ]);
             
             return [
                 'can_delete' => false,
@@ -102,7 +98,7 @@ class DeletionValidationService
      */
     public function deletePropriete(int $proprieteId): array
     {
-        // ✅ ÉTAPE 1 : Validation
+        // ÉTAPE 1 : Validation
         $validation = $this->canDeletePropriete($proprieteId);
         
         if (!$validation['can_delete']) {
@@ -113,14 +109,14 @@ class DeletionValidationService
             ];
         }
         
-        // ✅ ÉTAPE 2 : Suppression
+        // ÉTAPE 2 : Suppression
         DB::beginTransaction();
         
         try {
             $propriete = Propriete::findOrFail($proprieteId);
             $lot = $propriete->lot;
             
-            // ✅ Supprimer les pièces jointes associées
+            // Supprimer les pièces jointes associées
             if (method_exists($propriete, 'piecesJointes')) {
                 foreach ($propriete->piecesJointes as $piece) {
                     // Supprimer le fichier physique si nécessaire
@@ -128,31 +124,19 @@ class DeletionValidationService
                 }
             }
             
-            // ✅ Suppression de la propriété
+            // Suppression de la propriété
             $propriete->delete();
             
             DB::commit();
             
-            Log::info('✅ Propriété supprimée', [
-                'propriete_id' => $proprieteId,
-                'lot' => $lot,
-                'user_id' => auth()->id()
-            ]);
-            
             return [
                 'success' => true,
-                'message' => "✅ Propriété Lot {$lot} supprimée avec succès"
+                'message' => "Propriété Lot {$lot} supprimée avec succès"
             ];
             
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('❌ Erreur suppression propriété', [
-                'propriete_id' => $proprieteId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+
             return [
                 'success' => false,
                 'message' => 'Erreur lors de la suppression : ' . $e->getMessage()
@@ -177,7 +161,7 @@ class DeletionValidationService
                 'demandes as total_demandes' // Compte TOUTES les demandes
             ])->findOrFail($demandeurId);
             
-            // ✅ RÈGLE : Supprimable UNIQUEMENT si AUCUNE demande
+            //  RÈGLE : Supprimable UNIQUEMENT si AUCUNE demande
             if ($demandeur->total_demandes > 0) {
                 $demandesActives = $demandeur->demandes()
                     ->where('status', Demander::STATUS_ACTIVE)
@@ -208,18 +192,14 @@ class DeletionValidationService
                 ];
             }
             
-            // ✅ Peut être supprimé
+            // Peut être supprimé
             return [
                 'can_delete' => true,
                 'reason' => 'no_proprietes',
-                'message' => "✅ {$demandeur->nom_complet} peut être supprimé définitivement (aucune propriété liée).",
+                'message' => "{$demandeur->nom_complet} peut être supprimé définitivement (aucune propriété liée).",
             ];
             
         } catch (\Exception $e) {
-            Log::error('❌ Erreur validation suppression demandeur', [
-                'demandeur_id' => $demandeurId,
-                'error' => $e->getMessage()
-            ]);
             
             return [
                 'can_delete' => false,
@@ -234,7 +214,7 @@ class DeletionValidationService
      */
     public function deleteDemandeurDefinitive(int $demandeurId): array
     {
-        // ✅ ÉTAPE 1 : Validation
+        // ÉTAPE 1 : Validation
         $validation = $this->canDeleteDemandeurDefinitive($demandeurId);
         
         if (!$validation['can_delete']) {
@@ -246,7 +226,7 @@ class DeletionValidationService
             ];
         }
         
-        // ✅ ÉTAPE 2 : Suppression
+        // ÉTAPE 2 : Suppression
         DB::beginTransaction();
         
         try {
@@ -254,41 +234,28 @@ class DeletionValidationService
             $nomComplet = $demandeur->nom_complet;
             $cin = $demandeur->cin;
             
-            // ✅ Supprimer les relations dans contenir (tous les dossiers)
+            // Supprimer les relations dans contenir (tous les dossiers)
             Contenir::where('id_demandeur', $demandeurId)->delete();
             
-            // ✅ Supprimer les pièces jointes associées
+            // Supprimer les pièces jointes associées
             if (method_exists($demandeur, 'piecesJointes')) {
                 foreach ($demandeur->piecesJointes as $piece) {
                     $piece->delete();
                 }
             }
             
-            // ✅ Suppression du demandeur
+            // Suppression du demandeur
             $demandeur->delete();
             
             DB::commit();
             
-            Log::info('✅ Demandeur supprimé définitivement', [
-                'demandeur_id' => $demandeurId,
-                'nom_complet' => $nomComplet,
-                'cin' => $cin,
-                'user_id' => auth()->id()
-            ]);
-            
             return [
                 'success' => true,
-                'message' => "✅ {$nomComplet} (CIN: {$cin}) supprimé définitivement avec succès"
+                'message' => " {$nomComplet} (CIN: {$cin}) supprimé définitivement avec succès"
             ];
             
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('❌ Erreur suppression définitive demandeur', [
-                'demandeur_id' => $demandeurId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             
             return [
                 'success' => false,
@@ -299,9 +266,6 @@ class DeletionValidationService
     
     /**
      * Retirer un demandeur d'un dossier spécifique (SANS suppression définitive)
-     * 
-     * ⚠️ ATTENTION : Cette action retire le demandeur du dossier,
-     * mais le garde dans la base de données s'il a des demandes
      */
     public function removeDemandeurFromDossier(int $demandeurId, int $dossierId): array
     {
@@ -311,7 +275,7 @@ class DeletionValidationService
             $demandeur = Demandeur::findOrFail($demandeurId);
             $nomComplet = $demandeur->nom_complet;
             
-            // ✅ Vérifier si le demandeur a des demandes dans CE dossier
+            // Vérifier si le demandeur a des demandes dans CE dossier
             $demandesInDossier = Demander::where('id_demandeur', $demandeurId)
                 ->whereHas('propriete', function($q) use ($dossierId) {
                     $q->where('id_dossier', $dossierId);
@@ -322,12 +286,12 @@ class DeletionValidationService
                 DB::rollBack();
                 return [
                     'success' => false,
-                    'message' => "❌ Impossible de retirer {$nomComplet} : il a {$demandesInDossier} demande(s) active(s) ou archivée(s) dans ce dossier.",
+                    'message' => "Impossible de retirer {$nomComplet} : il a {$demandesInDossier} demande(s) active(s) ou archivée(s) dans ce dossier.",
                     'suggestion' => "Dissociez d'abord le demandeur de toutes ses propriétés avant de le retirer du dossier."
                 ];
             }
             
-            // ✅ Retirer la relation du dossier (table contenir)
+            // Retirer la relation du dossier (table contenir)
             $deleted = Contenir::where('id_demandeur', $demandeurId)
                 ->where('id_dossier', $dossierId)
                 ->delete();
@@ -340,50 +304,32 @@ class DeletionValidationService
                 ];
             }
             
-            // ✅ Vérifier si le demandeur a encore des relations avec d'autres dossiers
+            // Vérifier si le demandeur a encore des relations avec d'autres dossiers
             $autresDossiers = Contenir::where('id_demandeur', $demandeurId)->count();
             
             if ($autresDossiers === 0) {
-                // ✅ Plus aucune relation → Supprimer définitivement
+                //  Plus aucune relation → Supprimer définitivement
                 $demandeur->delete();
                 
                 DB::commit();
                 
-                Log::info('✅ Demandeur retiré et supprimé (aucun autre dossier)', [
-                    'demandeur_id' => $demandeurId,
-                    'dossier_id' => $dossierId,
-                    'nom_complet' => $nomComplet,
-                ]);
-                
                 return [
                     'success' => true,
-                    'message' => "✅ {$nomComplet} retiré du dossier et supprimé définitivement (aucune autre relation)."
+                    'message' => " {$nomComplet} retiré du dossier et supprimé définitivement (aucune autre relation)."
                 ];
             } else {
-                // ✅ Le demandeur reste dans d'autres dossiers
+                // Le demandeur reste dans d'autres dossiers
                 DB::commit();
                 
-                Log::info('✅ Demandeur retiré du dossier (reste dans d\'autres)', [
-                    'demandeur_id' => $demandeurId,
-                    'dossier_id' => $dossierId,
-                    'nom_complet' => $nomComplet,
-                    'autres_dossiers' => $autresDossiers
-                ]);
                 
                 return [
                     'success' => true,
-                    'message' => "✅ {$nomComplet} retiré du dossier (reste dans {$autresDossiers} autre(s) dossier(s))."
+                    'message' => "{$nomComplet} retiré du dossier (reste dans {$autresDossiers} autre(s) dossier(s))."
                 ];
             }
             
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('❌ Erreur retrait demandeur du dossier', [
-                'demandeur_id' => $demandeurId,
-                'dossier_id' => $dossierId,
-                'error' => $e->getMessage()
-            ]);
             
             return [
                 'success' => false,
@@ -395,7 +341,7 @@ class DeletionValidationService
     
     /**
      * ═══════════════════════════════════════════════════════════════════════
-     * 🔗 VALIDATION DISSOCIATION
+     *  VALIDATION DISSOCIATION
      * ═══════════════════════════════════════════════════════════════════════
      */
     
@@ -418,39 +364,34 @@ class DeletionValidationService
                 ];
             }
             
-            // ✅ Vérifier si la demande est archivée
+            //  Vérifier si la demande est archivée
             if ($demande->status === Demander::STATUS_ARCHIVE) {
                 return [
                     'can_dissociate' => false,
                     'reason' => 'archived',
-                    'message' => "❌ Impossible de dissocier : la propriété Lot {$demande->propriete->lot} a été acquise par {$demande->demandeur->nom_complet}.",
+                    'message' => "Impossible de dissocier : la propriété Lot {$demande->propriete->lot} a été acquise par {$demande->demandeur->nom_complet}.",
                     'suggestion' => "Vous pouvez désarchiver la propriété d'abord si nécessaire."
                 ];
             }
             
-            // ✅ Vérifier si le dossier est fermé
+            // Vérifier si le dossier est fermé
             $dossier = $demande->propriete->dossier;
             if ($dossier && $dossier->is_closed) {
                 return [
                     'can_dissociate' => false,
                     'reason' => 'dossier_closed',
-                    'message' => "❌ Impossible de dissocier : le dossier '{$dossier->nom_dossier}' est fermé."
+                    'message' => "Impossible de dissocier : le dossier '{$dossier->nom_dossier}' est fermé."
                 ];
             }
             
-            // ✅ Peut être dissociée
+            // Peut être dissociée
             return [
                 'can_dissociate' => true,
                 'reason' => 'active',
-                'message' => "✅ La dissociation est possible."
+                'message' => "La dissociation est possible."
             ];
             
         } catch (\Exception $e) {
-            Log::error('❌ Erreur validation dissociation', [
-                'demandeur_id' => $demandeurId,
-                'propriete_id' => $proprieteId,
-                'error' => $e->getMessage()
-            ]);
             
             return [
                 'can_dissociate' => false,
@@ -463,7 +404,7 @@ class DeletionValidationService
     
     /**
      * ═══════════════════════════════════════════════════════════════════════
-     * 📊 MÉTHODES D'INFORMATION
+     *  MÉTHODES D'INFORMATION
      * ═══════════════════════════════════════════════════════════════════════
      */
     

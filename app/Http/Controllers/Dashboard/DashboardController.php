@@ -12,16 +12,16 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 /**
- * 🎯 Dashboard Controller
+ * Dashboard Controller
  * 
  * Responsabilité : Vue d'ensemble rapide (12 derniers mois)
  * - KPIs en temps réel (cache 5 min)
  * - Graphiques simplifiés (cache 10 min)
  * - Alertes système (toutes données)
  * - Activité récente (10 dernières actions)
- * 
- * ⚠️ Période fixe : 12 derniers mois
- * 📊 Pour analyses détaillées avec filtres : voir StatisticsController
+ *
+ * Période fixe : 12 derniers mois
+ *  Pour analyses détaillées avec filtres : voir StatisticsController
  */
 class DashboardController extends Controller
 {
@@ -33,7 +33,7 @@ class DashboardController extends Controller
     ) {}
 
     /**
-     * 🏠 Page d'accueil du dashboard
+     * Page d'accueil du dashboard
      * 
      * Affiche les statistiques des 12 derniers mois
      * Cache agressif pour performance optimale
@@ -51,7 +51,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * 🔄 Rafraîchir les données du dashboard (AJAX)
+     * Rafraîchir les données du dashboard (AJAX)
      * 
      * Permet de rafraîchir une section spécifique ou toutes les sections
      * Utile pour les mises à jour en temps réel
@@ -88,7 +88,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * 🗑️ Invalider le cache du dashboard (admin only)
+     * Invalider le cache du dashboard (admin only)
      * 
      * Vide le cache des KPIs et graphiques du dashboard
      * Utile après des modifications importantes de données
@@ -114,7 +114,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * 📊 Obtenir les statistiques de cache (admin only)
+     * Obtenir les statistiques de cache (admin only)
      * 
      * Affiche les informations sur l'utilisation du cache
      * Utile pour le monitoring et le debugging

@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use App\Models\PieceJointe;
 
 class UploadService
@@ -124,14 +124,12 @@ class UploadService
                 if (!$exists) {
                     Storage::disk('public')->delete($file);
                     $deleted++;
-                    Log::info('Fichier orphelin supprimé', ['file' => $file]);
                 }
             }
             
-            Log::info("Nettoyage fichiers orphelins terminé", ['deleted' => $deleted]);
             
         } catch (\Exception $e) {
-            Log::error('Erreur nettoyage fichiers', ['error' => $e->getMessage()]);
+
         }
         
         return $deleted;
@@ -163,7 +161,7 @@ class UploadService
                 });
 
         } catch (\Exception $e) {
-            Log::error('Erreur vérification intégrité', ['error' => $e->getMessage()]);
+
         }
         
         return [

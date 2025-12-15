@@ -22,9 +22,6 @@ class CertificatController extends Controller
 {
     use HandlesDocumentGeneration, ValidatesDocumentData, FormatsDocumentData;
 
-    /**
-     * ✅ Générer ou télécharger un CSF existant
-     */
     public function generate(Request $request)
     {
         $request->validate([
@@ -36,101 +33,118 @@ class CertificatController extends Controller
             $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
             $demandeur = Demandeur::findOrFail($request->id_demandeur);
 
-            // Vérifier si le CSF existe déjà pour ce demandeur
+            // ✅ AJOUT : Récupérer le reçu pour cette propriété
+            $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
+                ->where('id_propriete', $request->id_propriete)
+                ->where('id_district', $propriete->dossier->id_district)
+                ->where('status', DocumentGenere::STATUS_ACTIVE)
+                ->first();
+
+            // Optionnel : Exiger le reçu pour générer le CSF
+            // if (!$documentRecu) {
+            //     return back()->withErrors(['error' => 'Le reçu doit être généré avant le CSF']);
+            // }
+
             $documentExistant = DocumentGenere::where('type_document', DocumentGenere::TYPE_CSF)
                 ->where('id_demandeur', $request->id_demandeur)
                 ->where('id_district', $propriete->dossier->id_district)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
                 ->first();
 
-            if ($documentExistant && $documentExistant->fileExists()) {
-                return $this->downloadExisting($documentExistant, 'CSF');
+            if ($documentExistant) {
+                $fileStatus = $documentExistant->checkFileStatus();
+                
+                if ($fileStatus['valid']) {
+                    return $this->downloadExisting($documentExistant, 'CSF');
+                } else {
+                    $documentExistant->markForRegeneration($fileStatus['error'] ?? 'file_missing');
+                    return $this->regenerateCsf($documentExistant, $propriete, $demandeur, $documentRecu);
+                }
             }
 
-            return $this->createNewCsf($propriete, $demandeur);
+            return $this->createNewCsf($propriete, $demandeur, $documentRecu);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur génération CSF', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            Log::error('❌ Erreur génération CSF', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur: ' . $e->getMessage()]);
         }
     }
 
-    /**
-     * ✅ Télécharger un CSF par son ID
-     */
     public function download($id)
     {
         try {
             $document = DocumentGenere::findOrFail($id);
 
             if ($document->type_document !== DocumentGenere::TYPE_CSF) {
-                return back()->withErrors(['error' => 'Ce document n\'est pas un CSF']);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'invalid_type',
+                    'message' => 'Ce document n\'est pas un CSF',
+                ], 400);
+            }
+
+            $fileStatus = $document->checkFileStatus();
+            
+            if (!$fileStatus['valid']) {
+                $document->markForRegeneration($fileStatus['error'] ?? 'file_missing');
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'file_missing',
+                    'message' => 'Le fichier du CSF est introuvable',
+                    'details' => $fileStatus['error'],
+                    'document' => [
+                        'id' => $document->id,
+                        'nom_fichier' => $document->nom_fichier,
+                    ],
+                    'can_regenerate' => true,
+                ], 404);
             }
 
             return $this->downloadExisting($document, 'CSF');
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur téléchargement CSF', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
-            return back()->withErrors(['error' => 'Impossible de télécharger: ' . $e->getMessage()]);
+            Log::error('❌ Erreur téléchargement CSF', ['id' => $id, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'error' => 'download_error'], 500);
         }
     }
 
-    /**
-     * ✅ Historique des CSF pour un demandeur
-     */
-    public function history($id_demandeur)
+    public function regenerate($id)
     {
         try {
-            $demandeur = Demandeur::findOrFail($id_demandeur);
+            $document = DocumentGenere::findOrFail($id);
 
-            $documents = DocumentGenere::with(['propriete', 'generatedBy'])
-                ->where('id_demandeur', $id_demandeur)
-                ->where('type_document', DocumentGenere::TYPE_CSF)
-                ->orderBy('generated_at', 'desc')
-                ->get()
-                ->map(function ($doc) {
-                    return [
-                        'id' => $doc->id,
-                        'propriete' => $doc->propriete ? "Lot {$doc->propriete->lot}" : 'N/A',
-                        'demandeur' => $doc->demandeur->nom_complet,
-                        'cree_par' => $doc->generatedBy->name ?? 'Utilisateur inconnu',
-                        'cree_le' => $doc->generated_at->format('d/m/Y H:i'),
-                        'status' => $doc->status,
-                        'download_count' => $doc->download_count,
-                        'file_exists' => $doc->fileExists(),
-                    ];
-                });
+            if ($document->type_document !== DocumentGenere::TYPE_CSF) {
+                return response()->json(['success' => false, 'error' => 'invalid_type'], 400);
+            }
 
-            return response()->json([
-                'success' => true,
-                'csf' => $documents
-            ]);
+            $propriete = $document->propriete()->with('dossier.district')->first();
+            $demandeur = $document->demandeur;
+
+            if (!$propriete || !$demandeur) {
+                throw new \Exception("Données manquantes");
+            }
+
+            // ✅ AJOUT : Récupérer le reçu
+            $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
+                ->where('id_propriete', $propriete->id)
+                ->where('id_district', $propriete->dossier->id_district)
+                ->where('status', DocumentGenere::STATUS_ACTIVE)
+                ->first();
+
+            return $this->regenerateCsf($document, $propriete, $demandeur, $documentRecu);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage()
-            ], 500);
+            Log::error('❌ Erreur régénération CSF', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'error' => 'regeneration_error'], 500);
         }
     }
 
-    /**
-     * ✅ SÉCURISÉ : Créer un nouveau CSF
-     */
-    private function createNewCsf(Propriete $propriete, Demandeur $demandeur)
+    private function createNewCsf(Propriete $propriete, Demandeur $demandeur, ?DocumentGenere $documentRecu)
     {
         DB::beginTransaction();
 
         try {
-            $district = $propriete->dossier->district;
-
-            // ✅ Lock pour éviter les doublons
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_CSF)
                 ->where('id_demandeur', $demandeur->id)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -140,35 +154,26 @@ class CertificatController extends Controller
 
             if ($existingDoc) {
                 DB::rollBack();
-                return $this->downloadExisting($existingDoc, 'CSF');
+                $fileStatus = $existingDoc->checkFileStatus();
+                return $fileStatus['valid'] 
+                    ? $this->downloadExisting($existingDoc, 'CSF')
+                    : $this->regenerateCsf($existingDoc, $propriete, $demandeur, $documentRecu);
             }
 
-            // Validation des données
             $errors = $this->validateCsfData($demandeur, $propriete);
             $this->validateOrThrow($errors);
 
-            // Créer le fichier Word
-            $tempFilePath = $this->createCsfDocument($demandeur, $propriete);
-
-            if (!file_exists($tempFilePath)) {
-                throw new \Exception("Fichier Word non créé");
-            }
-
-            // Sauvegarder
+            $tempFilePath = $this->createCsfDocument($demandeur, $propriete, $documentRecu);
             $savedPath = $this->saveDocument($tempFilePath, 'CSF', $propriete, $demandeur);
-            $nomFichier = basename($savedPath);
 
-            // Créer l'enregistrement
             $document = DocumentGenere::create([
                 'type_document' => DocumentGenere::TYPE_CSF,
                 'id_propriete' => $propriete->id,
                 'id_demandeur' => $demandeur->id,
                 'id_dossier' => $propriete->id_dossier,
                 'id_district' => $propriete->dossier->id_district,
-                'numero_document' => null,
                 'file_path' => $savedPath,
-                'nom_fichier' => $nomFichier,
-                'has_consorts' => false,
+                'nom_fichier' => basename($savedPath),
                 'generated_by' => Auth::id(),
                 'generated_at' => now(),
                 'status' => DocumentGenere::STATUS_ACTIVE,
@@ -176,46 +181,60 @@ class CertificatController extends Controller
 
             DB::commit();
 
-            // Log d'activité
             ActivityLogger::logDocumentGeneration(ActivityLog::DOC_CSF, $document->id, [
-                'propriete_id' => $propriete->id,
                 'demandeur_id' => $demandeur->id,
-                'lot' => $propriete->lot,
-                'id_district' => $propriete->dossier->id_district,
-                'district_nom' => $propriete->dossier->district->nom_district,
             ]);
 
-            return response()->download($tempFilePath, $nomFichier, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            ])->deleteFileAfterSend(true);
+            return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur création CSF', [
-                'error' => $e->getMessage(),
-                'demandeur_id' => $demandeur->id,
-            ]);
             throw $e;
         }
     }
 
-    /**
-     * ✅ Créer le document Word CSF
-     */
-    private function createCsfDocument(Demandeur $demandeur, Propriete $propriete): string
+    private function regenerateCsf(
+        DocumentGenere $document, 
+        Propriete $propriete, 
+        Demandeur $demandeur,
+        ?DocumentGenere $documentRecu
+    ) {
+        DB::beginTransaction();
+
+        try {
+            $tempFilePath = $this->createCsfDocument($demandeur, $propriete, $documentRecu);
+            $savedPath = $this->saveDocument($tempFilePath, 'CSF', $propriete, $demandeur);
+
+            $document->update(['file_path' => $savedPath]);
+            $document->incrementRegenerationCount();
+
+            DB::commit();
+
+            return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    private function createCsfDocument(Demandeur $demandeur, Propriete $propriete, ?DocumentGenere $documentRecu): string
     {
-        $dossier = $propriete->dossier;
-
-        $locationData = $this->getLocationData($propriete);
-        $articles = $this->getArticles($locationData['district'], $dossier->commune);
-
         $templatePath = storage_path('app/public/modele_odoc/document_CSF/Certificat_situation_financiere.docx');
 
         if (!file_exists($templatePath)) {
-            throw new \Exception("Template CSF introuvable: {$templatePath}");
+            throw new \Exception("Template CSF introuvable");
         }
 
         $modele = new TemplateProcessor($templatePath);
+        $locationData = $this->getLocationData($propriete);
+        $articles = $this->getArticles($locationData['district'], $propriete->dossier->commune);
+
+        // ✅ AJOUT : Données du reçu
+        $numeroQuittance = $documentRecu ? ($documentRecu->numero_document ?? 'N/A') : 'N/A';
+        $dateQuittance = $documentRecu && $documentRecu->date_document
+            ? $this->formatDateDocument(\Carbon\Carbon::parse($documentRecu->date_document))
+            : 'N/A';
 
         $modele->setValues([
             'Titre_long' => $demandeur->titre_demandeur,
@@ -225,11 +244,13 @@ class CertificatController extends Controller
             'Numero_FN' => $this->getOrDefault($propriete->numero_FN, 'Non renseigné'),
             'DISTRICT' => $locationData['DISTRICT'],
             'Province' => $locationData['province'],
+            // ✅ AJOUT : Variables quittance
+            'NumeroQuittance' => $numeroQuittance,
+            'DateQuittance' => $dateQuittance,
         ]);
 
         $fileName = 'CSF_' . uniqid() . '_' . Str::slug($demandeur->nom_demandeur) . '.docx';
         $filePath = sys_get_temp_dir() . '/' . $fileName;
-
         $modele->saveAs($filePath);
 
         return $filePath;

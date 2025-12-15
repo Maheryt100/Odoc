@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Models\Dossier;
 use App\Models\Propriete;
 use App\Models\Demandeur;
-use Carbon\Carbon; // ✅ AJOUTÉ
+use Carbon\Carbon; 
 
 /**
  * Middleware pour empêcher les modifications sur un dossier fermé
@@ -55,14 +55,13 @@ class CheckDossierClosed
                     'dossier' => [
                         'id' => $dossier->id,
                         'nom' => $dossier->nom_dossier,
-                        'date_fermeture' => $dossier->date_fermeture ? Carbon::parse($dossier->date_fermeture)->format('d/m/Y') : null, // ✅ CORRIGÉ
+                        'date_fermeture' => $dossier->date_fermeture ? Carbon::parse($dossier->date_fermeture)->format('d/m/Y') : null,
                         'closed_by' => $dossier->closedBy?->name,
                         'motif' => $dossier->motif_fermeture,
                     ]
                 ], 403);
             }
 
-            // ✅ CORRIGÉ : Utiliser Carbon::parse au lieu de date::format
             $dateFermetureFormatted = $dossier->date_fermeture 
                 ? Carbon::parse($dossier->date_fermeture)->format('d/m/Y')
                 : 'date inconnue';

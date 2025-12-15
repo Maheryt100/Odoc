@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
-/**
- * ✅ VERSION AVEC FILTRAGE GÉOGRAPHIQUE
- */
+
 class StatisticsCalculator
 {
     use QueryFilterTrait;
@@ -44,7 +42,7 @@ class StatisticsCalculator
     private const PROPRIETE_DATE_FIELDS = ['date_requisition', 'date_inscription'];
     
     /**
-     * ✅ Extraire filtres géographiques depuis $dates
+     *  Extraire filtres géographiques depuis $dates
      */
     private function getGeoFilters(array $dates): array
     {
@@ -553,8 +551,8 @@ class StatisticsCalculator
             'demandeurs_incomplets' => $demandeursIncomplets,
             'details' => [
                 'dossiers_vides' => $dossiersVides,
-                'dossiers_avec_demandeurs_incomplets' => 0, // À calculer si nécessaire
-                'dossiers_avec_proprietes_incompletes' => 0, // À calculer si nécessaire
+                'dossiers_avec_demandeurs_incomplets' => 0,
+                'dossiers_avec_proprietes_incompletes' => 0, 
             ]
         ];
     }

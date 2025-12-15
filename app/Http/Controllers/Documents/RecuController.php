@@ -22,9 +22,6 @@ class RecuController extends Controller
 {
     use HandlesDocumentGeneration;
 
-    /**
-     * ✅ Générer ou télécharger un reçu existant
-     */
     public function generate(Request $request)
     {
         $request->validate([
@@ -36,7 +33,6 @@ class RecuController extends Controller
             $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
             $demandeur = Demandeur::findOrFail($request->id_demandeur);
 
-            // Vérifier si un document existe déjà
             $documentExistant = DocumentGenere::findExisting(
                 DocumentGenere::TYPE_RECU,
                 $request->id_propriete,
@@ -44,89 +40,113 @@ class RecuController extends Controller
                 $propriete->dossier->id_district
             );
 
-            if ($documentExistant && $documentExistant->fileExists()) {
-                return $this->downloadExisting($documentExistant, 'reçu');
+            if ($documentExistant) {
+                $fileStatus = $documentExistant->checkFileStatus();
+                
+                if ($fileStatus['valid']) {
+                    return $this->downloadExisting($documentExistant, 'reçu');
+                } else {
+                    Log::warning('📁 Fichier reçu manquant, régénération', [
+                        'document_id' => $documentExistant->id,
+                        'status' => $fileStatus,
+                    ]);
+                    
+                    $documentExistant->markForRegeneration($fileStatus['error'] ?? 'file_missing');
+                    return $this->regenerateRecu($documentExistant, $propriete, $demandeur);
+                }
             }
 
             return $this->createNewRecu($propriete, $demandeur);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur génération reçu', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            Log::error('❌ Erreur génération reçu', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    /**
-     * ✅ Télécharger un reçu par son ID
-     */
     public function download($id)
     {
         try {
             $document = DocumentGenere::findOrFail($id);
 
             if ($document->type_document !== DocumentGenere::TYPE_RECU) {
-                return back()->withErrors(['error' => 'Ce document n\'est pas un reçu']);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'invalid_type',
+                    'message' => 'Ce document n\'est pas un reçu',
+                ], 400);
+            }
+
+            $fileStatus = $document->checkFileStatus();
+            
+            if (!$fileStatus['valid']) {
+                Log::warning('📁 Téléchargement reçu - fichier manquant', [
+                    'document_id' => $document->id,
+                    'status' => $fileStatus,
+                ]);
+
+                $document->markForRegeneration($fileStatus['error'] ?? 'file_missing');
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'file_missing',
+                    'message' => 'Le fichier du reçu est introuvable',
+                    'details' => $fileStatus['error'],
+                    'document' => [
+                        'id' => $document->id,
+                        'numero_document' => $document->numero_document,
+                        'nom_fichier' => $document->nom_fichier,
+                    ],
+                    'can_regenerate' => true,
+                ], 404);
             }
 
             return $this->downloadExisting($document, 'reçu');
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur téléchargement reçu', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
-            return back()->withErrors(['error' => 'Impossible de télécharger: ' . $e->getMessage()]);
-        }
-    }
-
-    /**
-     * ✅ Historique des reçus pour une propriété
-     */
-    public function history($id_propriete)
-    {
-        try {
-            $propriete = Propriete::with('dossier')->findOrFail($id_propriete);
-
-            $documents = DocumentGenere::with(['demandeur', 'generatedBy'])
-                ->where('id_propriete', $id_propriete)
-                ->where('id_district', $propriete->dossier->id_district)
-                ->where('type_document', DocumentGenere::TYPE_RECU)
-                ->orderBy('generated_at', 'desc')
-                ->get()
-                ->map(function ($doc) {
-                    return [
-                        'id' => $doc->id,
-                        'numero_recu' => $doc->numero_document,
-                        'montant' => number_format($doc->montant, 0, ',', '.'),
-                        'date_recu' => $doc->date_document->format('d/m/Y'),
-                        'demandeur' => $doc->demandeur->nom_complet,
-                        'cree_par' => $doc->generatedBy->name ?? 'Utilisateur inconnu',
-                        'cree_le' => $doc->generated_at->format('d/m/Y H:i'),
-                        'status' => $doc->status,
-                        'download_count' => $doc->download_count,
-                        'file_exists' => $doc->fileExists(),
-                    ];
-                });
-
-            return response()->json([
-                'success' => true,
-                'recus' => $documents
-            ]);
-
-        } catch (\Exception $e) {
+            Log::error('❌ Erreur téléchargement reçu', ['id' => $id, 'error' => $e->getMessage()]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage()
+                'error' => 'download_error',
+                'message' => 'Erreur lors du téléchargement',
             ], 500);
         }
     }
 
-    /**
-     * ✅ SÉCURISÉ : Créer un nouveau reçu avec LOCK
-     */
+    public function regenerate($id)
+    {
+        try {
+            $document = DocumentGenere::findOrFail($id);
+
+            if ($document->type_document !== DocumentGenere::TYPE_RECU) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'invalid_type',
+                    'message' => 'Ce document n\'est pas un reçu',
+                ], 400);
+            }
+
+            $propriete = $document->propriete()->with('dossier.district')->first();
+            $demandeur = $document->demandeur;
+
+            if (!$propriete || !$demandeur) {
+                throw new \Exception("Données manquantes pour régénérer le reçu");
+            }
+
+            return $this->regenerateRecu($document, $propriete, $demandeur);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Erreur régénération reçu', ['id' => $id, 'error' => $e->getMessage()]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'regeneration_error',
+                'message' => 'Erreur lors de la régénération',
+            ], 500);
+        }
+    }
+
     private function createNewRecu(Propriete $propriete, Demandeur $demandeur)
     {
         DB::beginTransaction();
@@ -134,7 +154,6 @@ class RecuController extends Controller
         try {
             $dossier = $propriete->dossier;
 
-            // ✅ CRITIQUE : Lock pour éviter les doublons
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
                 ->where('id_propriete', $propriete->id)
                 ->where('id_demandeur', $demandeur->id)
@@ -145,24 +164,22 @@ class RecuController extends Controller
 
             if ($existingDoc) {
                 DB::rollBack();
-                return $this->downloadExisting($existingDoc, 'reçu');
+                $fileStatus = $existingDoc->checkFileStatus();
+                if ($fileStatus['valid']) {
+                    return $this->downloadExisting($existingDoc, 'reçu');
+                } else {
+                    return $this->regenerateRecu($existingDoc, $propriete, $demandeur);
+                }
             }
 
-            // Calculer le prix
             $prix = $this->getPrixFromDistrict($propriete);
             $prixTotal = (int) ($prix * $propriete->contenance);
-
-            // ✅ SÉCURISÉ : Numéro avec séquence
             $numeroRecu = $this->generateNumeroRecu($dossier->id, $dossier->numero_ouverture);
 
-            // Créer le fichier Word
             $tempFilePath = $this->createRecuDocument($propriete, $demandeur, $numeroRecu, $prixTotal);
-
-            // Sauvegarder
             $savedPath = $this->saveDocument($tempFilePath, 'RECU', $propriete, $demandeur);
             $nomFichier = basename($savedPath);
 
-            // Créer l'enregistrement
             $document = DocumentGenere::create([
                 'type_document' => DocumentGenere::TYPE_RECU,
                 'id_propriete' => $propriete->id,
@@ -181,7 +198,6 @@ class RecuController extends Controller
 
             DB::commit();
 
-            // Log d'activité
             ActivityLogger::logDocumentGeneration(ActivityLog::DOC_RECU, $document->id, [
                 'numero_recu' => $numeroRecu,
                 'montant' => $prixTotal,
@@ -192,46 +208,64 @@ class RecuController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur création reçu', [
-                'error' => $e->getMessage(),
-                'propriete_id' => $propriete->id,
-            ]);
+            Log::error('❌ Erreur création reçu', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
 
-    /**
-     * ✅ SÉCURISÉ : Génération numéro avec séquence par dossier
-     */
+    private function regenerateRecu(DocumentGenere $document, Propriete $propriete, Demandeur $demandeur)
+    {
+        DB::beginTransaction();
+
+        try {
+            Log::info('🔄 Régénération reçu', ['document_id' => $document->id]);
+
+            $tempFilePath = $this->createRecuDocument(
+                $propriete, 
+                $demandeur, 
+                $document->numero_document, 
+                $document->montant
+            );
+
+            if (!file_exists($tempFilePath)) {
+                throw new \Exception("Échec création fichier temporaire");
+            }
+
+            $savedPath = $this->saveDocument($tempFilePath, 'RECU', $propriete, $demandeur);
+
+            $document->update(['file_path' => $savedPath]);
+            $document->incrementRegenerationCount();
+
+            DB::commit();
+
+            Log::info('✅ Régénération réussie', ['document_id' => $document->id]);
+
+            ActivityLogger::logDocumentDownload(ActivityLog::DOC_RECU, $document->id, [
+                'action_type' => 'regenerate',
+            ]);
+
+            return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Erreur régénération', ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
     private function generateNumeroRecu(int $idDossier, string $numeroDossier): string
     {
-        // Compter les reçus existants pour ce dossier avec LOCK
         $count = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
             ->where('id_dossier', $idDossier)
             ->where('status', DocumentGenere::STATUS_ACTIVE)
             ->lockForUpdate()
             ->count() + 1;
 
-        $numero = sprintf('%03d/%s', $count, $numeroDossier);
-
-        Log::info('✅ Numéro reçu généré', [
-            'id_dossier' => $idDossier,
-            'sequence' => $count,
-            'numero' => $numero,
-        ]);
-
-        return $numero;
+        return sprintf('%03d/%s', $count, $numeroDossier);
     }
 
-    /**
-     * ✅ CORRIGÉ : Créer le document Word avec variables cohérentes
-     */
-    private function createRecuDocument(
-        Propriete $propriete, 
-        Demandeur $demandeur, 
-        string $numeroRecu, 
-        int $montantTotal
-    ): string {
+    private function createRecuDocument(Propriete $propriete, Demandeur $demandeur, string $numeroRecu, int $montantTotal): string
+    {
         Carbon::setLocale('fr');
         $formatter = new NumberFormatter('fr', NumberFormatter::SPELLOUT);
 
@@ -241,23 +275,18 @@ class RecuController extends Controller
         }
 
         $modele = new TemplateProcessor($templatePath);
-        
         $locationData = $this->getLocationData($propriete);
         $dossier = $propriete->dossier;
 
-        // Formatage des données
         $dateRecu = Carbon::now()->translatedFormat('d/m/Y');
         $montantLettres = Str::upper(ucfirst($formatter->format((int) $montantTotal)));
         $cinFormate = implode('.', str_split($demandeur->cin, 3));
         $dateDelivrance = Carbon::parse($demandeur->date_delivrance)->translatedFormat('d/m/Y');
-
         $titreDemandeur = $demandeur->sexe === 'Homme' ? 'M.' : 'Mme';
         $nomComplet = $demandeur->nom_demandeur . ' ' . ($demandeur->prenom_demandeur ?? '');
-
         $motif = "Achat terrain Lot {$propriete->lot} TN°{$propriete->titre}";
         $details = "Propriété \"{$propriete->proprietaire}\" - Commune {$dossier->commune}";
 
-        // ✅ CORRECTION : Variables cohérentes avec le template
         $modele->setValues([
             'District' => $locationData['district'],
             'NumeroRecu' => $numeroRecu,
@@ -275,7 +304,6 @@ class RecuController extends Controller
 
         $fileName = 'RECU_' . str_replace('/', '-', $numeroRecu) . '_' . uniqid() . '.docx';
         $filePath = sys_get_temp_dir() . '/' . $fileName;
-
         $modele->saveAs($filePath);
 
         return $filePath;

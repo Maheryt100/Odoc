@@ -12,10 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
-/**
- * ✅ AVEC FILTRAGE GÉOGRAPHIQUE HIÉRARCHIQUE
- * Province → Région → District
- */
+
 class StatisticsController extends Controller
 {
     public function __construct(
@@ -27,7 +24,7 @@ class StatisticsController extends Controller
         /** @var User $user */
         $user = Auth::user();
         
-        // ✅ VALIDATION DES FILTRES
+        
         $validated = $request->validate([
             'period' => 'nullable|in:today,week,month,year,all,custom',
             'date_from' => 'nullable|date',
@@ -37,17 +34,17 @@ class StatisticsController extends Controller
             'district_id' => 'nullable|integer|exists:districts,id',
         ]);
         
-        // ✅ PÉRIODE (défaut = "all")
+        // PÉRIODE (défaut = "all")
         $period = $validated['period'] ?? 'all';
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
         
-        // ✅ FILTRES GÉOGRAPHIQUES
+        // FILTRES GÉOGRAPHIQUES
         $provinceId = $validated['province_id'] ?? null;
         $regionId = $validated['region_id'] ?? null;
         $districtId = $validated['district_id'] ?? null;
 
-        // ✅ SÉCURITÉ : Utilisateur district ne peut pas filtrer géographiquement
+        // SÉCURITÉ : Utilisateur district ne peut pas filtrer géographiquement
         if (!$user->canAccessAllDistricts()) {
             // Forcer sur son district
             $provinceId = null;
@@ -63,7 +60,7 @@ class StatisticsController extends Controller
             }
         }
 
-        // ✅ VALIDATION HIÉRARCHIE (si Super Admin filtre)
+        // VALIDATION HIÉRARCHIE (si Super Admin filtre)
         if ($user->canAccessAllDistricts()) {
             // Si district choisi → vérifier qu'il appartient à la région (si fournie)
             if ($districtId && $regionId) {
@@ -82,16 +79,16 @@ class StatisticsController extends Controller
             }
         }
 
-        // ✅ CALCULER LES DATES
+        // CALCULER LES DATES
         $dates = $this->statisticsService->getPeriodDates($period, $dateFrom, $dateTo);
 
-        // ✅ AJOUTER MÉTADONNÉES POUR CACHE ET FILTRAGE
+        // AJOUTER MÉTADONNÉES POUR CACHE ET FILTRAGE
         $dates['period'] = $period;
         $dates['province_id'] = $provinceId;
         $dates['region_id'] = $regionId;
         $dates['district_id'] = $districtId;
 
-        // ✅ DONNÉES GÉOGRAPHIQUES POUR LES SÉLECTEURS
+        // DONNÉES GÉOGRAPHIQUES POUR LES SÉLECTEURS
         $canFilterGeography = $user->canAccessAllDistricts();
         
         $provinces = $canFilterGeography 
@@ -110,7 +107,7 @@ class StatisticsController extends Controller
                 ->get(['id', 'nom_district', 'id_region'])
             : collect([$user->district])->filter();
 
-        // ✅ CORRECTION : Charger explicitement le district avec ses relations
+        // CORRECTION : Charger explicitement le district avec ses relations
         $userDistrict = null;
         if (!$canFilterGeography && $user->id_district) {
             $userDistrict = District::with(['region:id,nom_region', 'region.province:id,nom_province'])
@@ -132,7 +129,7 @@ class StatisticsController extends Controller
             'regions' => $regions,
             'districts' => $districts,
             'canFilterGeography' => $canFilterGeography,
-            'userDistrict' => $userDistrict, // ✅ Chargé explicitement
+            'userDistrict' => $userDistrict,
         ]);
     }
 
@@ -187,7 +184,7 @@ class StatisticsController extends Controller
     }
 
     /**
-     * ✅ API pour refresh partiel (AJAX)
+     *  API pour refresh partiel (AJAX)
      */
     public function refresh(Request $request)
     {

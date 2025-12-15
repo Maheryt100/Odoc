@@ -13,6 +13,8 @@ import { FileOutput, Download, AlertCircle, Info, Loader2, Eye, FileCheck, MapPi
 import { Dossier } from '@/types';
 import { ProprieteWithDemandeurs, DocumentGenere } from '../types';
 import { canGenerateRequisition, getMissingProprieteFields } from '../validation';
+import DocumentStatusBadge from '../components/DocumentStatusBadge';
+import SecureDownloadButton from '../components/SecureDownloadButton';
 
 interface RequisitionTabProps {
     proprietes: ProprieteWithDemandeurs[];
@@ -68,41 +70,13 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
         return parts.join(' ');
     };
 
-    const handleDownloadExisting = async (document: DocumentGenere) => {
-        if (isGenerating) return;
-        
-        setIsGenerating(true);
-        try {
-            const url = route('documents.recu.download', document.id);
-            window.location.href = url;
-            
-            toast.success('Téléchargement de la réquisition en cours...');
-            
-            setTimeout(() => {
-                router.reload({ 
-                    only: ['proprietes'],
-                    preserveUrl: true,
-                    onFinish: () => setIsGenerating(false)
-                });
-            }, 1000);
-            
-        } catch (error) {
-            console.error('Erreur téléchargement:', error);
-            toast.error('Erreur lors du téléchargement');
-            setIsGenerating(false);
-        }
-    };
-
     const handleGenerate = () => {
         if (!reqPropriete) {
             toast.warning('Veuillez sélectionner une propriété');
             return;
         }
 
-        if (isGenerating) {
-            toast.warning('Génération en cours...');
-            return;
-        }
+        if (isGenerating) return;
 
         setIsGenerating(true);
 
@@ -111,7 +85,8 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                 id_propriete: reqPropriete,
             });
 
-            const url = `${route('documents.requisition')}?${params.toString()}`;
+            // ✅ CORRIGÉ : Route correcte
+            const url = `${route('documents.requisition.generate')}?${params.toString()}`;
             window.location.href = url;
             
             toast.success('Génération de la réquisition en cours...');
@@ -267,6 +242,13 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                     </div>
                                 </div>
                             </div>
+                            {/* ✅ AJOUT : Badge de statut */}
+                            <div className="pt-3 border-t">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Statut Réquisition:</span>
+                                    <DocumentStatusBadge document={selectedProprieteData.document_requisition} />
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 )}
@@ -318,32 +300,13 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Alert>
                 )}
 
-                {reqPropriete && (
-                    hasRequisition ? (
-                        <Button
-                            onClick={() => handleDownloadExisting(documentRequisition!)}
-                            className="w-full"
-                            size="lg"
-                            disabled={isGenerating}
-                        >
-                            <Download className="h-4 w-4 mr-2" />
-                            Télécharger la Réquisition
-                            <Badge variant="secondary" className="ml-2">
-                                <Eye className="h-3 w-3 mr-1" />
-                                {documentRequisition?.download_count || 0}
-                            </Badge>
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={handleGenerate}
-                            disabled={!canGenerate() || isGenerating}
-                            className="w-full"
-                            size="lg"
-                        >
-                            <FileOutput className="h-4 w-4 mr-2" />
-                            Générer la Réquisition
-                        </Button>
-                    )
+                {hasRequisition && documentRequisition && (
+                    <SecureDownloadButton
+                        document={documentRequisition}
+                        downloadRoute={route('documents.requisition.download', documentRequisition.id)}
+                        regenerateRoute={route('documents.requisition.regenerate', documentRequisition.id)}
+                        typeName="Réquisition"
+                    />
                 )}
             </CardContent>
         </Card>

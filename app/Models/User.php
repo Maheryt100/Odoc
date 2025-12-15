@@ -46,7 +46,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    // ✅ CORRIGÉ : Constantes pour les rôles (ROLE_USER supprimé)
+    // Constantes pour les rôles (ROLE_USER supprimé)
     const ROLE_SUPER_ADMIN = 'super_admin';
     const ROLE_ADMIN_DISTRICT = 'admin_district';
     const ROLE_USER_DISTRICT = 'user_district';

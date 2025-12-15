@@ -36,6 +36,12 @@ class Kernel extends ConsoleKernel
         // Nettoyer les vieux logs tous les 3 mois
         $schedule->command('activity:clean --days=90')
             ->quarterly();
+
+        // Vérifier l'intégrité quotidiennement
+        $schedule->command('documents:check-integrity')
+            ->daily()
+            ->at('02:00')
+            ->emailOutputOnFailure('admin@example.com');
     }
 
     /**

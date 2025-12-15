@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Propriete;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
 class PrixCalculatorService
@@ -33,7 +33,7 @@ class PrixCalculatorService
         // Validation supplémentaire
         $validVocations = ['edilitaire', 'agricole', 'forestiere', 'touristique'];
         if (!in_array($normalized, $validVocations)) {
-            Log::warning("Vocation invalide détectée: {$vocation}");
+
             throw new \InvalidArgumentException("Vocation '{$vocation}' non reconnue. Vocations valides: " . implode(', ', $validVocations));
         }
 
@@ -64,15 +64,6 @@ class PrixCalculatorService
 
         $vocationColumn = self::normalizeVocation($propriete->vocation);
         
-        Log::info('Calcul prix démarré', [
-            'propriete_id' => $propriete->id,
-            'lot' => $propriete->lot,
-            'vocation' => $propriete->vocation,
-            'colonne_db' => $vocationColumn,
-            'contenance' => $propriete->contenance,
-            'dossier_id' => $propriete->id_dossier
-        ]);
-
         // Récupérer le prix unitaire (avec cache)
         $prixUnitaire = self::getPrixUnitaireWithCache($propriete->id_dossier, $vocationColumn);
 
@@ -83,15 +74,6 @@ class PrixCalculatorService
                 ->select('districts.nom_district', 'dossiers.nom_dossier')
                 ->where('dossiers.id', $propriete->id_dossier)
                 ->first();
-
-            Log::error('Prix non configuré', [
-                'propriete_id' => $propriete->id,
-                'vocation' => $propriete->vocation,
-                'colonne' => $vocationColumn,
-                'district' => $district->nom_district ?? 'Inconnu',
-                'dossier' => $district->nom_dossier ?? 'Inconnu',
-                'prix_trouve' => $prixUnitaire
-            ]);
             
             throw new \Exception(
                 "Le prix pour la vocation '{$propriete->vocation}' n'est pas configuré " .
@@ -101,14 +83,6 @@ class PrixCalculatorService
         }
 
         $prixTotal = $prixUnitaire * $propriete->contenance;
-
-        Log::info('Prix calculé avec succès', [
-            'propriete_id' => $propriete->id,
-            'prix_unitaire' => $prixUnitaire,
-            'contenance' => $propriete->contenance,
-            'prix_total' => $prixTotal,
-            'formule' => "{$prixUnitaire} × {$propriete->contenance} = {$prixTotal}"
-        ]);
 
         return $prixTotal;
     }
@@ -163,11 +137,7 @@ class PrixCalculatorService
             
             return $prix > 0;
         } catch (\Exception $e) {
-            Log::error('Erreur vérification prix', [
-                'vocation' => $vocation,
-                'dossier_id' => $dossierId,
-                'error' => $e->getMessage()
-            ]);
+
             return false;
         }
     }
@@ -187,7 +157,6 @@ class PrixCalculatorService
             Cache::forget($cacheKey);
         }
 
-        Log::info("Cache des prix invalidé pour dossier", ['dossier_id' => $dossierId]);
     }
 
     /**

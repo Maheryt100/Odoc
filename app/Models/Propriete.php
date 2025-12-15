@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class Propriete extends Model
 {
@@ -65,8 +65,8 @@ class Propriete extends Model
         return $this->belongsTo(User::class, 'id_user');
     }
 
-    /**
-     * ✅ CORRECTION PRINCIPALE : Retirer ->using(Demander::class)
+    /*
+     *  CORRECTION PRINCIPALE : Retirer ->using(Demander::class)
      * Utiliser la relation hasMany pour accéder aux demandes
      */
     public function demandeurs(): BelongsToMany
@@ -78,7 +78,7 @@ class Propriete extends Model
     }
 
     /**
-     * ✅ RELATION PRINCIPALE : Accès direct aux demandes (recommandé)
+     *  RELATION PRINCIPALE : Accès direct aux demandes (recommandé)
      */
     public function demandes(): HasMany
     {
@@ -87,7 +87,7 @@ class Propriete extends Model
     }
 
     /**
-     * ✅ Demandes actives uniquement
+     * Demandes actives uniquement
      */
     public function demandesActives(): HasMany
     {
@@ -317,14 +317,43 @@ class Propriete extends Model
         parent::boot();
 
         static::deleting(function ($propriete) {
-            Log::info('Suppression propriété', [
-                'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'demandes_count' => $propriete->demandes()->count()
-            ]);
 
             $propriete->demandes()->delete();
             $propriete->piecesJointes()->delete();
         });
+    }
+
+    /**
+     *  Vérifier si la propriété peut être liée à un nouveau demandeur
+     */
+    public function canBeLinked(): bool
+    {
+        // Dossier fermé
+        if ($this->dossier && $this->dossier->is_closed) {
+            return false;
+        }
+
+        // Propriété archivée (acquise)
+        if ($this->is_archived) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Obtenir la raison du blocage de liaison
+     */
+    public function getLinkBlockReason(): string
+    {
+        if ($this->dossier && $this->dossier->is_closed) {
+            return "Impossible de lier : le dossier est fermé.";
+        }
+
+        if ($this->is_archived) {
+            return "Impossible de lier : la propriété Lot {$this->lot} est archivée (acquise).";
+        }
+
+        return "Liaison impossible.";
     }
 }

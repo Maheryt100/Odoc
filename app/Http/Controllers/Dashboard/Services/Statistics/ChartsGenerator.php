@@ -8,9 +8,7 @@ use App\Models\Demandeur;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
-/**
- * ✅ VERSION CORRIGÉE : Tous les graphiques respectent maintenant les dates de filtrage
- */
+
 class ChartsGenerator
 {
     use QueryFilterTrait;
@@ -20,7 +18,7 @@ class ChartsGenerator
     ) {}
     
     /**
-     * ✅ Récupérer tous les graphiques (signature inchangée pour compatibilité)
+     *  Récupérer tous les graphiques (signature inchangée pour compatibilité)
      */
     public function getAllCharts(array $dates): array
     {
@@ -37,8 +35,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ Évolution mensuelle complète (dossiers + propriétés + demandeurs)
-     * Note: Utilise toujours les 12 derniers mois pour un graphique cohérent
+     * Évolution mensuelle complète (dossiers + propriétés + demandeurs)
      */
     public function getEvolutionComplete(array $dates): array
     {
@@ -79,7 +76,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ Ouvertures vs Fermetures
+     * Ouvertures vs Fermetures
      */
     public function getOuverturesFermetures(array $dates): array
     {
@@ -107,7 +104,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ CORRIGÉ : Répartition par nature avec dates
+     *  Répartition par nature avec dates
      */
     public function getRepartitionNature(array $dates): array
     {
@@ -135,7 +132,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ CORRIGÉ : Répartition par vocation avec dates
+     * Répartition par vocation avec dates
      */
     public function getRepartitionVocation(array $dates): array
     {
@@ -163,7 +160,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ CORRIGÉ : Top 10 communes avec dates
+     *Top 10 communes avec dates
      */
     public function getTopCommunes(array $dates): array
     {
@@ -186,7 +183,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ CORRIGÉ : Top 10 districts avec dates (uniquement pour super admin)
+     * Top 10 districts avec dates (uniquement pour super admin)
      */
     public function getTopDistricts(array $dates): array
     {
@@ -213,7 +210,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ CORRIGÉ : Pyramide des âges par genre avec dates
+     * Pyramide des âges par genre avec dates
      */
     public function getAgePyramid(array $dates): array
     {
@@ -278,7 +275,7 @@ class ChartsGenerator
     }
     
     /**
-     * ✅ CORRIGÉ : Taux de complétion des dossiers avec dates
+     * Taux de complétion des dossiers avec dates
      */
     public function getCompletionRate(array $dates): array
     {

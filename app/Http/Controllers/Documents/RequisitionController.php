@@ -21,9 +21,6 @@ class RequisitionController extends Controller
 {
     use HandlesDocumentGeneration, ValidatesDocumentData, FormatsDocumentData;
 
-    /**
-     * ✅ Générer ou télécharger une réquisition existante
-     */
     public function generate(Request $request)
     {
         $request->validate([
@@ -33,62 +30,91 @@ class RequisitionController extends Controller
         try {
             $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
 
-            // Vérifier si la réquisition existe déjà
             $documentExistant = DocumentGenere::where('type_document', DocumentGenere::TYPE_REQ)
                 ->where('id_propriete', $request->id_propriete)
                 ->where('id_district', $propriete->dossier->id_district)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
                 ->first();
 
-            if ($documentExistant && $documentExistant->fileExists()) {
-                return $this->downloadExisting($documentExistant, 'réquisition');
+            if ($documentExistant) {
+                $fileStatus = $documentExistant->checkFileStatus();
+                
+                if ($fileStatus['valid']) {
+                    return $this->downloadExisting($documentExistant, 'réquisition');
+                } else {
+                    $documentExistant->markForRegeneration($fileStatus['error'] ?? 'file_missing');
+                    return $this->regenerateRequisition($documentExistant, $propriete);
+                }
             }
 
             return $this->createNewRequisition($propriete);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur génération réquisition', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            Log::error('❌ Erreur génération réquisition', ['error' => $e->getMessage()]);
             return back()->withErrors(['error' => 'Erreur: ' . $e->getMessage()]);
         }
     }
 
-    /**
-     * ✅ Télécharger une réquisition par son ID
-     */
     public function download($id)
     {
         try {
             $document = DocumentGenere::findOrFail($id);
 
             if ($document->type_document !== DocumentGenere::TYPE_REQ) {
-                return back()->withErrors(['error' => 'Ce document n\'est pas une réquisition']);
+                return response()->json(['success' => false, 'error' => 'invalid_type'], 400);
+            }
+
+            $fileStatus = $document->checkFileStatus();
+            
+            if (!$fileStatus['valid']) {
+                $document->markForRegeneration($fileStatus['error'] ?? 'file_missing');
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'file_missing',
+                    'message' => 'Le fichier de la réquisition est introuvable',
+                    'details' => $fileStatus['error'],
+                    'document' => ['id' => $document->id],
+                    'can_regenerate' => true,
+                ], 404);
             }
 
             return $this->downloadExisting($document, 'réquisition');
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur téléchargement réquisition', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
-            return back()->withErrors(['error' => 'Impossible de télécharger: ' . $e->getMessage()]);
+            Log::error('❌ Erreur téléchargement réquisition', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false], 500);
         }
     }
 
-    /**
-     * ✅ SÉCURISÉ : Créer une nouvelle réquisition
-     */
+    public function regenerate($id)
+    {
+        try {
+            $document = DocumentGenere::findOrFail($id);
+
+            if ($document->type_document !== DocumentGenere::TYPE_REQ) {
+                return response()->json(['success' => false, 'error' => 'invalid_type'], 400);
+            }
+
+            $propriete = $document->propriete()->with('dossier.district')->first();
+
+            if (!$propriete) {
+                throw new \Exception("Propriété introuvable");
+            }
+
+            return $this->regenerateRequisition($document, $propriete);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Erreur régénération réquisition', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false], 500);
+        }
+    }
+
     private function createNewRequisition(Propriete $propriete)
     {
         DB::beginTransaction();
 
         try {
-            $district = $propriete->dossier->district;
-
-            // ✅ Lock pour éviter les doublons
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_REQ)
                 ->where('id_propriete', $propriete->id)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -98,35 +124,26 @@ class RequisitionController extends Controller
 
             if ($existingDoc) {
                 DB::rollBack();
-                return $this->downloadExisting($existingDoc, 'réquisition');
+                $fileStatus = $existingDoc->checkFileStatus();
+                return $fileStatus['valid'] 
+                    ? $this->downloadExisting($existingDoc, 'réquisition')
+                    : $this->regenerateRequisition($existingDoc, $propriete);
             }
 
-            // Validation des données
             $errors = $this->validateRequisitionData($propriete);
             $this->validateOrThrow($errors);
 
-            // Créer le fichier Word
             $tempFilePath = $this->createRequisitionDocument($propriete);
-
-            if (!file_exists($tempFilePath)) {
-                throw new \Exception("Fichier Word non créé");
-            }
-
-            // Sauvegarder
             $savedPath = $this->saveDocument($tempFilePath, 'REQ', $propriete);
-            $nomFichier = basename($savedPath);
 
-            // Créer l'enregistrement
             $document = DocumentGenere::create([
                 'type_document' => DocumentGenere::TYPE_REQ,
                 'id_propriete' => $propriete->id,
-                'id_demandeur' => null,
                 'id_dossier' => $propriete->id_dossier,
                 'id_district' => $propriete->dossier->id_district,
                 'numero_document' => $propriete->numero_requisition,
                 'file_path' => $savedPath,
-                'nom_fichier' => $nomFichier,
-                'has_consorts' => false,
+                'nom_fichier' => basename($savedPath),
                 'generated_by' => Auth::id(),
                 'generated_at' => now(),
                 'status' => DocumentGenere::STATUS_ACTIVE,
@@ -134,50 +151,50 @@ class RequisitionController extends Controller
 
             DB::commit();
 
-            // Log d'activité
             ActivityLogger::logDocumentGeneration(ActivityLog::DOC_REQUISITION, $document->id, [
                 'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'titre' => $propriete->titre,
-                'numero_requisition' => $propriete->numero_requisition,
-                'id_district' => $propriete->dossier->id_district,
-                'district_nom' => $propriete->dossier->district->nom_district,
             ]);
 
-            return response()->download($tempFilePath, $nomFichier, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            ])->deleteFileAfterSend(true);
+            return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur création réquisition', [
-                'error' => $e->getMessage(),
-                'propriete_id' => $propriete->id,
-            ]);
             throw $e;
         }
     }
 
-    /**
-     * ✅ Créer le document Word réquisition
-     */
+    private function regenerateRequisition(DocumentGenere $document, Propriete $propriete)
+    {
+        DB::beginTransaction();
+
+        try {
+            $tempFilePath = $this->createRequisitionDocument($propriete);
+            $savedPath = $this->saveDocument($tempFilePath, 'REQ', $propriete);
+
+            $document->update(['file_path' => $savedPath]);
+            $document->incrementRegenerationCount();
+
+            DB::commit();
+
+            return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
     private function createRequisitionDocument(Propriete $propriete): string
     {
-        $dossier = $propriete->dossier;
-
-        // Sélectionner le bon template selon le type d'opération
-        if ($propriete->type_operation == 'morcellement') {
-            $templatePath = storage_path('app/public/modele_odoc/requisition_MO.docx');
-        } else {
-            $templatePath = storage_path('app/public/modele_odoc/requisition_IM.docx');
-        }
+        $templatePath = $propriete->type_operation == 'morcellement'
+            ? storage_path('app/public/modele_odoc/requisition_MO.docx')
+            : storage_path('app/public/modele_odoc/requisition_IM.docx');
 
         if (!file_exists($templatePath)) {
-            throw new \Exception("Template réquisition introuvable: {$templatePath}");
+            throw new \Exception("Template réquisition introuvable");
         }
 
         $modele = new TemplateProcessor($templatePath);
-
         $locationData = $this->getLocationData($propriete);
         $contenanceData = $this->formatContenance($propriete->contenance);
 
@@ -189,8 +206,8 @@ class RequisitionController extends Controller
             'Situation' => $propriete->situation,
             'Nom_propriete' => Str::upper($propriete->proprietaire),
             'Titre' => $propriete->titre,
-            'Commune' => $dossier->commune,
-            'Fokotany' => $dossier->fokontany,
+            'Commune' => $propriete->dossier->commune,
+            'Fokotany' => $propriete->dossier->fokontany,
             'Numero_fn' => $this->getOrDefault($propriete->numero_FN, 'Non renseigné'),
             'Propriete_mere' => Str::upper($this->getOrDefault($propriete->propriete_mere, 'NON RENSEIGNÉE')),
             'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
@@ -200,7 +217,6 @@ class RequisitionController extends Controller
 
         $fileName = 'REQUISITION_' . uniqid() . '_TN' . $propriete->titre . '.docx';
         $filePath = sys_get_temp_dir() . '/' . $fileName;
-
         $modele->saveAs($filePath);
 
         return $filePath;

@@ -72,7 +72,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Scope pour les activités récentes
+     *  Scope pour les activités récentes
      */
     public function scopeRecent($query, int $hours = 24)
     {
@@ -80,7 +80,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Scope pour les dossiers (toutes actions)
+     *Scope pour les dossiers (toutes actions)
      */
     public function scopeDossiers($query)
     {
@@ -88,7 +88,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Scope pour les fermetures de dossiers
+     * Scope pour les fermetures de dossiers
      */
     public function scopeClosedDossiers($query)
     {
@@ -97,7 +97,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Scope pour les réouvertures de dossiers
+     * Scope pour les réouvertures de dossiers
      */
     public function scopeReopenedDossiers($query)
     {
@@ -118,11 +118,11 @@ class ActivityLog extends Model
     const ACTION_ARCHIVE = 'archive';
     const ACTION_UNARCHIVE = 'unarchive';
     const ACTION_EXPORT = 'export';
-    const ACTION_VIEW = 'view'; // ✅ AJOUTÉ
-    const ACTION_CLOSE = 'close'; // ✅ NOUVEAU
-    const ACTION_REOPEN = 'reopen'; // ✅ NOUVEAU
-    const ACTION_UPLOAD = 'upload'; // ✅ NOUVEAU
-    const ACTION_VERIFY = 'verify'; // ✅ NOUVEAU
+    const ACTION_VIEW = 'view'; 
+    const ACTION_CLOSE = 'close';
+    const ACTION_REOPEN = 'reopen';
+    const ACTION_UPLOAD = 'upload';
+    const ACTION_VERIFY = 'verify'; 
     
     // Types d'entités
     const ENTITY_DOCUMENT = 'document';
@@ -132,7 +132,7 @@ class ActivityLog extends Model
     const ENTITY_USER = 'user';
     const ENTITY_AUTH = 'auth';
     const ENTITY_DISTRICT = 'district';
-    const ENTITY_PIECE_JOINTE = 'piece_jointe'; // ✅ NOUVEAU
+    const ENTITY_PIECE_JOINTE = 'piece_jointe'; 
     
     // Types de documents
     const DOC_RECU = 'recu';
@@ -171,7 +171,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Logger un upload de pièce jointe
+     *Logger un upload de pièce jointe
      */
     public static function logPieceJointeUpload(
         int $pieceJointeId,
@@ -198,7 +198,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Logger une vérification de document
+     *  Logger une vérification de document
      */
     public static function logPieceJointeVerification(
         int $pieceJointeId,
@@ -218,7 +218,7 @@ class ActivityLog extends Model
 
 
     /**
-     * ✅ NOUVEAU : Logger une fermeture de dossier
+     * Logger une fermeture de dossier
      */
     public static function logDossierClosure(
         int $dossierId,
@@ -240,7 +240,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Logger une réouverture de dossier
+     * Logger une réouverture de dossier
      */
     public static function logDossierReopen(
         int $dossierId,
@@ -260,7 +260,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Logger une génération de document
+     * Logger une génération de document
      */
     public static function logDocumentGeneration(
         string $documentType,
@@ -281,7 +281,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Logger un téléchargement de document
+     * Logger un téléchargement de document
      */
     public static function logDocumentDownload(
         string $documentType,
@@ -318,10 +318,10 @@ class ActivityLog extends Model
             self::ACTION_UNARCHIVE => 'Désarchivage',
             self::ACTION_EXPORT => 'Export',
             self::ACTION_VIEW => 'Consultation',
-            self::ACTION_CLOSE => 'Fermeture', // ✅ NOUVEAU
-            self::ACTION_REOPEN => 'Réouverture', // ✅ NOUVEAU
-            self::ACTION_UPLOAD => 'Upload', // ✅ NOUVEAU
-            self::ACTION_VERIFY => 'Vérification', // ✅ NOUVEAU
+            self::ACTION_CLOSE => 'Fermeture',
+            self::ACTION_REOPEN => 'Réouverture', 
+            self::ACTION_UPLOAD => 'Upload', 
+            self::ACTION_VERIFY => 'Vérification', 
             default => ucfirst($this->action),
         };
     }
@@ -339,7 +339,7 @@ class ActivityLog extends Model
             self::ENTITY_USER => 'Utilisateur',
             self::ENTITY_AUTH => 'Authentification',
             self::ENTITY_DISTRICT => 'District',
-            self::ENTITY_PIECE_JOINTE => 'Pièce jointe', // ✅ NOUVEAU
+            self::ENTITY_PIECE_JOINTE => 'Pièce jointe',
             default => ucfirst($this->entity_type),
         };
     }
@@ -362,7 +362,6 @@ class ActivityLog extends Model
             $description .= " ({$docType})";
         }
         
-        // ✅ NOUVEAU : Ajouter des détails pour les fermetures/réouvertures
         if ($this->action === self::ACTION_CLOSE && isset($this->metadata['motif_fermeture'])) {
             $description .= " - Motif: " . \Illuminate\Support\Str::limit($this->metadata['motif_fermeture'], 50);
         }
@@ -371,7 +370,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Obtenir le badge de couleur selon l'action
+     *Obtenir le badge de couleur selon l'action
      */
     public function getActionColorAttribute(): string
     {
@@ -389,14 +388,14 @@ class ActivityLog extends Model
             self::ACTION_VIEW => 'slate',
             self::ACTION_LOGIN => 'cyan',
             self::ACTION_LOGOUT => 'gray',
-            self::ACTION_UPLOAD => 'teal', // ✅ NOUVEAU
-            self::ACTION_VERIFY => 'emerald', // ✅ NOUVEAU
+            self::ACTION_UPLOAD => 'teal', 
+            self::ACTION_VERIFY => 'emerald', 
             default => 'gray',
         };
     }
 
     /**
-     * ✅ NOUVEAU : Obtenir l'icône selon l'action
+     * Obtenir l'icône selon l'action
      */
     public function getActionIconAttribute(): string
     {
@@ -414,8 +413,8 @@ class ActivityLog extends Model
             self::ACTION_VIEW => 'eye',
             self::ACTION_LOGIN => 'log-in',
             self::ACTION_LOGOUT => 'log-out',
-            self::ACTION_UPLOAD => 'upload', // ✅ NOUVEAU
-            self::ACTION_VERIFY => 'check-circle', // ✅ NOUVEAU
+            self::ACTION_UPLOAD => 'upload',
+            self::ACTION_VERIFY => 'check-circle',
             default => 'activity',
         };
     }
@@ -423,7 +422,7 @@ class ActivityLog extends Model
     // ============ STATISTIQUES ============
     
     /**
-     * ✅ NOUVEAU : Obtenir les statistiques d'activité par période
+     *  Obtenir les statistiques d'activité par période
      */
     public static function getStatsByPeriod(
         string $period = 'week',
@@ -473,7 +472,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Obtenir l'historique de fermeture d'un dossier
+     * Obtenir l'historique de fermeture d'un dossier
      */
     public static function getDossierClosureHistory(int $dossierId): array
     {
@@ -497,7 +496,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Obtenir les utilisateurs les plus actifs
+     * Obtenir les utilisateurs les plus actifs
      */
     public static function getMostActiveUsers(
         int $limit = 10,
@@ -526,7 +525,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Obtenir les documents les plus générés
+     * Obtenir les documents les plus générés
      */
     public static function getMostGeneratedDocuments(
         int $limit = 5,
@@ -566,10 +565,307 @@ class ActivityLog extends Model
     }
 
     /**
-     * ✅ NOUVEAU : Nettoyer les anciens logs (à exécuter via CRON)
+     * Nettoyer les anciens logs (à exécuter via CRON)
      */
     public static function cleanOldLogs(int $keepDays = 365): int
     {
         return self::where('created_at', '<', now()->subDays($keepDays))->delete();
+    }
+
+
+    /**
+     * Obtenir les détails formatés selon le type d'action
+     */
+    public function getDetailsAttribute(): string
+    {
+        $meta = $this->metadata ?? [];
+        
+        return match($this->entity_type) {
+            self::ENTITY_DOCUMENT => $this->getDocumentDetails($meta),
+            self::ENTITY_DOSSIER => $this->getDossierDetails($meta),
+            self::ENTITY_PROPRIETE => $this->getProprieteDetails($meta),
+            self::ENTITY_DEMANDEUR => $this->getDemandeurDetails($meta),
+            self::ENTITY_USER => $this->getUserDetails($meta),
+            self::ENTITY_PIECE_JOINTE => $this->getPieceJointeDetails($meta),
+            self::ENTITY_AUTH => $this->getAuthDetails($meta),
+            default => 'Action effectuée',
+        };
+    }
+
+    private function getDocumentDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Type de document
+        if (isset($meta['document_type'])) {
+            $docType = match($meta['document_type']) {
+                self::DOC_RECU => 'Reçu',
+                self::DOC_ACTE_VENTE => 'Acte de Vente',
+                self::DOC_CSF => 'CSF',
+                self::DOC_REQUISITION => 'Réquisition',
+                default => $meta['document_type'],
+            };
+            $parts[] = $docType;
+        }
+        
+        // Lot
+        if (isset($meta['lot'])) {
+            $parts[] = "Lot: {$meta['lot']}";
+        }
+        
+        // Titre
+        if (isset($meta['titre'])) {
+            $parts[] = "TN°{$meta['titre']}";
+        }
+        
+        // Numéro de reçu
+        if (isset($meta['numero_recu'])) {
+            $parts[] = "N°{$meta['numero_recu']}";
+        }
+        
+        // Montant
+        if (isset($meta['montant'])) {
+            $montant = number_format($meta['montant'], 0, ',', ' ');
+            $parts[] = "{$montant} Ar";
+        }
+        
+        // Total prix
+        if (isset($meta['total_prix']) && !isset($meta['montant'])) {
+            $total = number_format($meta['total_prix'], 0, ',', ' ');
+            $parts[] = "{$total} Ar";
+        }
+        
+        // Consorts
+        if (isset($meta['has_consorts']) && $meta['has_consorts']) {
+            $nb = $meta['nb_demandeurs'] ?? 'plusieurs';
+            $parts[] = "{$nb} consorts";
+        }
+        
+        return !empty($parts) ? implode(' • ', $parts) : 'Document généré';
+    }
+
+    private function getDossierDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Nom du dossier
+        if (isset($meta['nom_dossier'])) {
+            $parts[] = "\"{$meta['nom_dossier']}\"";
+        }
+        
+        // Numéro d'ouverture
+        if (isset($meta['numero_ouverture'])) {
+            $parts[] = "N°{$meta['numero_ouverture']}";
+        }
+        
+        // Commune
+        if (isset($meta['commune'])) {
+            $parts[] = "Commune: {$meta['commune']}";
+        }
+        
+        // Circonscription
+        if (isset($meta['circonscription'])) {
+            $parts[] = "{$meta['circonscription']}";
+        }
+        
+        // Type de commune
+        if (isset($meta['type_commune'])) {
+            $parts[] = $meta['type_commune'];
+        }
+        
+        // Pour les fermetures
+        if ($this->action === self::ACTION_CLOSE) {
+            if (isset($meta['motif_fermeture'])) {
+                $motif = \Illuminate\Support\Str::limit($meta['motif_fermeture'], 50);
+                $parts[] = "Motif: {$motif}";
+            }
+        }
+        
+        return !empty($parts) ? implode(' • ', $parts) : 'Dossier modifié';
+    }
+
+    private function getProprieteDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Lot
+        if (isset($meta['lot'])) {
+            $parts[] = "Lot: {$meta['lot']}";
+        }
+        
+        // Titre
+        if (isset($meta['titre'])) {
+            $parts[] = "TN°{$meta['titre']}";
+        }
+        
+        // Contenance
+        if (isset($meta['contenance'])) {
+            $parts[] = "{$meta['contenance']}m²";
+        }
+        
+        // Nature
+        if (isset($meta['nature'])) {
+            $parts[] = $meta['nature'];
+        }
+        
+        // Vocation
+        if (isset($meta['vocation'])) {
+            $parts[] = $meta['vocation'];
+        }
+        
+        // Actions en masse
+        if (isset($meta['action_type'])) {
+            if ($meta['action_type'] === 'bulk_create') {
+                $count = $meta['count'] ?? 0;
+                return "Création en masse de {$count} propriétés";
+            }
+        }
+        
+        return !empty($parts) ? implode(' • ', $parts) : 'Propriété modifiée';
+    }
+
+    private function getDemandeurDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Nom complet
+        if (isset($meta['nom'])) {
+            $nom = $meta['nom'];
+            if (isset($meta['prenom'])) {
+                $nom .= ' ' . $meta['prenom'];
+            }
+            $parts[] = $nom;
+        }
+        
+        // CIN
+        if (isset($meta['cin'])) {
+            $parts[] = "CIN: {$meta['cin']}";
+        }
+        
+        // Actions spéciales
+        if (isset($meta['action_type'])) {
+            if ($meta['action_type'] === 'bulk_create') {
+                $created = $meta['created_count'] ?? 0;
+                $updated = $meta['updated_count'] ?? 0;
+                return "Traitement en masse: {$created} créés, {$updated} mis à jour";
+            } elseif ($meta['action_type'] === 'remove_from_dossier') {
+                return "Retiré du dossier";
+            } elseif ($meta['action_type'] === 'definitive_deletion') {
+                return "Suppression définitive";
+            }
+        }
+        
+        return !empty($parts) ? implode(' • ', $parts) : 'Demandeur modifié';
+    }
+
+    private function getUserDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Nom de l'utilisateur
+        if (isset($meta['user_name'])) {
+            $parts[] = $meta['user_name'];
+        }
+        
+        // Email
+        if (isset($meta['user_email'])) {
+            $parts[] = $meta['user_email'];
+        }
+        
+        // Rôle
+        if (isset($meta['user_role'])) {
+            $role = match($meta['user_role']) {
+                'super_admin' => 'Super Admin',
+                'central_user' => 'Utilisateur Central',
+                'admin_district' => 'Admin District',
+                'user_district' => 'Utilisateur District',
+                default => $meta['user_role'],
+            };
+            $parts[] = $role;
+        }
+        
+        // Actions spéciales
+        if (isset($meta['action_type'])) {
+            if ($meta['action_type'] === 'toggle_status') {
+                $status = $meta['new_status'] ? 'Activé' : 'Désactivé';
+                return "Compte {$status}";
+            } elseif ($meta['action_type'] === 'reset_password') {
+                return "Mot de passe réinitialisé";
+            }
+        }
+        
+        return !empty($parts) ? implode(' • ', $parts) : 'Utilisateur modifié';
+    }
+
+    private function getPieceJointeDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Nom du fichier
+        if (isset($meta['nom_fichier'])) {
+            $parts[] = $meta['nom_fichier'];
+        }
+        
+        // Taille
+        if (isset($meta['taille_formatee'])) {
+            $parts[] = $meta['taille_formatee'];
+        } elseif (isset($meta['taille'])) {
+            $parts[] = $this->formatBytes($meta['taille']);
+        }
+        
+        // Type de document
+        if (isset($meta['type_document'])) {
+            $parts[] = "Type: {$meta['type_document']}";
+        }
+        
+        // Entité attachée
+        if (isset($meta['attachable_type'])) {
+            $entity = class_basename($meta['attachable_type']);
+            $parts[] = "Attaché à: {$entity}";
+        }
+        
+        return !empty($parts) ? implode(' • ', $parts) : 'Fichier';
+    }
+
+
+    private function getAuthDetails(array $meta): string
+    {
+        $parts = [];
+        
+        // Nom de l'utilisateur
+        if (isset($meta['user_name'])) {
+            $parts[] = $meta['user_name'];
+        }
+        
+        // Rôle
+        if (isset($meta['user_role'])) {
+            $role = match($meta['user_role']) {
+                'super_admin' => 'Super Admin',
+                'central_user' => 'Utilisateur Central',
+                'admin_district' => 'Admin District',
+                'user_district' => 'Utilisateur District',
+                default => $meta['user_role'],
+            };
+            $parts[] = $role;
+        }
+        
+        if (empty($parts)) {
+            return $this->action === self::ACTION_LOGIN ? 'Connexion' : 'Déconnexion';
+        }
+        
+        return implode(' • ', $parts);
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['o', 'Ko', 'Mo', 'Go'];
+        $i = 0;
+        
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        
+        return round($bytes, 2) . ' ' . $units[$i];
     }
 }

@@ -10,7 +10,7 @@ use App\Models\User;
  * Trait pour appliquer automatiquement le filtrage par district
  * À utiliser dans les modèles Dossier, Propriete, etc.
  * 
- * ✅ MODIFIÉ : Prend en compte les utilisateurs centraux (central_user)
+ * MODIFIÉ : Prend en compte les utilisateurs centraux (central_user)
  */
 trait HasDistrictScope
 {
@@ -29,13 +29,13 @@ trait HasDistrictScope
                 return;
             }
 
-            // ✅ MODIFIÉ : Si super admin OU utilisateur central, ne pas filtrer
+            // MODIFIÉ : Si super admin OU utilisateur central, ne pas filtrer
             // Les deux rôles peuvent accéder à tous les districts
             if ($user->canAccessAllDistricts()) {
                 return;
             }
 
-            // ✅ Si utilisateur district (admin_district ou user_district), filtrer par son district
+            // Si utilisateur district (admin_district ou user_district), filtrer par son district
             if ($user->hasDistrictAccess() && $user->id_district) {
                 $tableName = $builder->getModel()->getTable();
                 
@@ -80,7 +80,7 @@ trait HasDistrictScope
 
     /**
      * Scope pour obtenir les données de tous les districts
-     * ✅ MODIFIÉ : Accessible aux super_admin ET central_user
+     * MODIFIÉ : Accessible aux super_admin ET central_user
      */
     public function scopeAllDistricts(Builder $query): Builder
     {
@@ -106,7 +106,7 @@ trait HasDistrictScope
             return false;
         }
 
-        // ✅ MODIFIÉ : super_admin et central_user peuvent accéder à tout
+        // MODIFIÉ : super_admin et central_user peuvent accéder à tout
         if ($user->canAccessAllDistricts()) {
             return true;
         }
@@ -150,7 +150,7 @@ trait HasDistrictScope
             return false;
         }
 
-        // ✅ MODIFIÉ : super_admin et central_user peuvent tout faire
+        //  MODIFIÉ : super_admin et central_user peuvent tout faire
         if ($user->canAccessAllDistricts()) {
             return true;
         }

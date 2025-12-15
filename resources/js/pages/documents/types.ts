@@ -1,5 +1,26 @@
-// documents/types.ts - VERSION FINALE CORRIGÉE
+// pages/documents/types.ts 
 import { Demandeur, Propriete, Dossier } from '@/types';
+
+/**
+ * ✅ Métadonnées d'un document (pour régénération)
+ */
+export interface DocumentMetadata {
+    needs_regeneration?: boolean;
+    marked_at?: string;
+    reason?: string;
+    last_check_status?: {
+        exists: boolean;
+        valid: boolean;
+        readable: boolean;
+        size: number;
+        error: string | null;
+    };
+    regeneration_count?: number;
+    last_regenerated_at?: string;
+    regeneration_failed?: boolean;
+    last_error?: string;
+    failed_at?: string;
+}
 
 /**
  * ✅ Document généré (référence dans la base)
@@ -18,6 +39,7 @@ export interface DocumentGenere {
     date_document?: string;
     has_consorts: boolean;
     demandeurs_ids?: number[];
+    metadata?: DocumentMetadata; 
     generated_by: string;
     generated_at: string;
     download_count: number;

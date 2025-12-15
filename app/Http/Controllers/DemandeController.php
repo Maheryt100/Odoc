@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use NumberFormatter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -265,11 +265,6 @@ class DemandeController extends Controller
 
         } catch (\Exception $exception) {
             DB::rollBack();
-            
-            Log::error('Erreur store demande', [
-                'message' => $exception->getMessage(),
-                'trace' => $exception->getTraceAsString()
-            ]);
             
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
@@ -540,11 +535,6 @@ class DemandeController extends Controller
             }
             
         } catch (\Exception $e) {
-            Log::error('Erreur download document', [
-                'demande_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             
             return back()->withErrors(['error' => 'Erreur lors de la génération: ' . $e->getMessage()]);
         }
@@ -588,11 +578,6 @@ class DemandeController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('Erreur archivage document', [
-                'demande_id' => $request->id,
-                'error' => $e->getMessage()
-            ]);
 
             return back()->with('error', 'Erreur lors de l\'archivage : ' . $e->getMessage());
         }
@@ -644,11 +629,10 @@ class DemandeController extends Controller
     }
 
     /**
-     * ✅ LISTE DOSSIER - VERSION CORRIGÉE
+     *LISTE DOSSIER 
      */
     public function list(Request $request, $dossierId)
     {
-        // ✅ Ne pas spécifier les colonnes avec accessors
         $dossier = Dossier::findOrFail($dossierId);
 
         $query = Demander::with([
@@ -737,11 +721,6 @@ class DemandeController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('Erreur désarchivage document', [
-                'demande_id' => $request->id,
-                'error' => $e->getMessage()
-            ]);
 
             return back()->with('error', 'Erreur lors de la désarchivation : ' . $e->getMessage());
         }
@@ -765,20 +744,14 @@ class DemandeController extends Controller
             
             // VALIDATION : S'assurer que la propriété existe
             if (!$premiere || !$premiere->propriete) {
-                Log::warning('Propriété manquante pour demande', [
-                    'demande_id' => $premiere?->id,
-                    'id_propriete' => $premiere?->id_propriete,
-                ]);
+
                 return null; // Sera filtré plus tard
             }
             
             // MAPPER tous les demandeurs avec validation
             $tousLesDemandeurs = $groupeTrie->map(function ($demande, $index) {
                 if (!$demande->demandeur) {
-                    Log::warning('Demandeur manquant', [
-                        'demande_id' => $demande->id,
-                        'id_demandeur' => $demande->id_demandeur,
-                    ]);
+   
                     return null;
                 }
                 
@@ -807,10 +780,7 @@ class DemandeController extends Controller
             
             // Si aucun demandeur valide, skip cette propriété
             if ($tousLesDemandeurs->isEmpty()) {
-                Log::warning('Propriété sans demandeurs valides', [
-                    'propriete_id' => $premiere->id_propriete,
-                    'propriete_lot' => $premiere->propriete->lot,
-                ]);
+
                 return null;
             }
             

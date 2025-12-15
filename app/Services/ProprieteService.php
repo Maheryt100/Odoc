@@ -10,7 +10,7 @@ namespace App\Services;
 use App\Models\Propriete;
 use App\Models\Demander;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class ProprieteService
 {
@@ -46,13 +46,6 @@ class ProprieteService
             
             DB::commit();
             
-            Log::info('✅ Propriété archivée', [
-                'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'demandes_archivees' => $count,
-                'demandeurs' => $demandeurs
-            ]);
-            
             return [
                 'success' => true,
                 'message' => "Propriété Lot {$propriete->lot} acquise : {$count} demandeur(s) archivé(s)"
@@ -60,11 +53,6 @@ class ProprieteService
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('❌ Erreur archivage propriété', [
-                'propriete_id' => $proprieteId,
-                'error' => $e->getMessage()
-            ]);
             
             return [
                 'success' => false,
@@ -103,12 +91,6 @@ class ProprieteService
             
             DB::commit();
             
-            Log::info('✅ Propriété désarchivée', [
-                'propriete_id' => $propriete->id,
-                'lot' => $propriete->lot,
-                'demandes_reactivees' => $count
-            ]);
-            
             return [
                 'success' => true,
                 'message' => "Propriété Lot {$propriete->lot} désarchivée : {$count} demandeur(s) réactivé(s)"
@@ -116,11 +98,6 @@ class ProprieteService
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('❌ Erreur désarchivage propriété', [
-                'propriete_id' => $proprieteId,
-                'error' => $e->getMessage()
-            ]);
             
             return [
                 'success' => false,

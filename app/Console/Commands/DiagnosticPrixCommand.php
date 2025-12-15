@@ -37,12 +37,12 @@ class DiagnosticPrixCommand extends Command
         }
 
         $this->newLine();
-        $this->info('✅ Diagnostic terminé');
+        $this->info('Diagnostic terminé');
     }
 
     private function checkPrixDistricts(): void
     {
-        $this->info('1️⃣  VÉRIFICATION DES PRIX DANS LES DISTRICTS');
+        $this->info('1️VÉRIFICATION DES PRIX DANS LES DISTRICTS');
         
         $districts = DB::table('districts')
             ->select('id', 'nom_district', 'edilitaire', 'agricole', 'forestiere', 'touristique')
@@ -68,9 +68,9 @@ class DiagnosticPrixCommand extends Command
         }
 
         if (empty($problemesDetectes)) {
-            $this->info('   ✅ Tous les districts ont des prix configurés');
+            $this->info('    Tous les districts ont des prix configurés');
         } else {
-            $this->warn('   ⚠️  ' . count($problemesDetectes) . ' district(s) avec des prix manquants:');
+            $this->warn('   ' . count($problemesDetectes) . ' district(s) avec des prix manquants:');
             $this->table(
                 ['District', 'ID', 'Vocations sans prix'],
                 collect($problemesDetectes)->map(fn($p) => [
@@ -86,7 +86,7 @@ class DiagnosticPrixCommand extends Command
 
     private function checkDossiersSansPrix(): void
     {
-        $this->info('2️⃣  VÉRIFICATION DOSSIERS → DISTRICTS → PRIX');
+        $this->info('2️VÉRIFICATION DOSSIERS → DISTRICTS → PRIX');
         
         $dossiers = DB::table('dossiers')
             ->join('districts', 'dossiers.id_district', '=', 'districts.id')

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class PieceJointe extends Model
 {
@@ -239,11 +239,6 @@ class PieceJointe extends Model
             
             return (bool)$this->delete();
         } catch (\Exception $e) {
-            Log::error('Erreur suppression fichier', [
-                'piece_id' => $this->getKey(),
-                'chemin' => $this->chemin,
-                'error' => $e->getMessage()
-            ]);
             
             return false;
         }
@@ -299,10 +294,7 @@ class PieceJointe extends Model
                     Storage::disk('public')->delete($piece->chemin);
                 }
             } catch (\Exception $e) {
-                Log::error('Erreur suppression fichier lors du forceDelete', [
-                    'piece_id' => $piece->getKey(),
-                    'error' => $e->getMessage()
-                ]);
+
             }
         });
     }

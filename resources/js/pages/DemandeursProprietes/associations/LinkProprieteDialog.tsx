@@ -68,18 +68,12 @@ export function LinkProprieteDialog({
 
         setIsSubmitting(true);
 
-        // ✅ CORRECTION : Calculer l'ordre pour cette propriété
-        const maxOrdre = selectedPropriete.demandeurs
-            ?.filter(d => d.pivot?.status === 'active')
-            .reduce((max, d) => Math.max(max, d.pivot?.ordre || 0), 0) || 0;
-        
-        const nouvelOrdre = maxOrdre + 1;
-
+        // ✅ NE PAS CALCULER L'ORDRE ICI
         router.post(route('association.link'), {
             id_demandeur: demandeur.id,
             id_propriete: selectedPropriete.id,
             id_dossier: dossierId,
-            ordre: nouvelOrdre, // ✅ AJOUT : Envoyer l'ordre
+            // ❌ PAS D'ORDRE
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -93,9 +87,7 @@ export function LinkProprieteDialog({
                 setIsSubmitting(false);
             },
             onFinish: () => {
-                if (!isSubmitting) {
-                    setIsSubmitting(false);
-                }
+                setIsSubmitting(false);
             }
         });
     };
