@@ -127,28 +127,40 @@ export interface Propriete {
     numero_FN: string | null;
     numero_requisition: string | null;
     type_operation: TypeOperation;
+    
+    
     date_requisition: string | null;
-    date_inscription: string | null;
-    dep_vol: string | null;
-    numero_dep_vol: string | null;
+    date_depot_1: string | null;
+    date_depot_2: string | null;
+    date_approbation_acte: string | null;
+    
+    // Dep/Vol
+    dep_vol_inscription: string | null;
+    numero_dep_vol_inscription: string | null;
+    dep_vol_requisition: string | null;
+    numero_dep_vol_requisition: string | null;
+    
     id_dossier: number;
     id_user: number;
     created_at: string;
     updated_at: string;
     
-    // Relations (chargées via Eloquent)
+    // Relations
     dossier?: Dossier;
     demandes?: Demande[];
     demandeurs?: Demandeur[];
     
-    // Accessors (calculés côté serveur)
-    dep_vol_complet?: string;
+    // Accessors
+    dep_vol_inscription_complet?: string;
+    dep_vol_requisition_complet?: string;
     titre_complet?: string;
     is_incomplete?: boolean;
     is_archived?: boolean;
     is_empty?: boolean;
     has_active_demandes?: boolean;
     status_label?: 'Vide' | 'Active' | 'Acquise' | 'Inconnu';
+    can_generate_document?: boolean;        // ✅ NOUVEAU
+    document_block_reason?: string | null;  // ✅ NOUVEAU
 }
 
 // ============================================

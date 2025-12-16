@@ -32,16 +32,16 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
                                 12 derniers mois
                             </Badge>
                         </div>
-                        <p className="text-muted-foreground">
+                        {/* <p className="text-muted-foreground">
                             Vue d'ensemble de vos activités et statistiques des 12 derniers mois
-                        </p>
+                        </p> */}
                     </div>
                     {/* <GlobalSearch className="w-full" /> */}
                 </div>
 
-                {/* Alertes */}
+                {/* Alertes
                 <AlertsSection alerts={alerts} />
-                
+                 */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-950/20 dark:to-blue-950/20">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg shrink-0">
@@ -53,7 +53,7 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
                                 Vue d'ensemble centralisée
                             </span>
                             <span className="text-indigo-700 dark:text-indigo-300">
-                                — Surveillez vos KPIs, graphiques et activités récentes en temps réel
+                                — Statistique sur les 12 derniers mois
                             </span>
                         </AlertDescription>
                     </div>

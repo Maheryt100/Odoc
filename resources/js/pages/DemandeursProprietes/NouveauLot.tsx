@@ -1,5 +1,4 @@
-// pages/DemandeursProprietes/NouveauLot.tsx
-// ✅ VERSION REDESIGNÉE FINALE - Boutons en haut ET en bas, pas de double conteneur
+// pages/DemandeursProprietes/NouveauLot.tsx - ✅ CORRECTION
 
 import { useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -12,16 +11,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import type { BreadcrumbItem, Dossier } from '@/types';
-
-import ProprieteCreate, { 
-    ProprieteFormData, 
-    emptyPropriete 
-} from '@/pages/proprietes/create';
-
-import DemandeurCreate, { 
-    DemandeurFormData, 
-    emptyDemandeur 
-} from '@/pages/demandeurs/create';
+import ProprieteCreate, { ProprieteFormData, emptyPropriete } from '@/pages/proprietes/create';
+import DemandeurCreate, { DemandeurFormData, emptyDemandeur } from '@/pages/demandeurs/create';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type CreationMode = 'lot-demandeur' | 'lots-only' | 'demandeurs-only';
@@ -31,13 +22,21 @@ export default function NouveauLot() {
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
     
-    const [proprietes, setProprietes] = useState<ProprieteFormData[]>([{ ...emptyPropriete }]);
+    // ✅ CORRECTION : Initialiser avec id_dossier
+    const [proprietes, setProprietes] = useState<ProprieteFormData[]>([{
+        ...emptyPropriete,
+        id_dossier: dossier.id
+    }]);
+    
     const [demandeurs, setDemandeurs] = useState<DemandeurFormData[]>([{ ...emptyDemandeur }]);
     const [selectedChargesByPropriete, setSelectedChargesByPropriete] = useState<Record<number, string[]>>({ 0: [] });
 
     // ========== GESTION DES PROPRIÉTÉS ==========
     const addPropriete = () => {
-        setProprietes([...proprietes, { ...emptyPropriete }]);
+        setProprietes([
+            ...proprietes, 
+            { ...emptyPropriete, id_dossier: dossier.id }  // ✅ CORRECTION
+        ]);
         setSelectedChargesByPropriete({
             ...selectedChargesByPropriete,
             [proprietes.length]: []
@@ -59,7 +58,11 @@ export default function NouveauLot() {
 
     const updatePropriete = (index: number, field: keyof ProprieteFormData, value: string) => {
         const newProprietes = [...proprietes];
-        newProprietes[index] = { ...newProprietes[index], [field]: value };
+        newProprietes[index] = { 
+            ...newProprietes[index], 
+            [field]: value,
+            id_dossier: dossier.id  // ✅ TOUJOURS maintenir id_dossier
+        };
         setProprietes(newProprietes);
     };
 
@@ -86,7 +89,7 @@ export default function NouveauLot() {
         updatePropriete(proprieteIndex, 'charge', newCharges.join(', '));
     };
 
-    // ========== GESTION DES DEMANDEURS ==========
+    // ========== GESTION DES DEMANDEURS (inchangé) ==========
     const addDemandeur = () => {
         setDemandeurs([...demandeurs, { ...emptyDemandeur }]);
     };
@@ -112,7 +115,7 @@ export default function NouveauLot() {
         });
     };
 
-    // ========== VALIDATION ==========
+    // ========== VALIDATION (inchangée) ==========
     const validateProprietes = (): boolean => {
         for (let i = 0; i < proprietes.length; i++) {
             const p = proprietes[i];
@@ -163,7 +166,7 @@ export default function NouveauLot() {
                 return false;
             }
             if (!/^\d{12}$/.test(d.cin)) {
-                toast.error(`Demandeur ${i + 1}: Le CIN doit contenir exactement 12 chiffres (actuellement: ${d.cin.length} caractères)`);
+                toast.error(`Demandeur ${i + 1}: Le CIN doit contenir exactement 12 chiffres`);
                 return false;
             }
             
@@ -176,7 +179,7 @@ export default function NouveauLot() {
         return true;
     };
 
-    // ========== SOUMISSION ==========
+    // ========== SOUMISSION - ✅ CORRECTION ==========
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -191,13 +194,18 @@ export default function NouveauLot() {
         setProcessing(true);
 
         if (creationMode === 'lot-demandeur') {
-            router.post(route('nouveau-lot.store'), {
-                id_dossier: dossier.id,
+            // ✅ S'assurer que id_dossier est présent
+            const proprieteData = {
                 ...proprietes[0],
+                id_dossier: dossier.id
+            };
+
+            router.post(route('nouveau-lot.store'), {
+                ...proprieteData,
                 demandeurs_json: JSON.stringify(demandeurs)
             }, {
                 onError: (errors) => {
-                    console.error('Erreurs de validation:', errors);
+                    console.error('❌ Erreurs backend:', errors);
                     const errorMessages = Object.entries(errors)
                         .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
                         .join('\n');
@@ -212,12 +220,18 @@ export default function NouveauLot() {
                 }
             });
         } else if (creationMode === 'lots-only') {
+            // ✅ S'assurer que toutes les propriétés ont id_dossier
+            const proprietesAvecDossier = proprietes.map(p => ({
+                ...p,
+                id_dossier: dossier.id
+            }));
+
             router.post(route('proprietes.store-multiple'), {
                 id_dossier: dossier.id,
-                proprietes: JSON.stringify(proprietes)
+                proprietes: JSON.stringify(proprietesAvecDossier)
             }, {
                 onError: (errors) => {
-                    console.error('Erreurs de validation:', errors);
+                    console.error('❌ Erreurs backend:', errors);
                     const errorMessages = Object.values(errors).flat().join('\n');
                     toast.error('Erreur de validation', { description: errorMessages });
                     setProcessing(false);
@@ -232,7 +246,7 @@ export default function NouveauLot() {
                 demandeurs: JSON.stringify(demandeurs)
             }, {
                 onError: (errors) => {
-                    console.error('Erreurs de validation:', errors);
+                    console.error('❌ Erreurs backend:', errors);
                     const errorMessages = Object.values(errors).flat().join('\n');
                     toast.error('Erreur de validation', { description: errorMessages });
                     setProcessing(false);
@@ -256,7 +270,7 @@ export default function NouveauLot() {
             <Toaster position="top-right" richColors />
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* ✅ HEADER MODERNE */}
+                {/* Header (inchangé) */}
                 <div className="flex items-center justify-between">
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
@@ -280,70 +294,7 @@ export default function NouveauLot() {
                     </Button>
                 </div>
 
-                {/* ✅ CARTES DE STATISTIQUES */}
-                {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                        <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Propriété(s)</CardTitle>
-                                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-                                    <LandPlot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                                </div>
-                            </CardHeader>
-                        </div>
-                        <CardContent className="pt-4">
-                            <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                                {proprietes.length}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                {creationMode === 'lots-only' || creationMode === 'lot-demandeur' 
-                                    ? 'À créer' 
-                                    : 'Non applicable'}
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Demandeur(s)</CardTitle>
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                                    <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                            </CardHeader>
-                        </div>
-                        <CardContent className="pt-4">
-                            <div className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                                {demandeurs.length}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                {creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur' 
-                                    ? 'À créer' 
-                                    : 'Non applicable'}
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Mode Création</CardTitle>
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                </div>
-                            </CardHeader>
-                        </div>
-                        <CardContent className="pt-4">
-                            <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs">
-                                {creationMode === 'lot-demandeur' && 'Lot + Demandeur(s)'}
-                                {creationMode === 'lots-only' && 'Lot(s) seulement'}
-                                {creationMode === 'demandeurs-only' && 'Demandeur(s) seulement'}
-                            </Badge>
-                        </CardContent>
-                    </Card>
-                </div> */}
-
-                {/* ✅ MODE DE CRÉATION */}
+                {/* Mode sélection (inchangé) */}
                 <Card className="border-0 shadow-lg">
                     <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b">
                         <CardHeader>
@@ -359,11 +310,12 @@ export default function NouveauLot() {
                     <CardContent className="pt-6">
                         <RadioGroup value={creationMode} onValueChange={(value) => setCreationMode(value as CreationMode)}>
                             <div className="grid gap-4 md:grid-cols-3">
+                                {/* Options radio (inchangées) */}
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lot-demandeur' 
-                                            ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 shadow-lg' 
-                                            : 'border-border hover:border-violet-300 hover:bg-violet-50/50 dark:hover:bg-violet-950/10'
+                                            ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 shadow-lg' 
+                                            : 'border-border hover:border-violet-300 hover:bg-violet-50/50'
                                     }`} 
                                     onClick={() => setCreationMode('lot-demandeur')}
                                 >
@@ -376,17 +328,15 @@ export default function NouveauLot() {
                                         <p className="text-sm text-muted-foreground">
                                             Créer une propriété avec un ou plusieurs demandeurs associés
                                         </p>
-                                        <Badge variant="outline" className="text-xs">
-                                            Recommandé
-                                        </Badge>
+                                        <Badge variant="outline" className="text-xs">Recommandé</Badge>
                                     </div>
                                 </div>
 
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lots-only' 
-                                            ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 shadow-lg' 
-                                            : 'border-border hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10'
+                                            ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg' 
+                                            : 'border-border hover:border-emerald-300 hover:bg-emerald-50/50'
                                     }`} 
                                     onClick={() => setCreationMode('lots-only')}
                                 >
@@ -399,17 +349,15 @@ export default function NouveauLot() {
                                         <p className="text-sm text-muted-foreground">
                                             Créer une ou plusieurs propriétés en une fois
                                         </p>
-                                        <Badge variant="outline" className="text-xs">
-                                            Création rapide
-                                        </Badge>
+                                        <Badge variant="outline" className="text-xs">Création rapide</Badge>
                                     </div>
                                 </div>
 
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'demandeurs-only' 
-                                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 shadow-lg' 
-                                            : 'border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/10'
+                                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg' 
+                                            : 'border-border hover:border-blue-300 hover:bg-blue-50/50'
                                     }`} 
                                     onClick={() => setCreationMode('demandeurs-only')}
                                 >
@@ -422,9 +370,7 @@ export default function NouveauLot() {
                                         <p className="text-sm text-muted-foreground">
                                             Créer un ou plusieurs demandeurs en une fois
                                         </p>
-                                        <Badge variant="outline" className="text-xs">
-                                            Base de données
-                                        </Badge>
+                                        <Badge variant="outline" className="text-xs">Base de données</Badge>
                                     </div>
                                 </div>
                             </div>
@@ -432,46 +378,42 @@ export default function NouveauLot() {
                     </CardContent>
                 </Card>
 
-                
-                <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
                     <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                            <FileText className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
                             <AlertDescription>
-                                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                <p className="text-sm font-medium text-blue-900 mb-1">
                                     Documents justificatifs
                                 </p>
-                                <p className="text-xs text-blue-700 dark:text-blue-400">
+                                <p className="text-xs text-blue-700">
                                     Les pièces jointes (CIN, actes, etc.) pourront être ajoutées après création
                                 </p>
                             </AlertDescription>
                         </div>
                     </div>
                 </Alert>
-            
 
-                {/* ✅ SECTION PROPRIÉTÉS */}
+                {/* Section Propriétés */}
                 {(creationMode === 'lots-only' || creationMode === 'lot-demandeur') && (
                     <Card className="border-0 shadow-lg">
-                        <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20 border-b">
+                        <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 border-b">
                             <CardHeader>
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-                                            <LandPlot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                                        <div className="p-2 bg-violet-100 rounded-lg">
+                                            <LandPlot className="h-5 w-5 text-violet-600" />
                                         </div>
                                         <div>
                                             <CardTitle className="text-xl">
-                                                {creationMode === 'lot-demandeur' ? '' : ''}
                                                 Propriété{proprietes.length > 1 ? 's' : ''}
                                             </CardTitle>
                                             <CardDescription className="mt-1">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {proprietes.length} propriété{proprietes.length > 1 ? 's' : ''}
                                                 </Badge>
-                                                
                                             </CardDescription>
                                         </div>
                                     </div>
@@ -499,7 +441,6 @@ export default function NouveauLot() {
                                 </div>
                             ))}
 
-                            {/* ✅ BOUTON EN BAS */}
                             {creationMode === 'lots-only' && (
                                 <div className="flex justify-center pt-4">
                                     <Button 
@@ -518,26 +459,22 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
-                {/* ✅ SECTION DEMANDEURS */}
+                {/* Section Demandeurs (inchangée) */}
                 {(creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur') && (
                     <Card className="border-0 shadow-lg">
-                        <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 border-b">
+                        <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 border-b">
                             <CardHeader>
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                                            <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                        <div className="p-2 bg-emerald-100 rounded-lg">
+                                            <Users className="h-5 w-5 text-emerald-600" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-xl">
-                                                {creationMode === 'lot-demandeur' ? '' : ''}
-                                                Demandeurs
-                                            </CardTitle>
+                                            <CardTitle className="text-xl">Demandeurs</CardTitle>
                                             <CardDescription className="mt-1">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {demandeurs.length} demandeur{demandeurs.length > 1 ? 's' : ''}
                                                 </Badge>
-                                                
                                             </CardDescription>
                                         </div>
                                     </div>
@@ -561,7 +498,6 @@ export default function NouveauLot() {
                                 </div>
                             ))}
 
-                            {/* ✅ BOUTON EN BAS */}
                             <div className="flex justify-center pt-4">
                                 <Button 
                                     type="button" 
@@ -578,7 +514,7 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
-                {/* ✅ ACTIONS */}
+                {/* Actions (inchangé) */}
                 <div className="flex gap-4 justify-end pb-6">
                     <Button
                         type="button"

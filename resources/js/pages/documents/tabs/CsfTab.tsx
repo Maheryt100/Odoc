@@ -9,19 +9,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { FileCheck, Download, AlertCircle, Info, Crown, Users, Loader2, Eye, MapPin } from 'lucide-react';
+import { FileCheck, AlertCircle, Info, Loader2, Crown, Users, MapPin, Ruler } from 'lucide-react';
 import { Demandeur, Dossier } from '@/types';
-import { ProprieteWithDemandeurs, DemandeurWithCSF, DocumentGenere } from '../types';
-import { 
-    isProprieteComplete, 
-    isDemandeurComplete, 
-    getDemandeurPrincipal,
-    getConsorts
-} from '../validation';
+import { ProprieteWithDemandeurs, DemandeurWithCSF } from '../types';
 import { safePrix, formatMontant } from '../helpers';
 import DocumentStatusBadge from '../components/DocumentStatusBadge';
 import SecureDownloadButton from '../components/SecureDownloadButton';
-
 
 interface CsfTabProps {
     proprietes: ProprieteWithDemandeurs[];
@@ -45,7 +38,7 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
     }, [csfPropriete, selectedProprieteData, demandeurs]);
 
     const selectedDemandeurData = demandeurs.find(d => d.id === Number(csfDemandeur));
-    const documentCsf = selectedDemandeurData?.document_csf; // ✅ Plus d'erreur
+    const documentCsf = selectedDemandeurData?.document_csf;
     const hasCsf = !!documentCsf;
 
     const canGenerate = () => {
@@ -53,10 +46,9 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
         const prop = selectedProprieteData;
         const dem = selectedDemandeurData;
         if (!prop || !dem) return false;
-        return isProprieteComplete(prop) && isDemandeurComplete(dem);
+        return true;
     };
 
-    
     const handleGenerate = () => {
         if (!csfPropriete || !csfDemandeur) {
             toast.warning('Veuillez sélectionner une propriété et un demandeur');
@@ -73,7 +65,6 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                 id_demandeur: csfDemandeur,
             });
 
-            // ✅ CORRIGÉ : Route correcte
             const url = `${route('documents.csf.generate')}?${params.toString()}`;
             window.location.href = url;
             
@@ -106,19 +97,9 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
         setCsfDemandeur('');
     };
 
-    const demandeurPrincipal = useMemo(() => {
-        if (!selectedProprieteData) return null;
-        return getDemandeurPrincipal(selectedProprieteData.demandeurs_lies || []);
-    }, [selectedProprieteData]);
-
-    const consorts = useMemo(() => {
-        if (!selectedProprieteData) return [];
-        return getConsorts(selectedProprieteData.demandeurs_lies || []);
-    }, [selectedProprieteData]);
-
     // Formater la contenance
     const formatContenance = (contenance: number | null | undefined): string => {
-        if (!contenance) return "-";  // sécurité valeurs null/undefined/0
+        if (!contenance) return "-";
         
         const hectares = Math.floor(contenance / 10000);
         const reste = contenance % 10000;
@@ -133,7 +114,6 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
         return parts.join(" ");
     };
 
-
     return (
         <Card className="border-0 shadow-lg">
             <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20">
@@ -146,6 +126,7 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
+                
                 {/* Sélection Propriété */}
                 <div className="space-y-2">
                     <Label className="text-sm font-semibold">Propriété</Label>
@@ -159,37 +140,25 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                         </SelectTrigger>
                         <SelectContent>
                             {proprietes.map((prop) => {
-                                const isComplete = isProprieteComplete(prop);
-                                const principal = getDemandeurPrincipal(prop.demandeurs_lies || []);
-                                const consortsList = getConsorts(prop.demandeurs_lies || []);
-                                
+                                const principal = prop.demandeurs_lies?.find(d => d.ordre === 1);
+                                const consortsList = prop.demandeurs_lies?.filter(d => d.ordre > 1) || [];
                                 
                                 return (
                                     <SelectItem key={prop.id} value={String(prop.id)}>
                                         <div className="flex items-center gap-6 py-2 whitespace-nowrap">
-
-                                            {/* LOT + TITRE + INCOMPLET */}
+                                            {/* LOT + TITRE */}
                                             <div className="flex items-center gap-2">
                                                 <Badge variant="outline" className="font-mono">
                                                     Lot {prop.lot}
                                                 </Badge>
-
                                                 <Badge variant="outline">
                                                     TN°{prop.titre}
                                                 </Badge>
-
-                                                {!isComplete && (
-                                                    <Badge variant="destructive" className="text-xs">
-                                                        <AlertCircle className="h-3 w-3 mr-1" />
-                                                        Incomplet
-                                                    </Badge>
-                                                )}
                                             </div>
 
                                             {/* PRINCIPAL + CONSORTS */}
                                             {principal && (
                                                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-
                                                     <div className="flex items-center gap-1">
                                                         <Crown className="h-3 w-3 text-yellow-500" />
                                                         <span className="font-medium">
@@ -209,14 +178,13 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                                             )}
                                         </div>
                                     </SelectItem>
-
                                 );
                             })}
                         </SelectContent>
                     </Select>
                 </div>
 
-                {/* ✅ Affichage amélioré de la propriété sélectionnée */}
+                {/* Carte d'info propriété */}
                 {csfPropriete && selectedProprieteData && (
                     <Card className="border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                         <CardContent className="p-4 space-y-3">
@@ -252,23 +220,22 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                                         <div className="font-medium">{selectedProprieteData.proprietaire}</div>
                                     </div>
 
-                                    {/* Prix total si disponible */}
-                                    {selectedProprieteData?.demandeurs_lies &&
+                                    {/* Prix total */}
+                                    {selectedProprieteData?.demandeurs_lies && 
                                     selectedProprieteData.demandeurs_lies.length > 0 && (
                                         <div className="pt-3 border-t border-emerald-200 dark:border-emerald-800">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <span className="text-muted-foreground">Prix total:</span>
-                                            <span className="font-semibold">
-                                            {formatMontant(
-                                                safePrix(
-                                                selectedProprieteData.demandeurs_lies?.[0]?.total_prix
-                                                )
-                                            )}
-                                            </span>
-                                        </div>
+                                            <div className="flex items-center gap-2 text-sm">
+                                                <span className="text-muted-foreground">Prix total:</span>
+                                                <span className="font-semibold">
+                                                    {formatMontant(
+                                                        safePrix(
+                                                            selectedProprieteData.demandeurs_lies?.[0]?.total_prix
+                                                        )
+                                                    )}
+                                                </span>
+                                            </div>
                                         </div>
                                     )}
-
 
                                     {demandeursFiltered.length > 0 && (
                                         <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800">
@@ -280,7 +247,6 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                                             </div>
                                         </div>
                                     )}
-                                    
                                 </div>
                             </div>
                         </CardContent>
@@ -312,7 +278,6 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                                 </SelectTrigger>
                                 <SelectContent>
                                     {demandeursFiltered.map((dem) => {
-                                        const isComplete = isDemandeurComplete(dem);
                                         const demandeurLie = selectedProprieteData?.demandeurs_lies?.find(d => d.id === dem.id);
                                         const isPrincipal = demandeurLie?.ordre === 1;
                                         const demWithCsf = dem as DemandeurWithCSF;
@@ -333,9 +298,6 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                                                             <FileCheck className="h-3 w-3" />
                                                         </Badge>
                                                     )}
-                                                    {!isComplete && (
-                                                        <AlertCircle className="h-3 w-3 text-red-500" />
-                                                    )}
                                                 </div>
                                             </SelectItem>
                                         );
@@ -344,69 +306,68 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                             </Select>
                         </div>
 
-                        {/* ✅ AJOUT : Badge de statut */}
-                {csfDemandeur && selectedDemandeurData && (
-                    <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                        <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1" />
-                                <div className="space-y-2 flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        {selectedProprieteData?.demandeurs_lies?.find(d => d.id === selectedDemandeurData.id)?.ordre === 1 && (
-                                            <Badge className="bg-yellow-500 text-white">
-                                                <Crown className="h-3 w-3 mr-1" />
-                                                Principal
-                                            </Badge>
-                                        )}
-                                        <span className="font-semibold">
-                                            {selectedDemandeurData.titre_demandeur} {selectedDemandeurData.nom_demandeur} {selectedDemandeurData.prenom_demandeur}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div>
-                                            <span className="text-muted-foreground">CIN:</span>
-                                            <div className="font-mono">{selectedDemandeurData.cin}</div>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Occupation:</span>
-                                            <div className="font-medium">{selectedDemandeurData.occupation || '-'}</div>
-                                        </div>
-                                    </div>
+                        {/* Carte demandeur sélectionné */}
+                        {csfDemandeur && selectedDemandeurData && (
+                            <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                                <CardContent className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1" />
+                                        <div className="space-y-2 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                {selectedProprieteData?.demandeurs_lies?.find(d => d.id === selectedDemandeurData.id)?.ordre === 1 && (
+                                                    <Badge className="bg-yellow-500 text-white">
+                                                        <Crown className="h-3 w-3 mr-1" />
+                                                        Principal
+                                                    </Badge>
+                                                )}
+                                                <span className="font-semibold">
+                                                    {selectedDemandeurData.titre_demandeur} {selectedDemandeurData.nom_demandeur} {selectedDemandeurData.prenom_demandeur}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <span className="text-muted-foreground">CIN:</span>
+                                                    <div className="font-mono">{selectedDemandeurData.cin}</div>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Occupation:</span>
+                                                    <div className="font-medium">{selectedDemandeurData.occupation || '-'}</div>
+                                                </div>
+                                            </div>
 
-                                    {/* ✅ AJOUT : Badge de statut du CSF */}
-                                    <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-muted-foreground">Statut CSF:</span>
-                                            <DocumentStatusBadge document={selectedDemandeurData.document_csf} />
+                                            {/* Badge de statut du CSF */}
+                                            <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-muted-foreground">Statut CSF:</span>
+                                                    <DocumentStatusBadge document={selectedDemandeurData.document_csf} />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                                </CardContent>
+                            </Card>
+                        )}
 
-                {/* Statut du CSF sélectionné */}
-                {csfDemandeur && hasCsf && (
-                    <Alert className="bg-green-500/10 border-green-500/50">
-                        <FileCheck className="h-4 w-4 text-green-500" />
-                        <AlertDescription className="text-green-700 dark:text-green-300">
-                            <div className="space-y-1">
-                                <div className="font-medium">
-                                    CSF déjà généré pour ce demandeur
-                                </div>
-                                <div className="text-xs opacity-75">
-                                    Généré le {documentCsf?.generated_at}
-                                </div>
-                                <div className="text-xs opacity-75 flex items-center gap-2">
-                                    <Eye className="h-3 w-3" />
-                                    Téléchargé {documentCsf?.download_count || 0} fois
-                                </div>
-                            </div>
-                        </AlertDescription>
-                    </Alert>
-                )}
+                        {/* Statut du CSF */}
+                        {csfDemandeur && hasCsf && documentCsf && (
+                            <Alert className="bg-green-500/10 border-green-500/50">
+                                <FileCheck className="h-4 w-4 text-green-500" />
+                                <AlertDescription className="text-green-700 dark:text-green-300">
+                                    <div className="space-y-1">
+                                        <div className="font-medium">
+                                            CSF déjà généré pour ce demandeur
+                                        </div>
+                                        <div className="text-xs opacity-75">
+                                            Généré le {documentCsf.generated_at}
+                                        </div>
+                                        <div className="text-xs opacity-75">
+                                            Téléchargé {documentCsf.download_count || 0} fois
+                                        </div>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     </>
                 )}
 
@@ -432,14 +393,35 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                     </Alert>
                 )}
 
-                {/* Bouton de téléchargement/génération */}
-                {hasCsf && documentCsf && (
-                    <SecureDownloadButton
-                        document={documentCsf}
-                        downloadRoute={route('documents.csf.download', documentCsf.id)}
-                        regenerateRoute={route('documents.csf.regenerate', documentCsf.id)}
-                        typeName="CSF"
-                    />
+                {/* ✅ BOUTON UNIFIÉ */}
+                {csfDemandeur && (
+                    hasCsf && documentCsf ? (
+                        <SecureDownloadButton
+                            document={documentCsf}
+                            downloadRoute={route('documents.csf.download', documentCsf.id)}
+                            regenerateRoute={route('documents.csf.regenerate', documentCsf.id)}
+                            typeName="CSF"
+                        />
+                    ) : (
+                        <Button
+                            onClick={handleGenerate}
+                            disabled={!canGenerate() || isGenerating}
+                            size="lg"
+                            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Génération...
+                                </>
+                            ) : (
+                                <>
+                                    <FileCheck className="h-4 w-4 mr-2" />
+                                    Générer le CSF
+                                </>
+                            )}
+                        </Button>
+                    )
                 )}
             </CardContent>
         </Card>

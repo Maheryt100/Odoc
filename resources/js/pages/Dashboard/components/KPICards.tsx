@@ -72,6 +72,11 @@ export function KPICards({ kpis }: Props) {
                 completion={safeKpis.completion}
                 variation={variations.dossiers}
             />
+            {/* Demandeurs - Composant amélioré avec barre de genre */}
+            <DemandeursCard 
+                details={safeKpis.demandeurs_details}
+                variation={variations.demandeurs}
+            />
 
             {/* Propriétés - Composant amélioré */}
             <ProprietesCard 
@@ -81,16 +86,12 @@ export function KPICards({ kpis }: Props) {
             />
 
             {/* Cards de complétion */}
-            <CompletionCards completion={safeKpis.completion} />
+            {/* <CompletionCards completion={safeKpis.completion} /> */}
 
-            {/* Demandeurs - Composant amélioré avec barre de genre */}
-            <DemandeursCard 
-                details={safeKpis.demandeurs_details}
-                variation={variations.demandeurs}
-            />
+            
 
             {/* Performance Système */}
-            <Card className="hover:shadow-lg transition-shadow">
+            {/* <Card className="hover:shadow-lg transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Activité Système</CardTitle>
                     <Activity className="h-4 w-4 text-muted-foreground" />
@@ -132,7 +133,7 @@ export function KPICards({ kpis }: Props) {
                         )}
                     </div>
                 </CardContent>
-            </Card>
+            </Card> */}
 
             {/* ✅ NOUVEAU : Revenus potentiels avec toggle */}
             <RevenueCard 

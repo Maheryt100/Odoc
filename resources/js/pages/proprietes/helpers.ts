@@ -1,4 +1,4 @@
-// pages/proprietes/helpers.ts - ✅ VERSION CORRIGÉE
+// pages/proprietes/helpers.ts - ✅ RECHERCHE MISE À JOUR
 
 import type { Propriete } from '@/types';
 import type { 
@@ -64,18 +64,34 @@ export const filterProprietesByStatus = (
 };
 
 /**
- * ✅ CORRECTION : Recherche dans propriété (utilise dep_vol_complet du backend)
+ * ✅ RECHERCHE COMPLÈTE - Incluant propriétaire et dep/vol
  */
 export const matchesSearch = (prop: Propriete, search: string): boolean => {
     const searchLower = search.toLowerCase();
     return (
+        // Recherche de base
         prop.lot?.toLowerCase().includes(searchLower) ||
         prop.titre?.toLowerCase().includes(searchLower) ||
         prop.titre_complet?.toLowerCase().includes(searchLower) ||
         prop.nature?.toLowerCase().includes(searchLower) ||
-        prop.proprietaire?.toLowerCase().includes(searchLower) ||
         prop.situation?.toLowerCase().includes(searchLower) ||
+        
+        // ✅ AJOUT : Recherche dans propriétaire
+        prop.proprietaire?.toLowerCase().includes(searchLower) ||
+        
+        // Recherche dans Dep/Vol Inscription
+        prop.dep_vol_inscription?.toLowerCase().includes(searchLower) ||
+        prop.numero_dep_vol_inscription?.toLowerCase().includes(searchLower) ||
+        prop.dep_vol_inscription_complet?.toLowerCase().includes(searchLower) ||
+        
+        // Recherche dans Dep/Vol Réquisition
+        prop.dep_vol_requisition?.toLowerCase().includes(searchLower) ||
+        prop.numero_dep_vol_requisition?.toLowerCase().includes(searchLower) ||
+        prop.dep_vol_requisition_complet?.toLowerCase().includes(searchLower) ||
+        
+        // ⚠️ Recherche dans anciens champs (compatibilité)
         prop.dep_vol?.toLowerCase().includes(searchLower) ||
+        prop.numero_dep_vol?.toLowerCase().includes(searchLower) ||
         prop.dep_vol_complet?.toLowerCase().includes(searchLower)
     );
 };
@@ -190,17 +206,7 @@ export function formatDateForDisplay(dateValue: string | Date | null | undefined
 // ============================================
 
 /**
- * ✅ NOTE : Le formatage dep/vol est maintenant géré côté backend
- * via l'accessor `dep_vol_complet` du modèle Propriete
- * Format backend: "254 n°054" ou "254"
- * 
- * Cette fonction est conservée pour compatibilité mais n'est plus nécessaire
- * car le backend retourne déjà `dep_vol_complet` formaté
- */
-
-/**
  * Formater le titre complet
- * Note: Le backend retourne déjà `titre_complet` formaté
  */
 export function formatTitre(titre?: string | null): string {
     if (!titre) return '-';
@@ -220,7 +226,7 @@ export function formatContenance(contenance?: number | null): string {
 // ============================================
 
 /**
- * ✅ CORRECTION : Convertir une propriété du serveur en données de formulaire
+ * ✅ Convertir une propriété en données de formulaire
  */
 export function proprieteToFormData(propriete: ProprieteWithDetails, dossierId?: number): ProprieteFormData {
     return {
@@ -237,10 +243,19 @@ export function proprieteToFormData(propriete: ProprieteWithDetails, dossierId?:
         charge: propriete.charge || '',
         numero_FN: propriete.numero_FN || '',
         numero_requisition: propriete.numero_requisition || '',
+        
+        // ✅ DATES MISES À JOUR
         date_requisition: formatDateForInput(propriete.date_requisition),
-        date_inscription: formatDateForInput(propriete.date_inscription),
-        dep_vol: propriete.dep_vol || '',
-        numero_dep_vol: propriete.numero_dep_vol || '',
+        date_depot_1: formatDateForInput(propriete.date_depot_1),
+        date_depot_2: formatDateForInput(propriete.date_depot_2),
+        date_approbation_acte: formatDateForInput(propriete.date_approbation_acte),
+        
+        // Dep/Vol
+        dep_vol_inscription: propriete.dep_vol_inscription || '',
+        numero_dep_vol_inscription: propriete.numero_dep_vol_inscription || '',
+        dep_vol_requisition: propriete.dep_vol_requisition || '',
+        numero_dep_vol_requisition: propriete.numero_dep_vol_requisition || '',
+        
         id_dossier: dossierId || propriete.id_dossier || 0,
     };
 }

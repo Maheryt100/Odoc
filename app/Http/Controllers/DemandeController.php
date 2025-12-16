@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-// use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use NumberFormatter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -270,6 +270,9 @@ class DemandeController extends Controller
         }
     }
 
+    /**
+     * ✅ VÉRIFICATION : date_approbation_acte OBLIGATOIRE avant génération
+     */
     public function download($id)
     {
         Carbon::setLocale('fr');
@@ -282,6 +285,21 @@ class DemandeController extends Controller
             $propriete = $demande->propriete;
             $dossier = $propriete->dossier;
 
+            // ✅ VALIDATION : date_approbation_acte OBLIGATOIRE
+            if (!$propriete->date_approbation_acte) {
+                return back()->withErrors([
+                    'error' => "Impossible de générer le document : la date d'approbation de l'acte est obligatoire pour la propriété Lot {$propriete->lot}."
+                ]);
+            }
+
+            // ✅ VALIDATION : date_approbation_acte >= date_requisition
+            if ($propriete->date_requisition && $propriete->date_approbation_acte < $propriete->date_requisition) {
+                return back()->withErrors([
+                    'error' => "Erreur de cohérence : la date d'approbation ({$propriete->date_approbation_acte->format('d/m/Y')}) est antérieure à la date de réquisition ({$propriete->date_requisition->format('d/m/Y')})."
+                ]);
+            }
+
+            // Calcul du prix
             try {
                 $prix = PrixCalculatorService::getPrixUnitaire($propriete);
             } catch (\Exception $e) {
@@ -342,7 +360,22 @@ class DemandeController extends Controller
 
             $type_operation = $propriete->type_operation;
 
-            // GÉNÉRATION DU DOCUMENT - Code inchangé
+            // ✅ FORMATAGE DES DATES POUR LE DOCUMENT
+            $dateRequisition = $propriete->date_requisition 
+                ? Carbon::parse($propriete->date_requisition)->translatedFormat('d F Y') 
+                : '';
+            
+            $dateDepot1 = $propriete->date_depot_1 
+                ? Carbon::parse($propriete->date_depot_1)->translatedFormat('d F Y') 
+                : '';
+            
+            $dateDepot2 = $propriete->date_depot_2 
+                ? Carbon::parse($propriete->date_depot_2)->translatedFormat('d F Y') 
+                : '';
+            
+            $dateApprobation = Carbon::parse($propriete->date_approbation_acte)->translatedFormat('d F Y');
+
+            // GÉNÉRATION DU DOCUMENT
             if ($demande->status_consort == false) {
                 // SANS CONSORT
                 $templatePath = $type_operation == 'morcellement' 
@@ -351,18 +384,15 @@ class DemandeController extends Controller
                     
                 $modele_odoc = new TemplateProcessor(storage_path($templatePath));
 
-                // Dates formatées
                 $dateNaissance = Carbon::parse($demandeur->date_naissance)->translatedFormat('d F Y');
                 $dateMariage = $demandeur->date_mariage ? Carbon::parse($demandeur->date_mariage)->translatedFormat('d F Y') : '';
                 $dateDelivrance = Carbon::parse($demandeur->date_delivrance)->translatedFormat('d F Y');
                 $dateDescenteDebut = Carbon::parse($dossier->date_descente_debut)->translatedFormat('d');
                 $dateDescenteFin = Carbon::parse($dossier->date_descente_fin)->translatedFormat('d F Y');
                 $dateDescente = $dateDescenteDebut . ' au ' . $dateDescenteFin;
-                
-                $dateRequisition = $propriete->date_requisition ? Carbon::parse($propriete->date_requisition)->translatedFormat('d F Y') : '';
-                $dateInscription = $propriete->date_inscription ? Carbon::parse($propriete->date_inscription)->translatedFormat('d F Y') : '';
 
                 $modele_odoc->setValues([
+                    // Demandeur
                     'Titre_long' => $demandeur->titre_demandeur,
                     'Nom' => $demandeur->nom_demandeur,
                     'Prenom' => $demandeur->prenom_demandeur ?? '',
@@ -379,6 +409,7 @@ class DemandeController extends Controller
                     'Nom_mere' => $demandeur->nom_mere,
                     'Nom_pere' => $demandeur->nom_pere ? $demandeur->nom_pere . ' et de ' : '',
                     
+                    // Prix
                     'ContenanceFormatLettre' => $contenanceFormatLettre,
                     'ContenanceFormat' => $contenanceFormat,
                     'Prix' => $prixLettre,
@@ -386,6 +417,7 @@ class DemandeController extends Controller
                     'TotalLettre' => $totalLettre,
                     'PrixCarre' => number_format($prix, 0, ',', '.'),
                     
+                    // Propriété
                     'Nature' => $propriete->nature,
                     'Vocation' => $propriete->vocation,
                     'Situation' => $propriete->situation,
@@ -396,10 +428,18 @@ class DemandeController extends Controller
                     'Titre_mere' => $propriete->titre_mere ?? '',
                     'Titre' => $propriete->titre ?? '',
                     'DateDescente' => $dateDescente,
-                    'Requisition' => $dateRequisition,
-                    'Inscription' => $dateInscription,
-                    'Dep_vol' => $propriete->dep_vol ?? '',
                     
+                    // ✅ DATES MISES À JOUR
+                    'DateRequisition' => $dateRequisition,
+                    'DateDepot1' => $dateDepot1,
+                    'DateDepot2' => $dateDepot2,
+                    'DateApprobation' => $dateApprobation,
+                    
+                    // Dep/Vol
+                    'DepVolInscription' => $propriete->dep_vol_inscription_complet ?? '',
+                    'DepVolRequisition' => $propriete->dep_vol_requisition_complet ?? '',
+                    
+                    // Localisation
                     'Proprietaire' => Str::upper($propriete->proprietaire),
                     'Province' => $place->nom_province,
                     'Region' => $place->nom_region,
@@ -535,6 +575,10 @@ class DemandeController extends Controller
             }
             
         } catch (\Exception $e) {
+            Log::error('Erreur génération document', [
+                'demande_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             
             return back()->withErrors(['error' => 'Erreur lors de la génération: ' . $e->getMessage()]);
         }

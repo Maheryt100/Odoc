@@ -167,7 +167,10 @@ return new class extends Migration
         Schema::create('dossiers', function (Blueprint $table) {
             $table->id();
             $table->string('nom_dossier', 100);
-            $table->string('numero_ouverture', 50)->nullable();
+            
+            // MISE À JOUR: numero_ouverture en unsignedInteger avec unique
+            $table->unsignedInteger('numero_ouverture')->unique();
+            
             $table->date('date_descente_debut');
             $table->date('date_descente_fin');
             $table->string('type_commune', 50);
@@ -208,13 +211,18 @@ return new class extends Migration
             $table->string('type_operation', 50);
             $table->string('vocation', 50)->nullable();
             $table->string('numero_FN', 30)->nullable();
+            
             $table->string('numero_requisition', 50)->nullable();
             $table->date('date_requisition')->nullable();
+            $table->string('dep_vol_requisition', 50)->nullable();
+            $table->string('numero_dep_vol_requisition', 50)->nullable();
+            
             $table->date('date_inscription')->nullable();
+            $table->string('dep_vol_inscription', 50)->nullable();
+            $table->string('numero_dep_vol_inscription', 50)->nullable();
+            
             $table->string('dep_vol', 50)->nullable();
             $table->string('numero_dep_vol', 50)->nullable();
-            
-            
             
             $table->foreignId('id_dossier')->constrained('dossiers')->onDelete('cascade');
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
@@ -227,6 +235,9 @@ return new class extends Migration
             $table->index(['id_dossier', 'lot'], 'idx_proprietes_dossier_lot');
             $table->index(['id_dossier', 'nature'], 'idx_proprietes_dossier_nature');
             $table->index(['id_dossier', 'vocation'], 'idx_proprietes_dossier_vocation');
+            
+            $table->index(['dep_vol_inscription', 'numero_dep_vol_inscription'], 'idx_dep_vol_inscription');
+            $table->index(['dep_vol_requisition', 'numero_dep_vol_requisition'], 'idx_dep_vol_requisition');
         });
 
         // ========================================
@@ -265,27 +276,15 @@ return new class extends Migration
             $table->index(['nom_demandeur', 'prenom_demandeur'], 'idx_demandeurs_nom_complet');
         });
 
-        // Schema::create('consorts', function (Blueprint $table) {
-        //     $table->id();
-        //     $table->boolean('status')->default(true);
-        //     $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
-        //     $table->foreignId('id_consort')->constrained('demandeurs')->onDelete('cascade');
-        //     $table->timestamps();
-            
-        //     $table->unique(['id_demandeur', 'id_consort']);
-        // });
-
         Schema::create('demander', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
             $table->foreignId('id_propriete')->constrained('proprietes')->onDelete('cascade');
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             
-            // ✅ AMÉLIORATION: status avec valeurs enum explicites
             $table->enum('status', ['active', 'archive'])->default('active');
             $table->boolean('status_consort')->default(false);
 
-            // ✅ Ordre du demandeur (1 = principal, 2+ = consorts)
             $table->unsignedTinyInteger('ordre')->default(1);
 
             $table->text('motif_archive')->nullable();
@@ -299,15 +298,6 @@ return new class extends Migration
             $table->index('status');
             $table->index(['id_propriete', 'status']);
         });
-
-        // Schema::create('demande_consorts', function (Blueprint $table) {
-        //     $table->id();
-        //     $table->foreignId('id_demande')->constrained('demander')->onDelete('cascade');
-        //     $table->foreignId('id_consort')->constrained('consorts')->onDelete('cascade');
-        //     $table->timestamps();
-            
-        //     $table->unique(['id_demande', 'id_consort']);
-        // });
 
         Schema::create('contenir', function (Blueprint $table) {
             $table->id();
@@ -380,8 +370,7 @@ return new class extends Migration
             $table->enum('status', ['draft', 'confirmed'])->default('draft');
             $table->timestamps();
             
-            // ✅ AMÉLIORATION: Contrainte unique sur (id_propriete, id_demandeur)
-            // au lieu de unique sur numero_recu seul
+            // Contrainte unique sur (id_propriete, id_demandeur)
             $table->unique(['id_propriete', 'id_demandeur'], 'recu_propriete_demandeur_unique');
             
             // Index pour recherches
@@ -408,16 +397,16 @@ return new class extends Migration
             $table->foreignId('id_district')->constrained('districts')->onDelete('cascade');
             
             // Informations du document
-            $table->string('numero_document', 100)->nullable(); // Numéro reçu, etc.
+            $table->string('numero_document', 100)->nullable();
             $table->string('file_path', 500);
             $table->string('nom_fichier', 255);
-            $table->bigInteger('montant')->nullable(); // Pour les reçus
+            $table->bigInteger('montant')->nullable();
             $table->date('date_document')->nullable();
             
             // Métadonnées
             $table->boolean('has_consorts')->default(false);
-            $table->json('demandeurs_ids')->nullable(); // Liste des IDs demandeurs (pour ADV avec consorts)
-            $table->json('metadata')->nullable(); // Autres infos
+            $table->json('demandeurs_ids')->nullable();
+            $table->json('metadata')->nullable();
             
             // Tracking
             $table->foreignId('generated_by')->constrained('users')->onDelete('cascade');
@@ -433,7 +422,6 @@ return new class extends Migration
             // Index optimisés pour recherche rapide
             $table->index(['id_dossier', 'type_document', 'status'], 'idx_documents_lookup');
             $table->index(['id_propriete', 'type_document', 'status'], 'idx_documents_propriete');
-           
             $table->index(['type_document', 'id_propriete', 'status']);
             $table->index(['type_document', 'id_propriete', 'id_demandeur', 'status']);
             $table->index(['id_dossier', 'type_document']);
@@ -492,7 +480,7 @@ return new class extends Migration
             UPDATE demander 
             SET status = 'active' 
             WHERE status IS NULL 
-            OR status NOT IN ('active', 'archive', 'pending', 'cancelled')
+            OR status NOT IN ('active', 'archive')
         ");
     }
 
@@ -520,9 +508,7 @@ return new class extends Migration
         
         // Relations demandeurs
         Schema::dropIfExists('contenir');
-        // Schema::dropIfExists('demande_consorts');
         Schema::dropIfExists('demander');
-        // Schema::dropIfExists('consorts');
         Schema::dropIfExists('demandeurs');
         
         // Dossiers et propriétés

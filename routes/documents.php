@@ -9,21 +9,23 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Document Generation Routes - VERSION REFACTORISÉE
+| Document Generation Routes - VERSION CORRIGÉE
 |--------------------------------------------------------------------------
+| ✅ Distinction claire entre génération initiale (GET) et régénération (POST)
+| ✅ Tous les documents supportent la régénération
 */
 
 Route::prefix('documents')->name('documents.')->group(function () {
 
     // ========================================================================
-    // PAGE D'INDEX (commune aux deux systèmes)
+    // PAGE D'INDEX (commune)
     // ========================================================================
     Route::get('/generate/{id_dossier}', [DocumentGenerationController::class, 'index'])
         ->middleware('dossier.access:id_dossier')
         ->name('generate');
 
     // ========================================================================
-    // STATISTIQUES (commune)
+    // STATISTIQUES
     // ========================================================================
     Route::get('/stats/{id_dossier}', [DocumentGenerationController::class, 'getStats'])
         ->name('stats');
@@ -34,32 +36,70 @@ Route::prefix('documents')->name('documents.')->group(function () {
 
     // ===== REÇUS =====
     Route::prefix('recu')->name('recu.')->group(function () {
-        Route::get('/', [RecuController::class, 'generate'])->name('generate');
-        Route::get('/{id}/download', [RecuController::class, 'download'])->name('download');
-        Route::post('/{id}/regenerate', [RecuController::class, 'regenerate'])->name('regenerate'); // ✅ AJOUTÉ
-        Route::get('/history/{id_propriete}', [RecuController::class, 'history'])->name('history');
+        // ✅ Génération initiale (GET avec params)
+        Route::get('/', [RecuController::class, 'generate'])
+            ->name('generate');
+        
+        // ✅ Téléchargement (GET avec id)
+        Route::get('/{id}/download', [RecuController::class, 'download'])
+            ->name('download');
+        
+        // ✅ Régénération (POST avec id)
+        Route::post('/{id}/regenerate', [RecuController::class, 'regenerate'])
+            ->name('regenerate');
+        
+        // Historique
+        Route::get('/history/{id_propriete}', [RecuController::class, 'history'])
+            ->name('history');
     });
 
     // ===== ACTES DE VENTE =====
     Route::prefix('acte-vente')->name('acte-vente.')->group(function () {
-        Route::get('/', [ActeVenteController::class, 'generate'])->name('generate');
-        Route::get('/{id}/download', [ActeVenteController::class, 'download'])->name('download');
-        Route::post('/{id}/regenerate', [ActeVenteController::class, 'regenerate'])->name('regenerate'); // ✅ AJOUTÉ (si supporté)
+        // ✅ Génération initiale (GET avec params)
+        Route::get('/', [ActeVenteController::class, 'generate'])
+            ->name('generate');
+        
+        // ✅ Téléchargement (GET avec id)
+        Route::get('/{id}/download', [ActeVenteController::class, 'download'])
+            ->name('download');
+        
+        // ✅ Régénération (POST avec id)
+        Route::post('/{id}/regenerate', [ActeVenteController::class, 'regenerate'])
+            ->name('regenerate');
     });
 
     // ===== CSF =====
     Route::prefix('csf')->name('csf.')->group(function () {
-        Route::get('/', [CertificatController::class, 'generate'])->name('generate');
-        Route::get('/{id}/download', [CertificatController::class, 'download'])->name('download');
-        Route::post('/{id}/regenerate', [CertificatController::class, 'regenerate'])->name('regenerate'); // ✅ AJOUTÉ
-        Route::get('/history/{id_demandeur}', [CertificatController::class, 'history'])->name('history');
+        // ✅ Génération initiale (GET avec params)
+        Route::get('/', [CertificatController::class, 'generate'])
+            ->name('generate');
+        
+        // ✅ Téléchargement (GET avec id)
+        Route::get('/{id}/download', [CertificatController::class, 'download'])
+            ->name('download');
+        
+        // ✅ Régénération (POST avec id)
+        Route::post('/{id}/regenerate', [CertificatController::class, 'regenerate'])
+            ->name('regenerate');
+        
+        // Historique
+        Route::get('/history/{id_demandeur}', [CertificatController::class, 'history'])
+            ->name('history');
     });
 
     // ===== RÉQUISITIONS =====
     Route::prefix('requisition')->name('requisition.')->group(function () {
-        Route::get('/', [RequisitionController::class, 'generate'])->name('generate');
-        Route::get('/{id}/download', [RequisitionController::class, 'download'])->name('download');
-        Route::post('/{id}/regenerate', [RequisitionController::class, 'regenerate'])->name('regenerate'); // ✅ AJOUTÉ
+        // ✅ Génération initiale (GET avec params)
+        Route::get('/', [RequisitionController::class, 'generate'])
+            ->name('generate');
+        
+        // ✅ Téléchargement (GET avec id)
+        Route::get('/{id}/download', [RequisitionController::class, 'download'])
+            ->name('download');
+        
+        // ✅ Régénération (POST avec id)
+        Route::post('/{id}/regenerate', [RequisitionController::class, 'regenerate'])
+            ->name('regenerate');
     });
 
     // ========================================================================
@@ -99,7 +139,7 @@ Route::prefix('documents')->name('documents.')->group(function () {
                 ]);
             })->name('cleanup-obsolete');
 
-            // Vérifier l'intégrité des fichiers (version simple admin)
+            // Vérifier l'intégrité des fichiers
             Route::get('/check-files-integrity', function () {
                 $documents = \App\Models\DocumentGenere::where('status', \App\Models\DocumentGenere::STATUS_ACTIVE)->get();
 
@@ -140,7 +180,12 @@ Route::prefix('documents')->name('documents.')->group(function () {
                     'numero'         => $doc->numero_document,
                     'created'        => $doc->generated_at->format('d/m/Y'),
                     'downloads'      => $doc->download_count,
-                    'can_regenerate' => in_array($doc->type_document, ['RECU', 'CSF', 'REQ']),
+                    'can_regenerate' => in_array($doc->type_document, [
+                        \App\Models\DocumentGenere::TYPE_RECU,
+                        \App\Models\DocumentGenere::TYPE_CSF,
+                        \App\Models\DocumentGenere::TYPE_REQ,
+                        \App\Models\DocumentGenere::TYPE_ADV // ✅ Ajouté
+                    ]),
                 ];
             })
             ->values();
@@ -152,25 +197,19 @@ Route::prefix('documents')->name('documents.')->group(function () {
     })->name('check-files-integrity.detailed');
 
     // ========================================================================
-    // ✅ NOUVEAU : Régénérer un document spécifique (route générique)
+    // ✅ ENDPOINT GÉNÉRIQUE : Régénérer n'importe quel document
     // ========================================================================
     Route::post('/regenerate-document/{id}', function ($id) {
         $document = \App\Models\DocumentGenere::findOrFail($id);
 
-        if ($document->type_document === 'ADV') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Les ADV nécessitent une régénération manuelle',
-            ], 400);
-        }
-
         try {
-            // Déléguer au controller approprié
+            // ✅ Tous les types supportent maintenant la régénération
             $response = match ($document->type_document) {
-                'RECU' => app(RecuController::class)->regenerate($document->id),
-                'CSF'  => app(CertificatController::class)->regenerate($document->id),
-                'REQ'  => app(RequisitionController::class)->regenerate($document->id),
-                default => throw new \Exception('Type non supporté'),
+                \App\Models\DocumentGenere::TYPE_RECU => app(RecuController::class)->regenerate($document->id),
+                \App\Models\DocumentGenere::TYPE_ADV  => app(ActeVenteController::class)->regenerate($document->id),
+                \App\Models\DocumentGenere::TYPE_CSF  => app(CertificatController::class)->regenerate($document->id),
+                \App\Models\DocumentGenere::TYPE_REQ  => app(RequisitionController::class)->regenerate($document->id),
+                default => throw new \Exception('Type de document non supporté : ' . $document->type_document),
             };
 
             return response()->json([
@@ -178,6 +217,12 @@ Route::prefix('documents')->name('documents.')->group(function () {
                 'message' => 'Document régénéré avec succès',
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erreur régénération document', [
+                'document_id' => $id,
+                'type' => $document->type_document,
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),

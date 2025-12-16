@@ -1,10 +1,10 @@
-// pages/proprietes/components/ProprieteTable.tsx - ✅ VERSION AVEC DIALOG
+// pages/proprietes/components/ProprieteTable.tsx - ✅ VERSION AVEC NOM PROPRIÉTÉ
 
-import { useState } from 'react'; // ✅ Ajouter useState
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Archive, ArchiveRestore, LandPlot } from 'lucide-react';
+import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Archive, ArchiveRestore, LandPlot, User } from 'lucide-react';
 import type { ProprieteWithDetails, ProprietesIndexProps } from '../types';
 import type { Propriete } from '@/types';
 import { getRowClassName, isPropertyArchived, hasActiveDemandeurs } from '../helpers';
@@ -32,7 +32,6 @@ export default function ProprieteTable({
     onPageChange
 }: ProprieteTableProps) {
     
-    // ✅ AJOUTER CES STATES
     const [editingPropriete, setEditingPropriete] = useState<ProprieteWithDetails | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -42,7 +41,6 @@ export default function ProprieteTable({
     const paginatedProprietes = proprietes.slice(startIndex, endIndex);
     const totalPages = Math.ceil(proprietes.length / itemsPerPage);
 
-    // ✅ AJOUTER CE HANDLER
     const handleEditClick = (propriete: ProprieteWithDetails) => {
         setEditingPropriete(propriete);
         setIsEditDialogOpen(true);
@@ -72,8 +70,12 @@ export default function ProprieteTable({
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Titre
                             </th>
+                            {/* ✅ CHANGEMENT : Dep/Vol → Nom Propriété/Propriétaire */}
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Dep/Vol
+                                <div className="flex items-center gap-1.5">
+                                    <User className="h-3.5 w-3.5" />
+                                    <span>Propriété/Propriétaire</span>
+                                </div>
                             </th>
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Contenance
@@ -93,7 +95,7 @@ export default function ProprieteTable({
                             const isArchived = isPropertyArchived(propriete);
                             const hasDemandeurs = hasActiveDemandeurs(propriete);
                             const rowClass = getRowClassName(propriete, isIncomplete);
-                            const canModify = !isArchived && !dossier.is_closed; // ✅ Ajouter cette condition
+                            const canModify = !isArchived && !dossier.is_closed;
                             
                             return (
                                 <tr 
@@ -115,8 +117,20 @@ export default function ProprieteTable({
                                     <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {propriete.titre ? `TNº${propriete.titre}` : '-'}
                                     </td>
-                                    <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
-                                        {propriete.dep_vol_complet || propriete.dep_vol || '-'}
+                                    {/* ✅ CHANGEMENT : Affichage du propriétaire */}
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-start gap-2 max-w-[250px]">
+                                            {propriete.proprietaire ? (
+                                                <>
+                                                    {/* <User className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" /> */}
+                                                    <span className="text-sm text-muted-foreground line-clamp-2" title={propriete.proprietaire}>
+                                                        {propriete.proprietaire}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm text-muted-foreground/50">-</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {propriete.contenance ? `${propriete.contenance} m²` : '-'}
@@ -156,7 +170,6 @@ export default function ProprieteTable({
                                                 </DropdownMenuItem>
                                                 {!dossier.is_closed && (
                                                     <>
-                                                        {/* ✅ REMPLACER LE LIEN PAR UN BOUTON DIALOG */}
                                                         <DropdownMenuItem 
                                                             onClick={() => handleEditClick(propriete)}
                                                             disabled={!canModify}
@@ -242,7 +255,7 @@ export default function ProprieteTable({
                 </div>
             )}
 
-            {/* ✅ AJOUTER LE DIALOG D'ÉDITION */}
+            {/* Dialog d'édition */}
             <EditProprieteDialog
                 propriete={editingPropriete}
                 dossier={dossier}

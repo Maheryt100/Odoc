@@ -34,7 +34,7 @@ trait HandlesDocumentGeneration
                 'success' => false,
                 'error' => 'file_missing',
                 'message' => "Le fichier {$typeName} est introuvable ou endommagé",
-                'details' => $fileStatus['error'],
+                'details' => $fileStatus['error'], 
                 'document' => [
                     'id' => $document->id,
                     'type' => $document->type_document,
@@ -44,7 +44,8 @@ trait HandlesDocumentGeneration
                 'can_regenerate' => in_array($document->type_document, [
                     DocumentGenere::TYPE_RECU,
                     DocumentGenere::TYPE_CSF,
-                    DocumentGenere::TYPE_REQ
+                    DocumentGenere::TYPE_REQ,
+                    DocumentGenere::TYPE_ADV, 
                 ]),
             ], 404);
         }
@@ -232,5 +233,23 @@ trait HandlesDocumentGeneration
             DocumentGenere::TYPE_REQ => ActivityLog::DOC_REQUISITION,
             default => 'document'
         };
+    }
+
+    /**
+     * Formater le Dep/Vol complet avec numéro
+     */
+    protected function formatDepVolComplet(?string $dep_vol, ?string $numero_dep_vol): string
+    {
+        if (!$dep_vol) {
+            return 'Non renseigné';
+        }
+        
+        $result = trim($dep_vol);
+        
+        if ($numero_dep_vol) {
+            $result .= ' n°' . trim($numero_dep_vol);
+        }
+        
+        return $result;
     }
 }

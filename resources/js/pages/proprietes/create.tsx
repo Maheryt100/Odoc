@@ -1,12 +1,12 @@
 // pages/proprietes/create.tsx
-// ✅ VERSION REDESIGNÉE - Style moderne cohérent
+// ✅ VERSION AVEC NOUVELLES DATES
 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, FileText, MapPin, Calendar, Layers, Shield } from 'lucide-react';
+import { Trash2, FileText, MapPin, Calendar, Layers, Shield, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import type { ProprieteFormProps, ProprieteFormData } from '@/pages/proprietes/types';
@@ -26,7 +26,7 @@ export default function ProprieteCreate({
 }: ProprieteFormProps) {
     return (
         <div className="space-y-8">
-            {/* ✅ HEADER avec badge numéro */}
+            {/* HEADER avec badge numéro */}
             {showRemoveButton && onRemove && (
                 <div className="flex justify-between items-center pb-6 border-b-2 border-violet-200 dark:border-violet-800">
                     <div className="flex items-center gap-3">
@@ -50,7 +50,7 @@ export default function ProprieteCreate({
                 </div>
             )}
 
-            {/* ✅ SECTION TYPE D'OPÉRATION - Style bleu */}
+            {/* SECTION TYPE D'OPÉRATION */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-blue-200 dark:border-blue-800">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -81,7 +81,7 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* ✅ SECTION IDENTIFICATION DU LOT - Style vert */}
+            {/* SECTION IDENTIFICATION DU LOT */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-green-200 dark:border-green-800">
                     <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -142,7 +142,7 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* ✅ SECTION PROPRIÉTAIRE & TITRES - Style violet */}
+            {/* SECTION PROPRIÉTAIRE & TITRES */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-purple-200 dark:border-purple-800">
                     <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
@@ -200,7 +200,7 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* ✅ SECTION DÉTAILS & RÉFÉRENCES - Style indigo */}
+            {/* SECTION DÉTAILS & RÉFÉRENCES */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-200 dark:border-indigo-800">
                     <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -271,7 +271,7 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* ✅ SECTION LOCALISATION & DATES - Style orange */}
+            {/* ✅ NOUVELLE SECTION : DATES */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
                     <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
@@ -279,66 +279,162 @@ export default function ProprieteCreate({
                     </div>
                     <div>
                         <h4 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
-                            Localisation & Dates
+                            Localisation
                         </h4>
-                        <p className="text-xs text-muted-foreground">Situation géographique et dates administratives</p>
+                        <p className="text-xs text-muted-foreground">Situation géographique</p>
                     </div>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-3">
-                    <div className="space-y-2 md:col-span-3">
-                        <Label className="text-sm font-medium">Situation (sise à)</Label>
-                        <Input
-                            value={data.situation}
-                            onChange={(e) => onChange('situation', e.target.value)}
-                            placeholder="Ambohimanarina, Antananarivo"
-                            className="h-11"
-                        />
+                <div className="space-y-2">
+                    <Label className="text-sm font-medium">Situation (sise à)</Label>
+                    <Input
+                        value={data.situation}
+                        onChange={(e) => onChange('situation', e.target.value)}
+                        placeholder="Ambohimanarina, Antananarivo"
+                        className="h-11"
+                    />
+                </div>
+            </div>
+
+            {/* ✅ BLOC DATES DE DÉPÔT */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-sky-200 dark:border-sky-800">
+                    <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
+                        <Calendar className="h-5 w-5 text-sky-600 dark:text-sky-400" />
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                            <Calendar className="h-3 w-3" />
-                            Date inscription
-                        </Label>
-                        <Input
-                            type="date"
-                            value={data.date_inscription}
-                            onChange={(e) => onChange('date_inscription', e.target.value)}
-                            className="h-11"
-                        />
+                    <div>
+                        <h4 className="text-lg font-semibold text-sky-900 dark:text-sky-100">
+                            Dates de dépôt
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Dates de dépôt inscription et réquisition</p>
                     </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                    <div className="p-4 border-2 rounded-xl bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                Dépôt 1
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">Inscription</span>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Date dépôt 1</Label>
+                                <Input
+                                    type="date"
+                                    value={data.date_depot_1}
+                                    onChange={(e) => onChange('date_depot_1', e.target.value)}
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Dep Vol</Label>
+                                <Input
+                                    value={data.dep_vol_inscription}
+                                    onChange={(e) => onChange('dep_vol_inscription', e.target.value)}
+                                    placeholder="254"
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Numéro Dep Vol</Label>
+                                <Input
+                                    value={data.numero_dep_vol_inscription}
+                                    onChange={(e) => onChange('numero_dep_vol_inscription', e.target.value)}
+                                    placeholder="054"
+                                    className="h-11"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 border-2 rounded-xl bg-gradient-to-br from-purple-50/70 to-pink-50/70 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                                Dépôt 2
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">Réquisition</span>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Date dépôt 2</Label>
+                                <Input
+                                    type="date"
+                                    value={data.date_depot_2}
+                                    onChange={(e) => onChange('date_depot_2', e.target.value)}
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Dep Vol</Label>
+                                <Input
+                                    value={data.dep_vol_requisition}
+                                    onChange={(e) => onChange('dep_vol_requisition', e.target.value)}
+                                    placeholder="299"
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Numéro Dep Vol</Label>
+                                <Input
+                                    value={data.numero_dep_vol_requisition}
+                                    onChange={(e) => onChange('numero_dep_vol_requisition', e.target.value)}
+                                    placeholder="041"
+                                    className="h-11"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ✅ BLOC DATES ADMINISTRATIVES */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3 pb-3 border-b-2 border-emerald-200 dark:border-emerald-800">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                        <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+                            Dates administratives
+                        </h4>
+                        <p className="text-xs text-muted-foreground">Dates de réquisition et d'approbation</p>
+                    </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                            <Calendar className="h-3 w-3" />
-                            Date requisition
-                        </Label>
+                        <Label className="text-sm font-medium">Date réquisition</Label>
                         <Input
                             type="date"
                             value={data.date_requisition}
                             onChange={(e) => onChange('date_requisition', e.target.value)}
                             className="h-11"
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Date officielle de la réquisition foncière
+                        </p>
                     </div>
-                </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium">Dep Vol</Label>
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                            Date approbation acte
+                            <Badge variant="destructive" className="text-[10px] px-1 py-0">
+                                Obligatoire
+                            </Badge>
+                        </Label>
                         <Input
-                            value={data.dep_vol}
-                            onChange={(e) => onChange('dep_vol', e.target.value)}
-                            placeholder="299"
-                            className="h-11"
+                            type="date"
+                            value={data.date_approbation_acte}
+                            onChange={(e) => onChange('date_approbation_acte', e.target.value)}
+                            className="h-11 border-emerald-300 dark:border-emerald-700"
+                            min={data.date_requisition || undefined}
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-sm font-medium">Numéro Dep Vol</Label>
-                        <Input
-                            value={data.numero_dep_vol}
-                            onChange={(e) => onChange('numero_dep_vol', e.target.value)}
-                            placeholder="041"
-                            className="h-11"
-                        />
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Requis pour générer le document Word
+                        </p>
                     </div>
                 </div>
             </div>

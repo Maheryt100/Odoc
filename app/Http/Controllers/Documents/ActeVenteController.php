@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Documents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Propriete;
-use App\Models\Demandeur;
-use App\Models\Demander;
 use App\Models\DocumentGenere;
 use App\Models\ActivityLog;
 use App\Services\ActivityLogger;
@@ -25,6 +23,9 @@ class ActeVenteController extends Controller
 {
     use HandlesDocumentGeneration, ValidatesDocumentData, FormatsDocumentData;
 
+    /**
+     * ✅ GÉNÉRATION INITIALE (GET)
+     */
     public function generate(Request $request)
     {
         $request->validate([
@@ -35,7 +36,7 @@ class ActeVenteController extends Controller
         try {
             $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
 
-            // ✅ MODIFICATION : Récupérer le document reçu
+            // ✅ VÉRIFICATION OBLIGATOIRE DU REÇU
             $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
                 ->where('id_propriete', $request->id_propriete)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -43,22 +44,24 @@ class ActeVenteController extends Controller
                 ->first();
 
             if (!$documentRecu) {
-                return back()->withErrors([
-                    'error' => 'Vous devez d\'abord générer le reçu de paiement.'
-                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'recu_required',
+                    'message' => 'Vous devez d\'abord générer le reçu de paiement.',
+                ], 400);
             }
 
+            // ✅ Vérifier si ADV existe déjà
             $documentExistant = DocumentGenere::where('type_document', DocumentGenere::TYPE_ADV)
                 ->where('id_propriete', $request->id_propriete)
                 ->where('id_district', $propriete->dossier->id_district)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
                 ->first();
 
-            if ($documentExistant && $documentExistant->fileExists()) {
+            if ($documentExistant) {
                 return $this->downloadExisting($documentExistant, 'acte de vente');
             }
 
-            // ✅ MODIFICATION : Passer le reçu à la méthode
             return $this->createNewActeVente($propriete, $request->id_demandeur, $documentRecu);
 
         } catch (\Exception $e) {
@@ -66,17 +69,29 @@ class ActeVenteController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return back()->withErrors(['error' => $e->getMessage()]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'generation_error',
+                'message' => 'Erreur lors de la génération : ' . $e->getMessage(),
+            ], 500);
         }
     }
 
+    /**
+     * ✅ TÉLÉCHARGEMENT (GET)
+     */
     public function download($id)
     {
         try {
             $document = DocumentGenere::findOrFail($id);
 
             if ($document->type_document !== DocumentGenere::TYPE_ADV) {
-                return back()->withErrors(['error' => 'Ce document n\'est pas un acte de vente']);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'invalid_type',
+                    'message' => 'Ce document n\'est pas un acte de vente',
+                ], 400);
             }
 
             return $this->downloadExisting($document, 'acte de vente');
@@ -86,16 +101,82 @@ class ActeVenteController extends Controller
                 'id' => $id,
                 'error' => $e->getMessage()
             ]);
-            return back()->withErrors(['error' => 'Impossible de télécharger: ' . $e->getMessage()]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'download_error',
+                'message' => 'Impossible de télécharger : ' . $e->getMessage(),
+            ], 500);
         }
     }
 
-    // ✅ MODIFICATION : Ajouter paramètre $documentRecu
-    private function createNewActeVente(Propriete $propriete, int $idDemandeur, DocumentGenere $documentRecu)
+    /**
+     * ✅ RÉGÉNÉRATION (POST) - CORRECTION PRINCIPALE
+     */
+    public function regenerate($id)
     {
+        try {
+            $document = DocumentGenere::findOrFail($id);
+
+            if ($document->type_document !== DocumentGenere::TYPE_ADV) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'invalid_type',
+                    'message' => 'Ce document n\'est pas un acte de vente',
+                ], 400);
+            }
+
+            $propriete = $document->propriete()->with('dossier.district')->first();
+            if (!$propriete) {
+                throw new \Exception("Propriété introuvable");
+            }
+
+            // ✅ CORRECTION : RÉCUPÉRER LE REÇU OBLIGATOIREMENT
+            $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
+                ->where('id_propriete', $propriete->id)
+                ->where('id_district', $propriete->dossier->id_district)
+                ->where('status', DocumentGenere::STATUS_ACTIVE)
+                ->first();
+
+            if (!$documentRecu) {
+                Log::warning('⚠️ Régénération ADV sans reçu', [
+                    'document_id' => $document->id,
+                    'propriete_id' => $propriete->id,
+                ]);
+                
+                // ✅ Permet la régénération mais log un warning
+                // Le template affichera 'N/A' pour les données manquantes
+            }
+
+            return $this->regenerateActeVente($document, $propriete, $documentRecu);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Erreur régénération ADV', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'regeneration_error',
+                'message' => 'Erreur lors de la régénération : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ CRÉER UN NOUVEAU ADV
+     */
+    private function createNewActeVente(
+        Propriete $propriete, 
+        int $idDemandeur, 
+        DocumentGenere $documentRecu
+    ) {
         DB::beginTransaction();
 
         try {
+            // Double-check atomique
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_ADV)
                 ->where('id_propriete', $propriete->id)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -108,13 +189,14 @@ class ActeVenteController extends Controller
                 return $this->downloadExisting($existingDoc, 'acte de vente');
             }
 
+            // Charger tous les demandeurs
             $tousLesDemandeurs = $propriete->demandesActives()
                 ->with('demandeur')
                 ->orderBy('ordre', 'asc')
                 ->get();
 
             if ($tousLesDemandeurs->isEmpty()) {
-                throw new \Exception("Aucun demandeur actif trouvé pour cette propriété");
+                throw new \Exception("Aucun demandeur actif trouvé");
             }
 
             $hasConsorts = $tousLesDemandeurs->count() > 1;
@@ -124,16 +206,20 @@ class ActeVenteController extends Controller
                 throw new \Exception("Demandeur principal introuvable");
             }
 
-            if ($hasConsorts) {
-                $errors = $this->validateConsortsData($tousLesDemandeurs);
-            } else {
-                $errors = $this->validateActeVenteData($propriete, $demandeurPrincipal->demandeur);
-            }
-
+            // Validation
+            $errors = $hasConsorts 
+                ? $this->validateConsortsData($tousLesDemandeurs)
+                : $this->validateActeVenteData($propriete, $demandeurPrincipal->demandeur);
+            
             $this->validateOrThrow($errors);
 
-            // ✅ MODIFICATION : Passer le reçu au template
-            $tempFilePath = $this->createActeVenteDocument($propriete, $tousLesDemandeurs, $hasConsorts, $documentRecu);
+            // ✅ Créer le document avec le reçu
+            $tempFilePath = $this->createActeVenteDocument(
+                $propriete, 
+                $tousLesDemandeurs, 
+                $hasConsorts, 
+                $documentRecu
+            );
 
             $savedPath = $this->saveDocument($tempFilePath, 'ADV', $propriete, $demandeurPrincipal->demandeur);
             $nomFichier = basename($savedPath);
@@ -151,6 +237,10 @@ class ActeVenteController extends Controller
                 'generated_by' => Auth::id(),
                 'generated_at' => now(),
                 'status' => DocumentGenere::STATUS_ACTIVE,
+                'metadata' => [
+                    'recu_id' => $documentRecu->id,
+                    'recu_numero' => $documentRecu->numero_document,
+                ],
             ]);
 
             DB::commit();
@@ -159,6 +249,12 @@ class ActeVenteController extends Controller
                 'lot' => $propriete->lot,
                 'has_consorts' => $hasConsorts,
                 'nb_demandeurs' => $tousLesDemandeurs->count(),
+            ]);
+
+            Log::info('✅ ADV créé', [
+                'document_id' => $document->id,
+                'propriete_id' => $propriete->id,
+                'has_consorts' => $hasConsorts,
             ]);
 
             return response()->download($tempFilePath, $nomFichier)->deleteFileAfterSend(true);
@@ -173,12 +269,93 @@ class ActeVenteController extends Controller
         }
     }
 
-    // ✅ MODIFICATION : Ajouter paramètre $documentRecu
+    /**
+     * ✅ RÉGÉNÉRER UN ADV EXISTANT - CORRECTION PRINCIPALE
+     */
+    private function regenerateActeVente(
+        DocumentGenere $document, 
+        Propriete $propriete, 
+        ?DocumentGenere $documentRecu
+    ) {
+        DB::beginTransaction();
+
+        try {
+            Log::info('🔄 Régénération ADV', [
+                'document_id' => $document->id,
+                'has_recu' => !!$documentRecu,
+            ]);
+
+            // Charger les demandeurs
+            $tousLesDemandeurs = $propriete->demandesActives()
+                ->with('demandeur')
+                ->orderBy('ordre', 'asc')
+                ->get();
+
+            if ($tousLesDemandeurs->isEmpty()) {
+                throw new \Exception("Aucun demandeur actif trouvé");
+            }
+
+            $hasConsorts = $tousLesDemandeurs->count() > 1;
+
+            // ✅ Recréer le fichier AVEC le reçu
+            $tempFilePath = $this->createActeVenteDocument(
+                $propriete, 
+                $tousLesDemandeurs, 
+                $hasConsorts, 
+                $documentRecu // ✅ CORRECTION : Passer le reçu
+            );
+
+            if (!file_exists($tempFilePath)) {
+                throw new \Exception("Échec création fichier temporaire");
+            }
+
+            // Sauvegarder
+            $savedPath = $this->saveDocument($tempFilePath, 'ADV', $propriete);
+
+            // Mettre à jour le document
+            $document->update([
+                'file_path' => $savedPath,
+                'metadata' => array_merge($document->metadata ?? [], [
+                    'recu_id' => $documentRecu?->id,
+                    'recu_numero' => $documentRecu?->numero_document,
+                    'last_regenerated_at' => now()->toIso8601String(),
+                ]),
+            ]);
+            
+            $document->incrementRegenerationCount();
+
+            DB::commit();
+
+            Log::info('✅ Régénération ADV réussie', [
+                'document_id' => $document->id,
+                'recu_linked' => !!$documentRecu,
+            ]);
+
+            ActivityLogger::logDocumentDownload(ActivityLog::DOC_ACTE_VENTE, $document->id, [
+                'action_type' => 'regenerate',
+                'recu_linked' => !!$documentRecu,
+            ]);
+
+            return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Erreur régénération ADV', [
+                'document_id' => $document->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * ✅ CRÉER LE DOCUMENT WORD
+     */
     private function createActeVenteDocument(
         Propriete $propriete, 
         $tousLesDemandeurs, 
         bool $hasConsorts,
-        DocumentGenere $documentRecu
+        ?DocumentGenere $documentRecu
     ): string {
         Carbon::setLocale('fr');
         $formatter = new NumberFormatter('fr', NumberFormatter::SPELLOUT);
@@ -186,31 +363,73 @@ class ActeVenteController extends Controller
         $dossier = $propriete->dossier;
         $type_operation = $propriete->type_operation;
 
+        // Calculs de prix
         $prix = $this->getPrixFromDistrict($propriete);
         $prixLettre = $this->formatMontantEnLettres($prix);
         $prixTotal = $prix * $propriete->contenance;
         $totalLettre = $this->formatMontantEnLettres($prixTotal);
 
-        $contenanceData = $this->formatContenance((int) $propriete->contenance);
+        // ✅ DATES (après les calculs de prix)
+        $dateRequisition = $propriete->date_requisition 
+            ? $this->formatDateDocument(Carbon::parse($propriete->date_requisition))
+            : 'Non renseignée';
 
+        $dateDepot1 = $propriete->date_depot_1
+            ? $this->formatDateDocument(Carbon::parse($propriete->date_depot_1))
+            : 'Non renseignée';
+
+        $dateDepot2 = $propriete->date_depot_2
+            ? $this->formatDateDocument(Carbon::parse($propriete->date_depot_2))
+            : 'Non renseignée';
+
+        $dateApprobation = $propriete->date_approbation_acte
+            ? $this->formatDateDocument(Carbon::parse($propriete->date_approbation_acte))
+            : 'Non renseignée';
+
+        // ✅ DEP/VOL
+        $depVolInscription = $this->formatDepVolComplet(
+            $propriete->dep_vol_inscription,
+            $propriete->numero_dep_vol_inscription
+        );
+
+        $depVolRequisition = $this->formatDepVolComplet(
+            $propriete->dep_vol_requisition,
+            $propriete->numero_dep_vol_requisition
+        );
+
+
+        $contenanceData = $this->formatContenance((int) $propriete->contenance);
         $locationData = $this->getLocationData($propriete);
         $articles = $this->getArticles($locationData['district'], $dossier->commune);
 
+        // Dates
         $dateDescente = $this->formatPeriodeDates(
             Carbon::parse($dossier->date_descente_debut),
             Carbon::parse($dossier->date_descente_fin)
         );
-        $dateRequisition = $this->formatDateDocument($propriete->date_requisition ? Carbon::parse($propriete->date_requisition) : null);
-        $dateInscription = $this->formatDateDocument($propriete->date_inscription ? Carbon::parse($propriete->date_inscription) : null);
+        $dateRequisition = $this->formatDateDocument(
+            $propriete->date_requisition ? Carbon::parse($propriete->date_requisition) : null
+        );
+        // $dateInscription = $this->formatDateDocument(
+        //     $propriete->date_inscription ? Carbon::parse($propriete->date_inscription) : null
+        // );
 
-        // ✅ AJOUT : Données du reçu
-        $numeroQuittance = $documentRecu->numero_document ?? 'N/A';
-        $dateQuittance = $documentRecu->date_document 
+        // ✅ DONNÉES DU REÇU (avec fallback sécurisé)
+        $numeroQuittance = $documentRecu?->numero_document ?? 'N/A';
+        $dateQuittance = $documentRecu && $documentRecu->date_document
             ? $this->formatDateDocument(Carbon::parse($documentRecu->date_document))
             : 'N/A';
 
+        Log::info('📄 Création ADV', [
+            'type_operation' => $type_operation,
+            'has_consorts' => $hasConsorts,
+            'nb_demandeurs' => $tousLesDemandeurs->count(),
+            'recu_numero' => $numeroQuittance,
+            'recu_date' => $dateQuittance,
+        ]);
+
         if (!$hasConsorts) {
-            // SANS CONSORT
+            // ========== SANS CONSORT ==========
             $demandeur = $tousLesDemandeurs->first()->demandeur;
 
             $templatePath = $type_operation == 'morcellement'
@@ -218,7 +437,7 @@ class ActeVenteController extends Controller
                 : storage_path('app/public/modele_odoc/sans_consort/immatriculation.docx');
 
             if (!file_exists($templatePath)) {
-                throw new \Exception("Template ADV sans consort introuvable");
+                throw new \Exception("Template ADV sans consort introuvable: {$templatePath}");
             }
 
             $modele = new TemplateProcessor($templatePath);
@@ -241,15 +460,18 @@ class ActeVenteController extends Controller
                 'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
                 'Titre' => $propriete->titre,
                 'DateDescente' => $dateDescente,
-                'Requisition' => $dateRequisition ?: 'Non renseignée',
-                'Inscription' => $dateInscription ?: 'Non renseignée',
+                'Requisition' => $dateRequisition,
+                'DateDepot1' => $dateDepot1,
+                'DateDepot2' => $dateDepot2,
+                'DateApprobation' => $dateApprobation,
+                'DepVolInscription' => $depVolInscription,
+                'DepVolRequisition' => $depVolRequisition,
                 'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
                 'Proprietaire' => Str::upper($propriete->proprietaire),
                 'Province' => $locationData['province'],
                 'Region' => $locationData['region'],
                 'District' => $locationData['district'],
                 'DISTRICT' => $locationData['DISTRICT'],
-                // ✅ AJOUT : Variables quittance
                 'NumeroQuittance' => $numeroQuittance,
                 'DateQuittance' => $dateQuittance,
             ], $demandeurData, $articles));
@@ -257,13 +479,13 @@ class ActeVenteController extends Controller
             $fileName = 'ADV_' . uniqid() . '_' . Str::slug($demandeur->nom_demandeur) . '.docx';
 
         } else {
-            // AVEC CONSORTS
+            // ========== AVEC CONSORTS ==========
             $templatePath = $type_operation == 'morcellement'
                 ? storage_path('app/public/modele_odoc/avec_consort/morcellement.docx')
                 : storage_path('app/public/modele_odoc/avec_consort/immatriculation.docx');
 
             if (!file_exists($templatePath)) {
-                throw new \Exception("Template ADV avec consorts introuvable");
+                throw new \Exception("Template ADV avec consorts introuvable: {$templatePath}");
             }
 
             $modele = new TemplateProcessor($templatePath);
@@ -275,7 +497,6 @@ class ActeVenteController extends Controller
             foreach ($tousLesDemandeurs as $key => $demande) {
                 $n = $key + 1;
                 $dmdr = $demande->demandeur;
-
                 $demandeurData = $this->buildDemandeurDataWithIndex($dmdr, $n);
                 $modele->setValues($demandeurData);
             }
@@ -297,15 +518,18 @@ class ActeVenteController extends Controller
                 'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
                 'Titre' => $propriete->titre,
                 'Date_descente' => $dateDescente,
-                'Requisition' => $dateRequisition ?: 'Non renseignée',
-                'Inscription' => $dateInscription ?: 'Non renseignée',
+                'Requisition' => $dateRequisition,
+                'DateDepot1' => $dateDepot1,
+                'DateDepot2' => $dateDepot2,
+                'DateApprobation' => $dateApprobation,
+                'DepVolInscription' => $depVolInscription,
+                'DepVolRequisition' => $depVolRequisition,
                 'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
                 'Proprietaire' => Str::upper($propriete->proprietaire),
                 'Province' => $locationData['province'],
                 'Region' => $locationData['region'],
                 'District' => $locationData['district'],
                 'DISTRICT' => $locationData['DISTRICT'],
-                // ✅ AJOUT : Variables quittance
                 'NumeroQuittance' => $numeroQuittance,
                 'DateQuittance' => $dateQuittance,
             ], $articles));
@@ -317,8 +541,17 @@ class ActeVenteController extends Controller
         $filePath = sys_get_temp_dir() . '/' . $fileName;
         $modele->saveAs($filePath);
 
+        Log::info('✅ Document ADV créé', [
+            'path' => $filePath,
+            'size' => filesize($filePath),
+        ]);
+
         return $filePath;
     }
+
+    // ========================================================================
+    // MÉTHODES HELPER (inchangées)
+    // ========================================================================
 
     private function buildDemandeurData($demandeur): array
     {
@@ -334,7 +567,9 @@ class ActeVenteController extends Controller
             'Lieu_delivrance' => $demandeur->lieu_delivrance,
             'Domiciliation' => $demandeur->domiciliation,
             'Nationalite' => $demandeur->nationalite,
-            'Date_mariage' => $demandeur->date_mariage ? 'le ' . $this->formatDateDocument(Carbon::parse($demandeur->date_mariage)) : '',
+            'Date_mariage' => $demandeur->date_mariage 
+                ? 'le ' . $this->formatDateDocument(Carbon::parse($demandeur->date_mariage)) 
+                : '',
             'Lieu_mariage' => $demandeur->lieu_mariage ? ' à ' . $demandeur->lieu_mariage . ', ' : '',
             'Nom_mere' => $demandeur->nom_mere,
             'Nom_pere' => $this->formatNomParents($demandeur->nom_pere, $demandeur->nom_mere),
@@ -362,39 +597,5 @@ class ActeVenteController extends Controller
         $indexedData['ET#' . $index] = ($index == 1) ? 'ET - ' : '';
 
         return $indexedData;
-    }
-
-    public function regenerate($id)
-    {
-        try {
-            $document = DocumentGenere::findOrFail($id);
-
-            if ($document->type_document !== DocumentGenere::TYPE_ADV) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'invalid_type',
-                    'message' => 'Ce document n\'est pas un acte de vente',
-                ], 400);
-            }
-
-            return response()->json([
-                'success' => false,
-                'error' => 'regeneration_not_supported',
-                'message' => 'Les Actes de Vente nécessitent une validation manuelle en raison des consorts',
-                'details' => 'Veuillez générer un nouvel acte depuis l\'interface principale',
-            ], 400);
-
-        } catch (\Exception $e) {
-            Log::error('❌ Erreur régénération ADV', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'regeneration_error',
-                'message' => 'Erreur lors de la tentative de régénération',
-            ], 500);
-        }
     }
 }

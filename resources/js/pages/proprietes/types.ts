@@ -1,21 +1,10 @@
-// pages/proprietes/types.ts - ✅ VERSION CORRIGÉE ET COMPLÈTE
+// pages/proprietes/types.ts - ✅ CORRECTION FINALE
 
 import type { Dossier, Demandeur, Nature, Vocation, TypeOperation, Propriete } from '@/types';
 
-/**
- * ✅ Type pour les filtres de statut
- */
 export type FiltreStatutProprieteType = 'tous' | 'actives' | 'acquises' | 'sans_demandeur';
-
-/**
- * ✅ Type pour les options de tri
- */
 export type TriProprieteType = 'date' | 'lot' | 'contenance' | 'statut';
 
-/**
- * ✅ Propriété avec détails complets et calculs
- * CORRECTION : Type maintenant défini et exporté
- */
 export interface ProprieteWithDetails extends Propriete {
     demandeurs?: Demandeur[];
     _computed?: {
@@ -25,9 +14,6 @@ export interface ProprieteWithDetails extends Propriete {
     };
 }
 
-/**
- * ✅ Props pour ProprietesIndex
- */
 export interface ProprietesIndexProps {
     proprietes: Propriete[];
     dossier: Dossier;
@@ -47,7 +33,7 @@ export interface ProprietesIndexProps {
 }
 
 /**
- * Données du formulaire de propriété
+ * ✅ STRUCTURE FINALE DES DATES
  */
 export interface ProprieteFormData {
     lot: string;
@@ -63,16 +49,24 @@ export interface ProprieteFormData {
     charge: string;
     numero_FN: string;
     numero_requisition: string;
-    date_requisition: string;
-    date_inscription: string;
-    dep_vol: string;
-    numero_dep_vol: string;
-    id_dossier?: number;
+    
+    // ✅ DATES (aligné avec migration)
+    date_requisition: string;        // Date réquisition officielle
+    date_depot_1: string;            // Date dépôt inscription (ex date_inscription)
+    date_depot_2: string;            // Date dépôt réquisition (NOUVEAU)
+    date_approbation_acte: string;   // Date approbation (OBLIGATOIRE pour doc)
+
+    // Dep/Vol Inscription (dépôt 1)
+    dep_vol_inscription: string;
+    numero_dep_vol_inscription: string;
+    
+    // Dep/Vol Réquisition (dépôt 2)
+    dep_vol_requisition: string;
+    numero_dep_vol_requisition: string;
+
+    id_dossier: number;  // ✅ CORRECTION : obligatoire, pas optionnel
 }
 
-/**
- * Props du composant de formulaire de propriété
- */
 export interface ProprieteFormProps {
     data: ProprieteFormData;
     onChange: (field: keyof ProprieteFormData, value: string) => void;
@@ -83,18 +77,12 @@ export interface ProprieteFormProps {
     onChargeChange?: (charge: string, checked: boolean) => void;
 }
 
-/**
- * Props pour la page de mise à jour
- */
 export interface ProprieteUpdatePageProps {
     propriete: ProprieteWithDetails;
     dossier: Dossier;
     [key: string]: unknown;
 }
 
-/**
- * Options de charges disponibles
- */
 export const CHARGE_OPTIONS = [
     "Voie(s) publique(s)",
     "Voie(s) d'accès",
@@ -103,7 +91,7 @@ export const CHARGE_OPTIONS = [
 ] as const;
 
 /**
- * Propriété vide pour initialisation
+ * ✅ PROPRIÉTÉ VIDE - CORRECTION
  */
 export const EMPTY_PROPRIETE: ProprieteFormData = {
     lot: '',
@@ -120,7 +108,12 @@ export const EMPTY_PROPRIETE: ProprieteFormData = {
     numero_FN: '',
     numero_requisition: '',
     date_requisition: '',
-    date_inscription: '',
-    dep_vol: '',
-    numero_dep_vol: ''
+    date_depot_1: '',             // ✅ CORRECTION : pas date_inscription
+    date_depot_2: '',
+    date_approbation_acte: '',
+    dep_vol_inscription: '',
+    numero_dep_vol_inscription: '',
+    dep_vol_requisition: '',
+    numero_dep_vol_requisition: '',
+    id_dossier: 0  // ✅ CORRECTION : valeur par défaut
 };

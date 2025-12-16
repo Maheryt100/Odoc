@@ -1,21 +1,23 @@
-// proprietes/components/ProprieteDetailDialog.tsx - ✅ VERSION CORRIGÉE
+// proprietes/components/ProprieteDetailDialog.tsx
+// ✅ VERSION FINALE OPTIMISÉE AVEC NOUVELLES DATES
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
     Home, MapPin, FileText, Hash, Calendar, Users, Archive, 
-    AlertCircle, Unlink, Pencil, Landmark, Scale, Flag,
-    MapPinned, Ruler, FileCheck, Building2, CreditCard
+    AlertCircle, Unlink, Landmark, Scale, Flag,
+    MapPinned, Ruler, FileCheck, Building2, CreditCard, CheckCircle2
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Propriete {
     id: number;
     lot: string;
     titre?: string;
-    titre_complet?: string;  // ✅ Utiliser l'accessor Laravel
+    titre_complet?: string;
     type_operation: string;
     contenance?: number;
     proprietaire?: string;
@@ -27,13 +29,28 @@ interface Propriete {
     charge?: string;
     numero_FN?: string;
     numero_requisition?: string;
+    
+    // ✅ DATES CORRIGÉES
     date_requisition?: string;
-    date_inscription?: string;
-    dep_vol?: string;
-    numero_dep_vol?: string;
-    dep_vol_complet?: string;  // ✅ Utiliser l'accessor Laravel
+    date_depot_1?: string;              // ✅ Ancien date_inscription
+    date_depot_2?: string;              // ✅ NOUVEAU
+    date_approbation_acte?: string;     // ✅ NOUVEAU
+    
+    // Dep/Vol
+    dep_vol_inscription?: string;
+    numero_dep_vol_inscription?: string;
+    dep_vol_inscription_complet?: string;
+    dep_vol_requisition?: string;
+    numero_dep_vol_requisition?: string;
+    dep_vol_requisition_complet?: string;
+    
+    // Status
     is_archived?: boolean;
     status_label?: string;
+    can_generate_document?: boolean;
+    document_block_reason?: string;
+    
+    // Relations
     demandes?: Array<{
         id: number;
         ordre: number;
@@ -176,7 +193,6 @@ export default function ProprieteDetailDialog({
                             </DialogTitle>
                             
                             <div className="flex flex-wrap items-center gap-2 ml-14">
-                                {/* ✅ Utiliser titre_complet si disponible */}
                                 {propriete.titre_complet && (
                                     <Badge variant="outline" className="font-mono text-sm">
                                         {propriete.titre_complet}
@@ -205,6 +221,19 @@ export default function ProprieteDetailDialog({
                                         Sans demandeur
                                     </Badge>
                                 )}
+                                
+                                {/* ✅ Badge statut document */}
+                                {propriete.can_generate_document ? (
+                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
+                                        <CheckCircle2 className="mr-1 h-3 w-3" />
+                                        Prêt pour document
+                                    </Badge>
+                                ) : propriete.document_block_reason && (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                                        <AlertCircle className="mr-1 h-3 w-3" />
+                                        Date approbation manquante
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -217,9 +246,9 @@ export default function ProprieteDetailDialog({
                                 <FileText className="mr-2 h-4 w-4" />
                                 Informations
                             </TabsTrigger>
-                            <TabsTrigger value="cadastre">
-                                <Landmark className="mr-2 h-4 w-4" />
-                                Cadastre
+                            <TabsTrigger value="dates">
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Dates & Références
                             </TabsTrigger>
                             <TabsTrigger value="demandeurs">
                                 <Users className="mr-2 h-4 w-4" />
@@ -227,6 +256,7 @@ export default function ProprieteDetailDialog({
                             </TabsTrigger>
                         </TabsList>
 
+                        {/* TAB INFORMATIONS */}
                         <TabsContent value="informations" className="space-y-6">
                             <Card>
                                 <CardHeader>
@@ -273,11 +303,34 @@ export default function ProprieteDetailDialog({
                                 </CardContent>
                             </Card>
 
+                            {propriete.type_operation === 'morcellement' && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <FileCheck className="h-5 w-5" />
+                                            Origine (Morcellement)
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid md:grid-cols-2 gap-3">
+                                        <InfoItem 
+                                            icon={FileText} 
+                                            label="Propriété Mère" 
+                                            value={propriete.propriete_mere}
+                                        />
+                                        <InfoItem 
+                                            icon={FileText} 
+                                            label="Titre Mère" 
+                                            value={propriete.titre_mere}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            )}
+
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <Users className="h-5 w-5" />
-                                        Localisation
+                                        Localisation & Propriété
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
@@ -299,45 +352,20 @@ export default function ProprieteDetailDialog({
                                     />
                                 </CardContent>
                             </Card>
+
+                            
                         </TabsContent>
 
-                        <TabsContent value="cadastre" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <FileCheck className="h-5 w-5" />
-                                        Origine
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid md:grid-cols-2 gap-3">
-                                    <InfoItem 
-                                        icon={FileText} 
-                                        label="Propriété Mère" 
-                                        value={propriete.propriete_mere}
-                                    />
-                                    <InfoItem 
-                                        icon={FileText} 
-                                        label="Titre Mère" 
-                                        value={propriete.titre_mere}
-                                    />
-                                </CardContent>
-                            </Card>
-
+                        {/* ✅ TAB DATES & RÉFÉRENCES - NOUVELLE STRUCTURE */}
+                        <TabsContent value="dates" className="space-y-6">
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <Landmark className="h-5 w-5" />
-                                        Références
+                                        Références Administratives
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="grid md:grid-cols-2 gap-3">
-                                    {/* ✅ CORRECTION : Utiliser dep_vol_complet prioritairement */}
-                                    <InfoItem 
-                                        icon={FileText} 
-                                        label="Dépôt/Volume" 
-                                        value={propriete.dep_vol_complet || propriete.dep_vol}
-                                        valueClass="font-mono"
-                                    />
                                     <InfoItem 
                                         icon={Hash} 
                                         label="Numéro FN" 
@@ -353,28 +381,111 @@ export default function ProprieteDetailDialog({
                                 </CardContent>
                             </Card>
 
+                            {/* ✅ DATES DE DÉPÔT */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <Calendar className="h-5 w-5" />
-                                        Dates
+                                        Dates de Dépôt
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="grid md:grid-cols-2 gap-3">
-                                    <InfoItem 
-                                        icon={Calendar} 
-                                        label="Réquisition" 
-                                        value={formatDate(propriete.date_requisition)}
-                                    />
-                                    <InfoItem 
-                                        icon={Calendar} 
-                                        label="Inscription" 
-                                        value={formatDate(propriete.date_inscription)}
-                                    />
+                                <CardContent className="space-y-6">
+                                    {/* Dépôt 1 - Inscription */}
+                                    <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                                Dépôt 1
+                                            </Badge>
+                                            <h6 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                                Inscription
+                                            </h6>
+                                        </div>
+                                        <div className="grid md:grid-cols-2 gap-3">
+                                            <InfoItem 
+                                                icon={Calendar} 
+                                                label="Date dépôt 1" 
+                                                value={formatDate(propriete.date_depot_1)}
+                                            />
+                                            <InfoItem 
+                                                icon={FileText} 
+                                                label="Dépôt/Volume" 
+                                                value={propriete.dep_vol_inscription_complet || propriete.dep_vol_inscription}
+                                                valueClass="font-mono"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Dépôt 2 - Réquisition */}
+                                    <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                                                Dépôt 2
+                                            </Badge>
+                                            <h6 className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                                                Réquisition
+                                            </h6>
+                                        </div>
+                                        <div className="grid md:grid-cols-2 gap-3">
+                                            <InfoItem 
+                                                icon={Calendar} 
+                                                label="Date dépôt 2" 
+                                                value={formatDate(propriete.date_depot_2)}
+                                            />
+                                            <InfoItem 
+                                                icon={FileText} 
+                                                label="Dépôt/Volume" 
+                                                value={propriete.dep_vol_requisition_complet || propriete.dep_vol_requisition}
+                                                valueClass="font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* ✅ DATES ADMINISTRATIVES */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <FileCheck className="h-5 w-5" />
+                                        Dates Administratives
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="p-4 bg-slate-50/50 dark:bg-slate-950/20 rounded-lg border">
+                                        <div className="grid md:grid-cols-2 gap-3">
+                                            <InfoItem 
+                                                icon={Calendar} 
+                                                label="Date réquisition" 
+                                                value={formatDate(propriete.date_requisition)}
+                                            />
+                                            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg mt-0.5">
+                                                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                                                        Date approbation acte
+                                                        {/* <Badge variant="destructive" className="text-[9px] px-1 py-0 ml-2">
+                                                            Obligatoire
+                                                        </Badge> */}
+                                                    </p>
+                                                    <p className={`text-sm font-medium ${propriete.date_approbation_acte ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                                                        {formatDate(propriete.date_approbation_acte)}
+                                                    </p>
+                                                    {!propriete.date_approbation_acte && (
+                                                        <p className="text-xs text-red-500 mt-1">
+                                                            Requis pour générer le document
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
+                        {/* TAB DEMANDEURS */}
                         <TabsContent value="demandeurs" className="space-y-6">
                             {demandeursActifs.length > 0 && (
                                 <Card>

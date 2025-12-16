@@ -218,14 +218,14 @@ export default function SmartDeleteDossierDialog({
                                 </div>
                             </Card>
                         ) : (
-                            // ❌ SUPPRESSION BLOQUÉE
+                            // SUPPRESSION BLOQUÉE
                             <>
                                 <Card className="p-4 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                                     <div className="flex items-start gap-3">
                                         <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                                         <div className="text-sm text-red-700 dark:text-red-300">
                                             <p className="font-medium mb-1">
-                                                ❌ Impossible de supprimer ce dossier
+                                                Impossible de supprimer ce dossier
                                             </p>
                                             <p>
                                                 Le dossier contient des données qui doivent être supprimées d'abord.
@@ -264,7 +264,7 @@ export default function SmartDeleteDossierDialog({
                                     </div>
                                 </Card>
 
-                                {/* ✅ ACTIONS SUGGÉRÉES */}
+                                {/* ACTIONS SUGGÉRÉES */}
                                 <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                                     <div className="flex items-start gap-2">
                                         <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />

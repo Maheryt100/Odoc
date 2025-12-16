@@ -1,4 +1,4 @@
-// documents/tabs/ActeVenteTab.tsx - VERSION CORRIGÉE
+// documents/tabs/ActeVenteTab.tsx 
 import React, { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -97,6 +97,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
         return parts.join(' ');
     };
 
+    // ✅ Génération initiale (première fois)
     const handleGenerate = async (type: 'recu' | 'acte_vente') => {
         if (!selectedPropriete || !demandeurPrincipal) {
             toast.warning('Sélection incomplète');
@@ -117,8 +118,8 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
             });
 
             const baseUrl = type === 'recu' 
-                ? route('documents.recu')
-                : route('documents.acte-vente');
+                ? route('documents.recu.generate')
+                : route('documents.acte-vente.generate');
             
             const url = `${baseUrl}?${params.toString()}`;
             
@@ -152,6 +153,86 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
         } catch (error) {
             console.error('Erreur génération:', error);
             toast.error('Erreur lors de la préparation du téléchargement');
+            setIsGenerating(false);
+        }
+    };
+
+    // ✅ Régénération (quand fichier manquant)
+    const handleRegenerate = async (documentId: number, type: 'recu' | 'acte_vente') => {
+        if (isGenerating) {
+            toast.warning('Opération en cours, veuillez patienter...');
+            return;
+        }
+
+        setIsGenerating(true);
+
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+
+            if (!csrfToken) {
+                throw new Error('Token CSRF manquant');
+            }
+
+            const regenerateUrl = type === 'recu'
+                ? route('documents.recu.regenerate', documentId)
+                : route('documents.acte-vente.regenerate', documentId);
+
+            toast.info('Régénération du document en cours...');
+
+            const response = await fetch(regenerateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json, application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                },
+                credentials: 'same-origin',
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+
+            // Si JSON, vérifier le succès
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                
+                if (!data.success && !response.ok) {
+                    throw new Error(data.message || 'Erreur de régénération');
+                }
+
+                toast.success(`${type === 'recu' ? 'Reçu' : 'Acte de vente'} régénéré avec succès`);
+            } else {
+                // Fichier Word reçu directement, télécharger
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = type === 'recu' 
+                    ? documentRecu?.nom_fichier || 'recu.docx'
+                    : documentAdv?.nom_fichier || 'acte_vente.docx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                toast.success(`${type === 'recu' ? 'Reçu' : 'Acte de vente'} régénéré et téléchargé avec succès`);
+            }
+
+            // Recharger les données
+            setTimeout(() => {
+                router.reload({
+                    only: ['proprietes'],
+                    preserveUrl: true,
+                    onFinish: () => {
+                        setIsGenerating(false);
+                    },
+                });
+            }, 1000);
+
+        } catch (error: any) {
+            console.error('Erreur régénération:', error);
+            toast.error('Erreur lors de la régénération', {
+                description: error.message,
+            });
             setIsGenerating(false);
         }
     };
@@ -408,11 +489,11 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                     </Alert>
                 )}
 
-                {/* ✅ SECTION CORRIGÉE : Boutons d'action */}
+                {/* ✅ BOUTONS SIMPLIFIÉS : SecureDownloadButton gère tout */}
                 {selectedPropriete && demandeurPrincipal && (
                     <div className="space-y-3">
-                        {/* Bouton Télécharger Reçu (si existe) */}
-                        {hasRecu && documentRecu && (
+                        {/* ========== REÇU ========== */}
+                        {hasRecu && documentRecu ? (
                             <SecureDownloadButton
                                 document={documentRecu}
                                 downloadRoute={route('documents.recu.download', documentRecu.id)}
@@ -420,10 +501,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                 typeName="Reçu"
                                 variant="outline"
                             />
-                        )}
-
-                        {/* Bouton Générer Reçu (si n'existe pas) */}
-                        {!hasRecu && (
+                        ) : (
                             <Button
                                 onClick={() => handleGenerate('recu')}
                                 disabled={!canGenerateRecu || isGenerating}
@@ -445,43 +523,42 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                             </Button>
                         )}
 
-                        {/* Bouton Télécharger ADV (si existe) */}
-                        {hasAdv && documentAdv && (
-                            <SecureDownloadButton
-                                document={documentAdv}
-                                downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
-                                regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
-                                typeName="Acte de Vente"
-                                variant="default"
-                            />
-                        )}
-
-                        {/* Bouton Générer ADV (si reçu existe mais pas ADV) */}
-                        {hasRecu && !hasAdv && (
-                            <Button
-                                onClick={() => handleGenerate('acte_vente')}
-                                disabled={!canGenerateActeVente || isGenerating}
-                                variant="default"
-                                size="lg"
-                                className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
-                            >
-                                {isGenerating ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Génération...
-                                    </>
-                                ) : (
-                                    <>
-                                        <FileText className="h-4 w-4 mr-2" />
-                                        Générer l'Acte de Vente
-                                        {consorts.length > 0 && (
-                                            <Badge variant="secondary" className="ml-2">
-                                                {consorts.length + 1} demandeurs
-                                            </Badge>
-                                        )}
-                                    </>
-                                )}
-                            </Button>
+                        {/* ========== ACTE DE VENTE ========== */}
+                        {hasRecu && (
+                            hasAdv && documentAdv ? (
+                                <SecureDownloadButton
+                                    document={documentAdv}
+                                    downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
+                                    regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
+                                    typeName="Acte de Vente"
+                                    variant="default"
+                                />
+                            ) : (
+                                <Button
+                                    onClick={() => handleGenerate('acte_vente')}
+                                    disabled={!canGenerateActeVente || isGenerating}
+                                    variant="default"
+                                    size="lg"
+                                    className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                                >
+                                    {isGenerating ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Génération...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FileText className="h-4 w-4 mr-2" />
+                                            Générer l'Acte de Vente
+                                            {consorts.length > 0 && (
+                                                <Badge variant="secondary" className="ml-2">
+                                                    {consorts.length + 1} demandeurs
+                                                </Badge>
+                                            )}
+                                        </>
+                                    )}
+                                </Button>
+                            )
                         )}
 
                         {/* Message de blocage si données incomplètes */}

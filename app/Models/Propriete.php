@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-// use Illuminate\Support\Facades\Log;
 
 class Propriete extends Model
 {
@@ -28,9 +27,16 @@ class Propriete extends Model
         'numero_requisition',
         'type_operation',
         'date_requisition',
-        'date_inscription',
-        'dep_vol',
-        'numero_dep_vol',
+        'date_depot_1',
+        'date_depot_2',           
+        'date_approbation_acte',  
+        
+        // Dep/Vol
+        'dep_vol_inscription',
+        'numero_dep_vol_inscription',
+        'dep_vol_requisition',
+        'numero_dep_vol_requisition',
+        
         'id_dossier',
         'id_user',
     ];
@@ -38,21 +44,25 @@ class Propriete extends Model
     protected $casts = [
         'contenance' => 'decimal:2',
         'date_requisition' => 'date',
-        'date_inscription' => 'date',
+        'date_depot_1' => 'date',
+        'date_depot_2' => 'date',
+        'date_approbation_acte' => 'date',
     ];
 
     protected $appends = [
-        'dep_vol_complet',
+        'dep_vol_inscription_complet',
+        'dep_vol_requisition_complet',
         'titre_complet',
         'is_incomplete',
         'is_archived',
         'is_empty',
         'has_active_demandes',
         'status_label',
+        'can_generate_document',
     ];
 
     // ============================================
-    // RELATIONS
+    // RELATIONS (inchangées)
     // ============================================
 
     public function dossier(): BelongsTo
@@ -65,10 +75,6 @@ class Propriete extends Model
         return $this->belongsTo(User::class, 'id_user');
     }
 
-    /*
-     *  CORRECTION PRINCIPALE : Retirer ->using(Demander::class)
-     * Utiliser la relation hasMany pour accéder aux demandes
-     */
     public function demandeurs(): BelongsToMany
     {
         return $this->belongsToMany(Demandeur::class, 'demander', 'id_propriete', 'id_demandeur')
@@ -77,18 +83,12 @@ class Propriete extends Model
             ->orderBy('demander.ordre', 'asc');
     }
 
-    /**
-     *  RELATION PRINCIPALE : Accès direct aux demandes (recommandé)
-     */
     public function demandes(): HasMany
     {
         return $this->hasMany(Demander::class, 'id_propriete')
             ->orderBy('ordre', 'asc');
     }
 
-    /**
-     * Demandes actives uniquement
-     */
     public function demandesActives(): HasMany
     {
         return $this->hasMany(Demander::class, 'id_propriete')
@@ -96,9 +96,6 @@ class Propriete extends Model
             ->orderBy('ordre');
     }
 
-    /**
-     * ✅ Demandes archivées
-     */
     public function demandesArchivees(): HasMany
     {
         return $this->hasMany(Demander::class, 'id_propriete')
@@ -107,39 +104,83 @@ class Propriete extends Model
     }
 
     // ============================================
-    // ACCESSORS
+    // ACCESSORS - DEP/VOL (inchangés)
     // ============================================
 
-    /**
-     * ✅ Formater le Dep/Vol complet avec numéro
-     */
-    public function getDepVolCompletAttribute(): ?string
+    public function getDepVolInscriptionCompletAttribute(): ?string
     {
-        if (!$this->dep_vol) {
+        if (!$this->dep_vol_inscription) {
             return null;
         }
 
-        $depVol = trim($this->dep_vol);
+        $depVol = trim($this->dep_vol_inscription);
         
-        if ($this->numero_dep_vol) {
-            $numero = trim($this->numero_dep_vol);
+        if ($this->numero_dep_vol_inscription) {
+            $numero = trim($this->numero_dep_vol_inscription);
             return "{$depVol} n°{$numero}";
         }
 
         return $depVol;
     }
 
+    public function getDepVolRequisitionCompletAttribute(): ?string
+    {
+        if (!$this->dep_vol_requisition) {
+            return null;
+        }
+
+        $depVol = trim($this->dep_vol_requisition);
+        
+        if ($this->numero_dep_vol_requisition) {
+            $numero = trim($this->numero_dep_vol_requisition);
+            return "{$depVol} n°{$numero}";
+        }
+
+        return $depVol;
+    }
+
+    // ============================================
+    // ✅ NOUVEAUX ACCESSORS
+    // ============================================
+
     /**
-     * Formater le titre complet
+     * Vérifier si la propriété peut générer un document
+     * RÈGLE : date_approbation_acte est OBLIGATOIRE
      */
+    public function getCanGenerateDocumentAttribute(): bool
+    {
+        return $this->date_approbation_acte !== null;
+    }
+
+    /**
+     * Message d'erreur si génération impossible
+     */
+    public function getDocumentBlockReasonAttribute(): ?string
+    {
+        if (!$this->date_approbation_acte) {
+            return "La date d'approbation de l'acte est obligatoire pour générer le document.";
+        }
+
+        if ($this->is_archived) {
+            return "Impossible de générer : propriété déjà acquise.";
+        }
+
+        if (!$this->has_active_demandes) {
+            return "Aucun demandeur actif pour cette propriété.";
+        }
+
+        return null;
+    }
+
+    // ============================================
+    // AUTRES ACCESSORS (inchangés)
+    // ============================================
+
     public function getTitreCompletAttribute(): ?string
     {
         return $this->titre ? "TNº{$this->titre}" : null;
     }
 
-    /**
-     * Vérifier si la propriété est incomplète
-     */
     public function getIsIncompleteAttribute(): bool
     {
         return !$this->titre 
@@ -150,9 +191,6 @@ class Propriete extends Model
             || !$this->situation;
     }
 
-    /**
-     * ✅ OPTIMISÉ : Cache les stats
-     */
     public function getIsArchivedAttribute(): bool
     {
         $stats = $this->getDemandesStats();
@@ -189,12 +227,9 @@ class Propriete extends Model
     }
 
     // ============================================
-    // MÉTHODES HELPER
+    // MÉTHODES HELPER (inchangées)
     // ============================================
 
-    /**
-     * ✅ OPTIMISÉ : Obtenir les statistiques avec cache
-     */
     public function getDemandesStats(): array
     {
         static $cache = [];
@@ -205,7 +240,6 @@ class Propriete extends Model
             return $cache[$cacheKey];
         }
 
-        // Utiliser la relation demandes qui est plus performante
         $demandes = $this->demandes ?? [];
         
         $actives = 0;
@@ -261,8 +295,34 @@ class Propriete extends Model
         return $stats['actives'] === 0 && $stats['archivees'] === 0;
     }
 
+    public function canBeLinked(): bool
+    {
+        if ($this->dossier && $this->dossier->is_closed) {
+            return false;
+        }
+
+        if ($this->is_archived) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function getLinkBlockReason(): string
+    {
+        if ($this->dossier && $this->dossier->is_closed) {
+            return "Impossible de lier : le dossier est fermé.";
+        }
+
+        if ($this->is_archived) {
+            return "Impossible de lier : la propriété Lot {$this->lot} est archivée (acquise).";
+        }
+
+        return "Liaison impossible.";
+    }
+
     // ============================================
-    // SCOPES
+    // SCOPES (inchangés)
     // ============================================
 
     public function scopeWithDossier($query)
@@ -317,43 +377,8 @@ class Propriete extends Model
         parent::boot();
 
         static::deleting(function ($propriete) {
-
             $propriete->demandes()->delete();
             $propriete->piecesJointes()->delete();
         });
-    }
-
-    /**
-     *  Vérifier si la propriété peut être liée à un nouveau demandeur
-     */
-    public function canBeLinked(): bool
-    {
-        // Dossier fermé
-        if ($this->dossier && $this->dossier->is_closed) {
-            return false;
-        }
-
-        // Propriété archivée (acquise)
-        if ($this->is_archived) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Obtenir la raison du blocage de liaison
-     */
-    public function getLinkBlockReason(): string
-    {
-        if ($this->dossier && $this->dossier->is_closed) {
-            return "Impossible de lier : le dossier est fermé.";
-        }
-
-        if ($this->is_archived) {
-            return "Impossible de lier : la propriété Lot {$this->lot} est archivée (acquise).";
-        }
-
-        return "Liaison impossible.";
     }
 }

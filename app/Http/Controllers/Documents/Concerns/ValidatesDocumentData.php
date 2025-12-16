@@ -115,6 +115,9 @@ trait ValidatesDocumentData
         if (!$propriete->date_inscription) {
             $errors[] = 'La date d\'inscription est manquante';
         }
+        if (!$propriete->date_approbation_acte) {
+            $errors[] = "La date d'approbation de l'acte est obligatoire pour générer le document";
+        }
         
         return $errors;
     }

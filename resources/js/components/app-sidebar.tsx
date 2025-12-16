@@ -35,11 +35,11 @@ export function AppSidebar() {
             href: '/dossiers',
             icon: Folders,
         },
-        {
-            title: 'Statistiques',
-            href: '/statistiques', // ✅ Changé de /statistiques (compatible avec route('statistiques.index'))
-            icon: BarChart3,
-        },
+        // {
+        //     title: 'Statistiques',
+        //     href: '/statistiques', // ✅ Changé de /statistiques (compatible avec route('statistiques.index'))
+        //     icon: BarChart3,
+        // },
     ];
 
     // ============ CONFIGURATION (Admin uniquement) ============

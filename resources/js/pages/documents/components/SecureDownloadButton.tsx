@@ -55,8 +55,6 @@ export default function SecureDownloadButton({
         setErrorDetails(null);
 
         try {
-            console.log('Téléchargement:', downloadRoute);
-
             const response = await fetch(downloadRoute, {
                 method: 'GET',
                 headers: {
@@ -65,34 +63,30 @@ export default function SecureDownloadButton({
                 credentials: 'same-origin',
             });
 
-            console.log('📊 Response status:', response.status);
-            console.log('📊 Content-Type:', response.headers.get('content-type'));
-
             const contentType = response.headers.get('content-type') || '';
 
             // ❌ Vérifier si c'est une erreur JSON
             if (contentType.includes('application/json')) {
                 const errorData = await response.json();
-                console.log('❌ Erreur JSON reçue:', errorData);
 
-                // Stocker les détails de l'erreur
+                // ✅ CORRECTION : Stocker AVANT de désactiver le loader
                 setErrorDetails({
                     message: errorData.message || 'Fichier introuvable',
                     details: errorData.details || null,
                     canRegenerate: errorData.can_regenerate === true,
                 });
 
+                // ✅ Afficher le dialog IMMÉDIATEMENT si régénération possible
                 if (errorData.error === 'file_missing' && errorData.can_regenerate) {
-                    // ✅ Fichier manquant, afficher le dialog
-                    console.log('🔄 Ouverture du dialog de régénération');
+                    setIsDownloading(false); // ✅ Désactiver AVANT d'ouvrir le dialog
                     setShowRegenerateDialog(true);
-                } else {
-                    // Autre erreur
-                    toast.error(errorData.message || 'Erreur lors du téléchargement', {
-                        description: errorData.details || undefined,
-                    });
+                    return; // ✅ SORTIR pour ne pas continuer
                 }
 
+                // Autre erreur non récupérable
+                toast.error(errorData.message || 'Erreur lors du téléchargement', {
+                    description: errorData.details || undefined,
+                });
                 setIsDownloading(false);
                 return;
             }
@@ -103,8 +97,6 @@ export default function SecureDownloadButton({
             }
 
             const blob = await response.blob();
-            console.log('✅ Blob reçu, taille:', blob.size);
-
             const url = window.URL.createObjectURL(blob);
             const a = window.document.createElement('a');
             a.href = url;
@@ -141,8 +133,6 @@ export default function SecureDownloadButton({
      * ✅ Régénération manuelle avec confirmation
      */
     const handleRegenerate = async () => {
-        console.log('🔄 Début régénération:', regenerateRoute);
-        
         setShowRegenerateDialog(false);
         setIsRegenerating(true);
 
@@ -152,8 +142,6 @@ export default function SecureDownloadButton({
             if (!csrfToken) {
                 throw new Error('Token CSRF manquant dans la page');
             }
-
-            console.log('📤 Envoi requête régénération...');
 
             const response = await fetch(regenerateRoute, {
                 method: 'POST',
@@ -165,14 +153,11 @@ export default function SecureDownloadButton({
                 credentials: 'same-origin',
             });
 
-            console.log('📊 Response régénération:', response.status);
-
             const contentType = response.headers.get('content-type') || '';
 
             // Si c'est un JSON, vérifier le succès
             if (contentType.includes('application/json')) {
                 const data = await response.json();
-                console.log('📊 JSON reçu:', data);
 
                 if (!data.success && !response.ok) {
                     throw new Error(data.message || 'Erreur de régénération');
@@ -181,8 +166,6 @@ export default function SecureDownloadButton({
                 toast.success(`${typeName} régénéré avec succès`);
             } else {
                 // C'est un fichier Word, télécharger directement
-                console.log('✅ Fichier Word reçu directement');
-                
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = window.document.createElement('a');
@@ -243,7 +226,7 @@ export default function SecureDownloadButton({
                 )}
             </Button>
 
-            {/* ✅ Dialog de confirmation de régénération */}
+            {/* ✅ Dialog de confirmation - HTML CORRIGÉ */}
             <AlertDialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
                 <AlertDialogContent className="max-w-md">
                     <AlertDialogHeader>
@@ -251,26 +234,29 @@ export default function SecureDownloadButton({
                             <AlertTriangle className="h-5 w-5 text-amber-500" />
                             Fichier introuvable
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3 text-left">
-                            <p className="text-sm">
-                                Le fichier <strong className="text-foreground font-mono">{document.nom_fichier}</strong> n'a pas été trouvé sur le serveur.
-                            </p>
-                            
-                            {errorDetails?.details && (
-                                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                                    <p className="text-xs text-amber-800 dark:text-amber-200">
-                                        <strong>Cause :</strong> {errorDetails.details}
-                                    </p>
-                                </div>
-                            )}
+                        {/* ✅ CORRECTION : Utiliser asChild pour éviter le <p> wrapper */}
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-left text-sm text-muted-foreground">
+                                <p>
+                                    Le fichier <strong className="text-foreground font-mono">{document.nom_fichier}</strong> n'a pas été trouvé sur le serveur.
+                                </p>
+                                
+                                {errorDetails?.details && (
+                                    <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                                            <strong>Cause :</strong> {errorDetails.details}
+                                        </p>
+                                    </div>
+                                )}
 
-                            <p className="font-medium text-foreground">
-                                Voulez-vous régénérer ce document ?
-                            </p>
-                            
-                            <p className="text-xs text-muted-foreground">
-                                ℹ️ Le document sera recréé automatiquement avec les mêmes données et téléchargé immédiatement.
-                            </p>
+                                <p className="font-medium text-foreground">
+                                    Voulez-vous régénérer ce document ?
+                                </p>
+                                
+                                <p className="text-xs">
+                                    ℹ️ Le document sera recréé automatiquement avec les mêmes données et téléchargé immédiatement.
+                                </p>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

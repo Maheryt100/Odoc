@@ -1,12 +1,8 @@
-// pages/proprietes/validation.ts - ✅ VERSION FINALE
-// Logique de validation pour les propriétés
+// pages/proprietes/validation.ts - ✅ VERSION AVEC NOUVELLES DATES
 
 import type { ProprieteFormData } from './types';
 import { toast } from 'sonner';
 
-/**
- * Résultat de validation
- */
 export interface ValidationResult {
     isValid: boolean;
     errors: Record<string, string>;
@@ -14,12 +10,12 @@ export interface ValidationResult {
 }
 
 /**
- * Valider les champs obligatoires d'une propriété
+ * ✅ Valider les champs obligatoires avec nouvelles dates
  */
 export function validateProprieteForm(data: ProprieteFormData): ValidationResult {
     const errors: Record<string, string> = {};
 
-    // Champs obligatoires
+    // Champs obligatoires de base
     if (!data.lot?.trim()) {
         errors.lot = 'Le lot est obligatoire';
     }
@@ -44,13 +40,31 @@ export function validateProprieteForm(data: ProprieteFormData): ValidationResult
         }
     }
 
-    // Validation des dates si présentes
+    // ✅ VALIDATION DES DATES
     if (data.date_requisition && !isValidDate(data.date_requisition)) {
         errors.date_requisition = 'Date de réquisition invalide';
     }
 
-    if (data.date_inscription && !isValidDate(data.date_inscription)) {
-        errors.date_inscription = 'Date d\'inscription invalide';
+    if (data.date_depot_1 && !isValidDate(data.date_depot_1)) {
+        errors.date_depot_1 = 'Date de dépôt 1 invalide';
+    }
+
+    if (data.date_depot_2 && !isValidDate(data.date_depot_2)) {
+        errors.date_depot_2 = 'Date de dépôt 2 invalide';
+    }
+
+    if (data.date_approbation_acte && !isValidDate(data.date_approbation_acte)) {
+        errors.date_approbation_acte = 'Date d\'approbation invalide';
+    }
+
+    // ✅ VALIDATION : date_approbation_acte >= date_requisition
+    if (data.date_approbation_acte && data.date_requisition) {
+        const dateApprobation = new Date(data.date_approbation_acte);
+        const dateRequisition = new Date(data.date_requisition);
+        
+        if (dateApprobation < dateRequisition) {
+            errors.date_approbation_acte = 'La date d\'approbation doit être postérieure ou égale à la date de réquisition';
+        }
     }
 
     const isValid = Object.keys(errors).length === 0;
@@ -76,19 +90,14 @@ export function validateAndShowErrors(data: ProprieteFormData): boolean {
 }
 
 /**
- * Valider un tableau de propriétés (pour création multiple)
+ * ✅ Validation spécifique pour la génération de document
  */
-export function validateMultipleProprietes(proprietes: ProprieteFormData[]): ValidationResult {
+export function validateForDocumentGeneration(data: ProprieteFormData): ValidationResult {
     const errors: Record<string, string> = {};
 
-    for (let i = 0; i < proprietes.length; i++) {
-        const validation = validateProprieteForm(proprietes[i]);
-        
-        if (!validation.isValid) {
-            Object.entries(validation.errors).forEach(([field, message]) => {
-                errors[`propriete_${i + 1}_${field}`] = `Propriété ${i + 1}: ${message}`;
-            });
-        }
+    // ✅ date_approbation_acte OBLIGATOIRE pour génération
+    if (!data.date_approbation_acte) {
+        errors.date_approbation_acte = 'La date d\'approbation de l\'acte est obligatoire pour générer le document';
     }
 
     const isValid = Object.keys(errors).length === 0;
@@ -133,7 +142,6 @@ export function validateMorcellementFields(data: ProprieteFormData): ValidationR
  * Valider les charges sélectionnées
  */
 export function validateCharges(selectedCharges: string[]): boolean {
-    // "Aucune" ne peut pas être combinée avec d'autres charges
     if (selectedCharges.includes("Aucune") && selectedCharges.length > 1) {
         toast.error('La charge "Aucune" ne peut pas être combinée avec d\'autres charges');
         return false;

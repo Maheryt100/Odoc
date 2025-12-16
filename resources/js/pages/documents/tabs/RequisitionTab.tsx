@@ -9,10 +9,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { FileOutput, Download, AlertCircle, Info, Loader2, Eye, FileCheck, MapPin, Ruler } from 'lucide-react';
+import { FileOutput, AlertCircle, Info, Loader2, FileCheck, MapPin, Ruler } from 'lucide-react';
 import { Dossier } from '@/types';
-import { ProprieteWithDemandeurs, DocumentGenere } from '../types';
-import { canGenerateRequisition, getMissingProprieteFields } from '../validation';
+import { ProprieteWithDemandeurs } from '../types';
 import DocumentStatusBadge from '../components/DocumentStatusBadge';
 import SecureDownloadButton from '../components/SecureDownloadButton';
 
@@ -34,24 +33,8 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
         if (!reqPropriete || hasRequisition) return false;
         const prop = selectedProprieteData;
         if (!prop) return false;
-        return canGenerateRequisition(prop);
+        return true;
     };
-
-    const getValidationMessage = (): string | null => {
-        if (!reqPropriete) return null;
-        
-        const prop = selectedProprieteData;
-        if (!prop) return null;
-
-        if (!canGenerateRequisition(prop)) {
-            const missingFields = getMissingProprieteFields(prop);
-            return `Données manquantes : ${missingFields.join(', ')}`;
-        }
-
-        return null;
-    };
-
-    const validationMessage = getValidationMessage();
 
     // Formater la contenance
     const formatContenance = (contenance: number | null): string => {
@@ -85,7 +68,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                 id_propriete: reqPropriete,
             });
 
-            // ✅ CORRIGÉ : Route correcte
             const url = `${route('documents.requisition.generate')}?${params.toString()}`;
             window.location.href = url;
             
@@ -125,6 +107,7 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
+                
                 {/* Sélection Propriété */}
                 <div className="space-y-2">
                     <Label className="text-sm font-semibold">Propriété</Label>
@@ -138,7 +121,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                         </SelectTrigger>
                         <SelectContent>
                             {proprietes.map((prop) => {
-                                const isComplete = canGenerateRequisition(prop);
                                 const hasDoc = !!prop.document_requisition;
                                 
                                 return (
@@ -161,13 +143,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                                     </Badge>
                                                 )}
 
-                                                {!isComplete && (
-                                                    <Badge variant="destructive" className="text-xs">
-                                                        <AlertCircle className="h-3 w-3 mr-1" />
-                                                        Incomplet
-                                                    </Badge>
-                                                )}
-
                                                 <Badge
                                                     variant={prop.type_operation === "morcellement" ? "default" : "secondary"}
                                                     className="text-xs"
@@ -180,17 +155,16 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
 
                                         </div>
                                     </SelectItem>
-
                                 );
                             })}
                         </SelectContent>
                     </Select>
                 </div>
 
+                {/* Carte d'info propriété */}
                 {reqPropriete && selectedProprieteData && (
                     <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
                         <CardContent className="p-4 space-y-4">
-                            {/* Infos propriété */}
                             <div className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1" />
                                 <div className="space-y-2 flex-1">
@@ -242,7 +216,8 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                     </div>
                                 </div>
                             </div>
-                            {/* ✅ AJOUT : Badge de statut */}
+
+                            {/* Badge de statut */}
                             <div className="pt-3 border-t">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm text-muted-foreground">Statut Réquisition:</span>
@@ -253,7 +228,8 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Card>
                 )}
 
-                {reqPropriete && hasRequisition && (
+                {/* Statut réquisition */}
+                {reqPropriete && hasRequisition && documentRequisition && (
                     <Alert className="bg-green-500/10 border-green-500/50">
                         <FileCheck className="h-4 w-4 text-green-500" />
                         <AlertDescription className="text-green-700 dark:text-green-300">
@@ -262,11 +238,10 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                                     Réquisition déjà générée
                                 </div>
                                 <div className="text-xs opacity-75">
-                                    Généré le {documentRequisition?.generated_at}
+                                    Généré le {documentRequisition.generated_at}
                                 </div>
-                                <div className="text-xs opacity-75 flex items-center gap-2">
-                                    <Eye className="h-3 w-3" />
-                                    Téléchargé {documentRequisition?.download_count || 0} fois
+                                <div className="text-xs opacity-75">
+                                    Téléchargé {documentRequisition.download_count || 0} fois
                                 </div>
                             </div>
                         </AlertDescription>
@@ -275,13 +250,7 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
 
                 <Separator />
 
-                {validationMessage && !hasRequisition && (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{validationMessage}</AlertDescription>
-                    </Alert>
-                )}
-
+                {/* Explication */}
                 <Alert>
                     <FileOutput className="h-4 w-4" />
                     <AlertDescription>
@@ -291,6 +260,7 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </AlertDescription>
                 </Alert>
 
+                {/* Indicateur de génération */}
                 {isGenerating && (
                     <Alert className="bg-blue-500/10 border-blue-500/50">
                         <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
@@ -300,13 +270,35 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Alert>
                 )}
 
-                {hasRequisition && documentRequisition && (
-                    <SecureDownloadButton
-                        document={documentRequisition}
-                        downloadRoute={route('documents.requisition.download', documentRequisition.id)}
-                        regenerateRoute={route('documents.requisition.regenerate', documentRequisition.id)}
-                        typeName="Réquisition"
-                    />
+                {/* ✅ BOUTON UNIFIÉ */}
+                {reqPropriete && (
+                    hasRequisition && documentRequisition ? (
+                        <SecureDownloadButton
+                            document={documentRequisition}
+                            downloadRoute={route('documents.requisition.download', documentRequisition.id)}
+                            regenerateRoute={route('documents.requisition.regenerate', documentRequisition.id)}
+                            typeName="Réquisition"
+                        />
+                    ) : (
+                        <Button
+                            onClick={handleGenerate}
+                            disabled={!canGenerate() || isGenerating}
+                            size="lg"
+                            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Génération...
+                                </>
+                            ) : (
+                                <>
+                                    <FileOutput className="h-4 w-4 mr-2" />
+                                    Générer la Réquisition
+                                </>
+                            )}
+                        </Button>
+                    )
                 )}
             </CardContent>
         </Card>
