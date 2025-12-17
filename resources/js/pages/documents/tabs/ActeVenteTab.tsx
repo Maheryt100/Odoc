@@ -1,4 +1,5 @@
-// documents/tabs/ActeVenteTab.tsx 
+// documents/tabs/ActeVenteTab.tsx - SECTION VALIDATION CORRIGÉE
+
 import React, { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
     FileText, Download, AlertCircle, Users, CheckCircle2, 
-    Lock, Receipt, Clock, Eye, Loader2, Crown, FileCheck, MapPin, Coins
+    Lock, Receipt, Clock, Eye, Loader2, Crown, FileCheck, MapPin, Coins, XCircle
 } from 'lucide-react';
 import { Demandeur, Dossier } from '@/types';
 import { ProprieteWithDemandeurs, DocumentGenere, DemandeurWithCSF } from '../types';
@@ -20,7 +21,9 @@ import {
     isDemandeurComplete, 
     getValidationMessage,
     getDemandeurPrincipal,
-    getConsorts
+    getConsorts,
+    getMissingProprieteFields,
+    getMissingDemandeurFields
 } from '../validation';
 import { safePrix, formatMontant } from '../helpers';
 import DocumentStatusBadge from '../components/DocumentStatusBadge';
@@ -59,27 +62,63 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
     const hasRecu = !!documentRecu;
     const hasAdv = !!documentAdv;
 
-    // ✅ CORRIGÉ : Conditions simplifiées
-    const canGenerateRecu = selectedPropriete && 
-                           demandeurPrincipal && 
-                           !hasRecu && 
-                           selectedProprieteData &&
-                           isProprieteComplete(selectedProprieteData) && 
-                           isPrincipalComplete;
+    // ✅ VALIDATION STRICTE POUR LE REÇU
+    const canGenerateRecu = useMemo(() => {
+        if (!selectedPropriete || !demandeurPrincipal || hasRecu) return false;
+        if (!selectedProprieteData || !isPrincipalComplete) return false;
+        
+        // Vérifier TOUS les champs requis de la propriété
+        const missingPropFields = getMissingProprieteFields(selectedProprieteData);
+        if (missingPropFields.length > 0) return false;
+        
+        // Vérifier TOUS les champs requis du demandeur principal
+        const demandeurData = demandeurs.find(d => d.id === demandeurPrincipal.id);
+        if (!demandeurData) return false;
+        
+        const missingDemFields = getMissingDemandeurFields(demandeurData);
+        if (missingDemFields.length > 0) return false;
+        
+        return true;
+    }, [selectedPropriete, demandeurPrincipal, hasRecu, selectedProprieteData, isPrincipalComplete, demandeurs]);
 
-    const canGenerateActeVente = selectedPropriete && 
-                                demandeurPrincipal && 
-                                !hasAdv && 
-                                hasRecu &&
-                                selectedProprieteData &&
-                                isProprieteComplete(selectedProprieteData) && 
-                                isPrincipalComplete;
+    // ✅ VALIDATION STRICTE POUR L'ACTE DE VENTE
+    const canGenerateActeVente = useMemo(() => {
+        if (!selectedPropriete || !demandeurPrincipal || hasAdv || !hasRecu) return false;
+        if (!selectedProprieteData || !isPrincipalComplete) return false;
+        
+        // Même validation que pour le reçu
+        const missingPropFields = getMissingProprieteFields(selectedProprieteData);
+        if (missingPropFields.length > 0) return false;
+        
+        const demandeurData = demandeurs.find(d => d.id === demandeurPrincipal.id);
+        if (!demandeurData) return false;
+        
+        const missingDemFields = getMissingDemandeurFields(demandeurData);
+        if (missingDemFields.length > 0) return false;
+        
+        return true;
+    }, [selectedPropriete, demandeurPrincipal, hasAdv, hasRecu, selectedProprieteData, isPrincipalComplete, demandeurs]);
 
-    const validationMessage = getValidationMessage(
-        selectedProprieteData || null,
-        demandeurs,
-        'acte_vente'
-    );
+    // ✅ MESSAGE DE VALIDATION DÉTAILLÉ
+    const validationMessage = useMemo(() => {
+        if (!selectedPropriete) return "Veuillez sélectionner une propriété";
+        if (!selectedProprieteData) return "Propriété introuvable";
+        if (!demandeurPrincipal) return "Aucun demandeur principal (ordre = 1) trouvé";
+        
+        const missingPropFields = getMissingProprieteFields(selectedProprieteData);
+        const demandeurData = demandeurs.find(d => d.id === demandeurPrincipal.id);
+        const missingDemFields = demandeurData ? getMissingDemandeurFields(demandeurData) : [];
+        
+        if (missingPropFields.length > 0 && missingDemFields.length > 0) {
+            return `Données manquantes - Propriété: ${missingPropFields.join(', ')} | Demandeur: ${missingDemFields.join(', ')}`;
+        } else if (missingPropFields.length > 0) {
+            return `Données manquantes (Propriété): ${missingPropFields.join(', ')}`;
+        } else if (missingDemFields.length > 0) {
+            return `Données manquantes (Demandeur principal): ${missingDemFields.join(', ')}`;
+        }
+        
+        return null;
+    }, [selectedPropriete, selectedProprieteData, demandeurPrincipal, demandeurs]);
 
     const formatContenance = (contenance: number | null): string => {
         if (!contenance) return '-';
@@ -97,10 +136,25 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
         return parts.join(' ');
     };
 
-    // ✅ Génération initiale (première fois)
+    // ✅ GÉNÉRATION AVEC VALIDATION STRICTE
     const handleGenerate = async (type: 'recu' | 'acte_vente') => {
+        // Validation préalable
+        if (type === 'recu' && !canGenerateRecu) {
+            toast.error('Impossible de générer le reçu', {
+                description: validationMessage || 'Données incomplètes',
+            });
+            return;
+        }
+
+        if (type === 'acte_vente' && !canGenerateActeVente) {
+            toast.error('Impossible de générer l\'acte de vente', {
+                description: validationMessage || 'Données incomplètes ou reçu manquant',
+            });
+            return;
+        }
+
         if (!selectedPropriete || !demandeurPrincipal) {
-            toast.warning('Sélection incomplète');
+            toast.error('Sélection incomplète');
             return;
         }
 
@@ -132,9 +186,12 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
             
             toast.success(messages[type]);
             
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // ✅ CORRECTION : Attendre un peu avant de rediriger
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
             window.location.href = url;
             
+            // ✅ Recharger après un délai raisonnable
             setTimeout(() => {
                 router.reload({ 
                     only: ['proprietes'],
@@ -148,91 +205,11 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                         setIsGenerating(false);
                     }
                 });
-            }, 2000);
+            }, 2500);
             
         } catch (error) {
             console.error('Erreur génération:', error);
             toast.error('Erreur lors de la préparation du téléchargement');
-            setIsGenerating(false);
-        }
-    };
-
-    // ✅ Régénération (quand fichier manquant)
-    const handleRegenerate = async (documentId: number, type: 'recu' | 'acte_vente') => {
-        if (isGenerating) {
-            toast.warning('Opération en cours, veuillez patienter...');
-            return;
-        }
-
-        setIsGenerating(true);
-
-        try {
-            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
-
-            if (!csrfToken) {
-                throw new Error('Token CSRF manquant');
-            }
-
-            const regenerateUrl = type === 'recu'
-                ? route('documents.recu.regenerate', documentId)
-                : route('documents.acte-vente.regenerate', documentId);
-
-            toast.info('Régénération du document en cours...');
-
-            const response = await fetch(regenerateUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json, application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                },
-                credentials: 'same-origin',
-            });
-
-            const contentType = response.headers.get('content-type') || '';
-
-            // Si JSON, vérifier le succès
-            if (contentType.includes('application/json')) {
-                const data = await response.json();
-                
-                if (!data.success && !response.ok) {
-                    throw new Error(data.message || 'Erreur de régénération');
-                }
-
-                toast.success(`${type === 'recu' ? 'Reçu' : 'Acte de vente'} régénéré avec succès`);
-            } else {
-                // Fichier Word reçu directement, télécharger
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = type === 'recu' 
-                    ? documentRecu?.nom_fichier || 'recu.docx'
-                    : documentAdv?.nom_fichier || 'acte_vente.docx';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-
-                toast.success(`${type === 'recu' ? 'Reçu' : 'Acte de vente'} régénéré et téléchargé avec succès`);
-            }
-
-            // Recharger les données
-            setTimeout(() => {
-                router.reload({
-                    only: ['proprietes'],
-                    preserveUrl: true,
-                    onFinish: () => {
-                        setIsGenerating(false);
-                    },
-                });
-            }, 1000);
-
-        } catch (error: any) {
-            console.error('Erreur régénération:', error);
-            toast.error('Erreur lors de la régénération', {
-                description: error.message,
-            });
             setIsGenerating(false);
         }
     };
@@ -322,6 +299,17 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                     </Select>
                 </div>
 
+                {/* ✅ ALERTE DE VALIDATION AMÉLIORÉE */}
+                {selectedPropriete && validationMessage && !hasRecu && !hasAdv && (
+                    <Alert variant="destructive">
+                        <XCircle className="h-4 w-4" />
+                        <AlertDescription>
+                            <div className="font-semibold mb-1">Impossible de générer</div>
+                            <div className="text-sm">{validationMessage}</div>
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Carte d'info propriété */}
                 {selectedPropriete && selectedProprieteData && (
                     <Card className="border-2 border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
@@ -405,7 +393,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                         <span className="font-semibold">
                                             {formatMontant(
                                                 safePrix(selectedProprieteData.demandeurs_lies?.[0]?.total_prix)
-                                            )} Ar
+                                            )} 
                                         </span>
                                     </div>
                                 </div>
@@ -428,6 +416,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                 {/* Alertes de statut */}
                 {selectedPropriete && (
                     <>
+                        {/* Statut Reçu */}
                         {!hasRecu ? (
                             <Alert className="bg-amber-500/10 border-amber-500/50">
                                 <AlertCircle className="h-4 w-4 text-amber-500" />
@@ -447,11 +436,16 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                             <Clock className="h-3 w-3" />
                                             Généré le {documentRecu?.generated_at}
                                         </div>
+                                        <div className="text-xs opacity-75 flex items-center gap-2">
+                                            <Download className="h-3 w-3" />
+                                            Téléchargé {documentRecu?.download_count || 0} fois
+                                        </div>
                                     </div>
                                 </AlertDescription>
                             </Alert>
                         )}
 
+                        {/* Statut ADV */}
                         {hasAdv && (
                             <Alert className="bg-blue-500/10 border-blue-500/50">
                                 <FileCheck className="h-4 w-4 text-blue-500" />
@@ -463,6 +457,10 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                         <div className="text-xs opacity-75 flex items-center gap-2">
                                             <Clock className="h-3 w-3" />
                                             Généré le {documentAdv?.generated_at}
+                                        </div>
+                                        <div className="text-xs opacity-75 flex items-center gap-2">
+                                            <Download className="h-3 w-3" />
+                                            Téléchargé {documentAdv?.download_count || 0} fois
                                         </div>
                                     </div>
                                 </AlertDescription>
@@ -489,10 +487,10 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                     </Alert>
                 )}
 
-                {/* ✅ BOUTONS SIMPLIFIÉS : SecureDownloadButton gère tout */}
+                {/*  BOUTONS AVEC VALIDATION STRICTE */}
                 {selectedPropriete && demandeurPrincipal && (
                     <div className="space-y-3">
-                        {/* ========== REÇU ========== */}
+                        {/* REÇU */}
                         {hasRecu && documentRecu ? (
                             <SecureDownloadButton
                                 document={documentRecu}
@@ -514,6 +512,11 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                         Génération...
                                     </>
+                                ) : !canGenerateRecu ? (
+                                    <>
+                                        <Lock className="h-4 w-4 mr-2" />
+                                        Données incomplètes
+                                    </>
                                 ) : (
                                     <>
                                         <Receipt className="h-4 w-4 mr-2" />
@@ -523,7 +526,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                             </Button>
                         )}
 
-                        {/* ========== ACTE DE VENTE ========== */}
+                        {/* ACTE DE VENTE */}
                         {hasRecu && (
                             hasAdv && documentAdv ? (
                                 <SecureDownloadButton
@@ -546,6 +549,11 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                             Génération...
                                         </>
+                                    ) : !canGenerateActeVente ? (
+                                        <>
+                                            <Lock className="h-4 w-4 mr-2" />
+                                            {validationMessage ? 'Données incomplètes' : 'Reçu requis'}
+                                        </>
                                     ) : (
                                         <>
                                             <FileText className="h-4 w-4 mr-2" />
@@ -559,16 +567,6 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                                     )}
                                 </Button>
                             )
-                        )}
-
-                        {/* Message de blocage si données incomplètes */}
-                        {!canGenerateRecu && !hasRecu && selectedPropriete && (
-                            <Alert variant="destructive">
-                                <Lock className="h-4 w-4" />
-                                <AlertDescription>
-                                    Impossible de générer : {validationMessage}
-                                </AlertDescription>
-                            </Alert>
                         )}
                     </div>
                 )}

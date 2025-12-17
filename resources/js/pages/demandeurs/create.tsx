@@ -8,7 +8,7 @@ import { useState, useCallback } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 
-// ✅ Composant Alert amélioré pour demandeur existant
+// Composant Alert amélioré pour demandeur existant
 export function DemandeurExistantAlert({ 
     cinSearchStatus, 
     searchMessage 
@@ -41,7 +41,7 @@ export function DemandeurExistantAlert({
                             <div className="flex items-start gap-2">
                                 <Info className="h-4 w-4 text-green-700 dark:text-green-400 mt-0.5 flex-shrink-0" />
                                 <div className="space-y-2 text-xs text-green-900 dark:text-green-200">
-                                    <p className="font-semibold">📝 Que pouvez-vous faire ?</p>
+                                    <p className="font-semibold">Que pouvez-vous faire ?</p>
                                     <ul className="space-y-1 pl-4">
                                         <li className="flex items-start gap-2">
                                             <span className="text-green-600 dark:text-green-400">•</span>
@@ -253,7 +253,7 @@ export default function DemandeurCreate({
     
     return (
         <div className="space-y-8">
-            {/* ✅ HEADER avec badge numéro */}
+            {/*  HEADER avec badge numéro */}
             {showRemoveButton && onRemove && (
                 <div className="flex justify-between items-center pb-6 border-b-2 border-emerald-200 dark:border-emerald-800">
                     <div className="flex items-center gap-3">
@@ -277,7 +277,7 @@ export default function DemandeurCreate({
                 </div>
             )}
 
-            {/* ✅ SECTION CIN - Style violet */}
+            {/*  SECTION CIN - Style violet */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-violet-200 dark:border-violet-800">
                     <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
@@ -427,7 +427,7 @@ export default function DemandeurCreate({
                             type="text"
                             value={data.lieu_naissance}
                             onChange={(e) => onChange('lieu_naissance', e.target.value)}
-                            placeholder="Antananarivo"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>
@@ -454,7 +454,7 @@ export default function DemandeurCreate({
                 </div>
             </div>
 
-            {/* ✅ SECTION DÉLIVRANCE CIN - Style indigo */}
+            {/* SECTION DÉLIVRANCE CIN - Style indigo */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-200 dark:border-indigo-800">
                     <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -485,7 +485,7 @@ export default function DemandeurCreate({
                             type="text"
                             value={data.lieu_delivrance}
                             onChange={(e) => onChange('lieu_delivrance', e.target.value)}
-                            placeholder="Antananarivo"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>
@@ -505,14 +505,14 @@ export default function DemandeurCreate({
                             type="text"
                             value={data.lieu_delivrance_duplicata}
                             onChange={(e) => onChange('lieu_delivrance_duplicata', e.target.value)}
-                            placeholder="Toliara"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>
                 </div>
             </div>
 
-            {/* ✅ SECTION CONTACT - Style vert */}
+            {/* SECTION CONTACT - Style vert */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-green-200 dark:border-green-800">
                     <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -543,7 +543,7 @@ export default function DemandeurCreate({
                             type="text"
                             value={data.domiciliation}
                             onChange={(e) => onChange('domiciliation', e.target.value)}
-                            placeholder="Antananarivo"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>

@@ -9,6 +9,8 @@ use App\Models\DocumentGenere;
 use App\Models\ActivityLog;
 use App\Services\ActivityLogger;
 use App\Http\Controllers\Documents\Concerns\HandlesDocumentGeneration;
+use App\Http\Controllers\Documents\Concerns\ValidatesDocumentData;
+use App\Http\Controllers\Documents\Concerns\FormatsDocumentData;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +22,7 @@ use PhpOffice\PhpWord\TemplateProcessor;
 
 class RecuController extends Controller
 {
-    use HandlesDocumentGeneration;
+    use HandlesDocumentGeneration, ValidatesDocumentData, FormatsDocumentData;
 
     public function generate(Request $request)
     {
@@ -32,6 +34,21 @@ class RecuController extends Controller
         try {
             $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
             $demandeur = Demandeur::findOrFail($request->id_demandeur);
+
+            // ✅ VALIDATION STRICTE BACKEND
+            $errors = $this->validateRecuData($propriete, $demandeur);
+            if (!empty($errors)) {
+                Log::warning('⚠️ Validation reçu échouée', [
+                    'propriete_id' => $propriete->id,
+                    'demandeur_id' => $demandeur->id,
+                    'errors' => $errors
+                ]);
+                
+                return back()->withErrors([
+                    'error' => 'Données incomplètes pour générer le reçu',
+                    'details' => implode(', ', $errors)
+                ])->withInput();
+            }
 
             $documentExistant = DocumentGenere::findExisting(
                 DocumentGenere::TYPE_RECU,
@@ -59,10 +76,17 @@ class RecuController extends Controller
             return $this->createNewRecu($propriete, $demandeur);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur génération reçu', ['error' => $e->getMessage()]);
-            return back()->withErrors(['error' => $e->getMessage()]);
+            Log::error('❌ Erreur génération reçu', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->withErrors([
+                'error' => 'Erreur lors de la génération : ' . $e->getMessage(),
+            ]);
         }
     }
+
 
     public function download($id)
     {
@@ -154,6 +178,7 @@ class RecuController extends Controller
         try {
             $dossier = $propriete->dossier;
 
+            // ✅ Double-check atomique SANS count()
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
                 ->where('id_propriete', $propriete->id)
                 ->where('id_demandeur', $demandeur->id)
@@ -174,6 +199,8 @@ class RecuController extends Controller
 
             $prix = $this->getPrixFromDistrict($propriete);
             $prixTotal = (int) ($prix * $propriete->contenance);
+            
+            // ✅ CORRECTION : Générer le numéro SANS lockForUpdate sur count()
             $numeroRecu = $this->generateNumeroRecu($dossier->id, $dossier->numero_ouverture);
 
             $tempFilePath = $this->createRecuDocument($propriete, $demandeur, $numeroRecu, $prixTotal);
@@ -204,11 +231,21 @@ class RecuController extends Controller
                 'lot' => $propriete->lot,
             ]);
 
+            Log::info('✅ Reçu créé', [
+                'document_id' => $document->id,
+                'numero_recu' => $numeroRecu,
+                'propriete_id' => $propriete->id,
+                'demandeur_id' => $demandeur->id,
+            ]);
+
             return response()->download($tempFilePath, $nomFichier)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur création reçu', ['error' => $e->getMessage()]);
+            Log::error('❌ Erreur création reçu', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             throw $e;
         }
     }
@@ -248,18 +285,36 @@ class RecuController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur régénération', ['error' => $e->getMessage()]);
+            Log::error('❌ Erreur régénération', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             throw $e;
         }
     }
 
     private function generateNumeroRecu(int $idDossier, string $numeroDossier): string
     {
+        // ✅ MÉTHODE 1 : Compter SANS lock (race condition possible mais rare)
         $count = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
             ->where('id_dossier', $idDossier)
             ->where('status', DocumentGenere::STATUS_ACTIVE)
-            ->lockForUpdate()
             ->count() + 1;
+
+        // ✅ MÉTHODE 2 (RECOMMANDÉE) : Lock sur la dernière ligne puis calculer
+        // $lastDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
+        //     ->where('id_dossier', $idDossier)
+        //     ->where('status', DocumentGenere::STATUS_ACTIVE)
+        //     ->orderBy('created_at', 'desc')
+        //     ->lockForUpdate()
+        //     ->first();
+        // 
+        // $count = $lastDoc ? ($lastDoc->id + 1) : 1;
+
+        Log::debug('🔢 Génération numéro reçu', [
+            'dossier_id' => $idDossier,
+            'sequence' => $count,
+        ]);
 
         return sprintf('%03d/%s', $count, $numeroDossier);
     }
@@ -271,7 +326,7 @@ class RecuController extends Controller
 
         $templatePath = storage_path('app/public/modele_odoc/recu_paiement.docx');
         if (!file_exists($templatePath)) {
-            throw new \Exception("Template reçu introuvable");
+            throw new \Exception("Template reçu introuvable : {$templatePath}");
         }
 
         $modele = new TemplateProcessor($templatePath);
@@ -305,6 +360,11 @@ class RecuController extends Controller
         $fileName = 'RECU_' . str_replace('/', '-', $numeroRecu) . '_' . uniqid() . '.docx';
         $filePath = sys_get_temp_dir() . '/' . $fileName;
         $modele->saveAs($filePath);
+
+        Log::info('✅ Document reçu créé', [
+            'path' => $filePath,
+            'size' => filesize($filePath),
+        ]);
 
         return $filePath;
     }

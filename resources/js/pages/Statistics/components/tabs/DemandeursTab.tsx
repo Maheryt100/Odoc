@@ -132,8 +132,7 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                     {/* Hommes */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                
+                            <CardTitle className="flex items-center gap-2">           
                                 Hommes
                             </CardTitle>
                             <CardDescription>
@@ -253,7 +252,6 @@ export function DemandeursTab({ demandeurs, demographics, charts }: Props) {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <span className="text-2xl">👩</span>
                                 Femmes
                             </CardTitle>
                             <CardDescription>

@@ -49,7 +49,10 @@ class DemandeurProprieteController extends Controller
                     'lot', 'propriete_mere', 'titre_mere', 'titre', 'proprietaire',
                     'contenance', 'charge', 'situation', 'nature', 'vocation',
                     'numero_FN', 'numero_requisition', 'date_requisition',
-                    'date_inscription', 'dep_vol', 'numero_dep_vol', 'type_operation'
+                    'date_depot_1', 'date_depot_2', 'date_approbation_acte', 
+                    'dep_vol_inscription', 'numero_dep_vol_inscription',
+                    'dep_vol_requisition', 'numero_dep_vol_requisition',
+                    'type_operation'
                 ]),
                 [
                     'id_dossier' => $validated['id_dossier'],
@@ -57,16 +60,18 @@ class DemandeurProprieteController extends Controller
                 ]
             );
 
-            //  AMÉLIORATION: Convertir chaînes vides en null
+            // Convertir chaînes vides en null
             $proprieteData = $this->convertEmptyToNull($proprieteData);
 
- 
+            
+            $propriete = Propriete::create($proprieteData);
+
             // 2. Traiter les demandeurs
             $demandeursTraites = [];
             
             foreach ($validated['demandeurs'] as $index => $demandeurData) {
                 $num = $index + 1;
-    
+
                 // Convertir chaînes vides en null
                 $cleanData = $this->convertEmptyToNull($demandeurData);
 
@@ -74,14 +79,11 @@ class DemandeurProprieteController extends Controller
                 $demandeurExistant = Demandeur::where('cin', $cleanData['cin'])->first();
                 
                 if ($demandeurExistant) {
-                    
                     // Mise à jour sélective (garde les valeurs existantes si nouvelles sont null)
                     $updateData = array_filter($cleanData, fn($v) => $v !== null);
                     $demandeurExistant->update($updateData);
                     $demandeur = $demandeurExistant;
-                    
                 } else {
-                    
                     $demandeur = Demandeur::create(array_merge($cleanData, [
                         'id_user' => $id_user,
                         'nationalite' => $cleanData['nationalite'] ?? 'Malagasy',

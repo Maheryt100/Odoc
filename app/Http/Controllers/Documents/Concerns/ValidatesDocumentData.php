@@ -6,6 +6,8 @@ use App\Models\Propriete;
 use App\Models\Demandeur;
 use App\Models\DocumentGenere;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+
 
 trait ValidatesDocumentData
 {
@@ -16,7 +18,7 @@ trait ValidatesDocumentData
     {
         $errors = [];
         
-        // Vérifier la propriété
+        // ✅ Vérification COMPLÈTE de la propriété
         if (!$propriete->titre) {
             $errors[] = 'Le titre de la propriété est manquant';
         }
@@ -36,7 +38,7 @@ trait ValidatesDocumentData
             $errors[] = 'La situation de la propriété est manquante';
         }
         
-        // Vérifier le demandeur
+        // ✅ Vérification COMPLÈTE du demandeur
         if (!$demandeur->nom_demandeur) {
             $errors[] = 'Le nom du demandeur est manquant';
         }
@@ -65,18 +67,27 @@ trait ValidatesDocumentData
             $errors[] = 'Le nom de la mère du demandeur est manquant';
         }
         
-        // Vérifier le dossier et le district
+        // ✅ Vérifier le dossier et le district
         if (!$propriete->dossier) {
             $errors[] = 'Le dossier de la propriété est introuvable';
         } elseif (!$propriete->dossier->district) {
             $errors[] = 'Le district du dossier est introuvable';
         }
         
+        // ✅ LOG pour debugging
+        if (!empty($errors)) {
+            Log::warning('Validation reçu échouée', [
+                'propriete_id' => $propriete->id,
+                'demandeur_id' => $demandeur->id,
+                'errors' => $errors
+            ]);
+        }
+        
         return $errors;
     }
     
-    /**
-     * alider les données pour un acte de vente
+     /**
+     *  CORRIGÉ : Valider les données pour un acte de vente
      */
     protected function validateActeVenteData(Propriete $propriete, Demandeur $demandeur): array
     {
@@ -108,12 +119,12 @@ trait ValidatesDocumentData
             }
         }
         
-        // Vérifier les dates pour le bordereau
+        // ✅ CORRIGÉ : Vérifier les dates avec les nouveaux noms
         if (!$propriete->date_requisition) {
             $errors[] = 'La date de réquisition est manquante';
         }
-        if (!$propriete->date_inscription) {
-            $errors[] = 'La date d\'inscription est manquante';
+        if (!$propriete->date_depot_1) {
+            $errors[] = 'La date de dépôt 1 (inscription) est manquante';
         }
         if (!$propriete->date_approbation_acte) {
             $errors[] = "La date d'approbation de l'acte est obligatoire pour générer le document";
@@ -266,6 +277,8 @@ trait ValidatesDocumentData
         
         return $errors;
     }
+
+    
     
     /**
      * Lancer une exception si des erreurs sont trouvées

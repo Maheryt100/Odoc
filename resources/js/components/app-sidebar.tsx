@@ -27,7 +27,7 @@ export function AppSidebar() {
     const mainNavItems: NavItem[] = [
         {
             title: 'Dashboard',
-            href: '/dashboard', // ✅ Reste /dashboard (compatible avec route('dashboard'))
+            href: '/dashboard',
             icon: LayoutGrid,
         },
         {
@@ -37,7 +37,7 @@ export function AppSidebar() {
         },
         // {
         //     title: 'Statistiques',
-        //     href: '/statistiques', // ✅ Changé de /statistiques (compatible avec route('statistiques.index'))
+        //     href: '/statistiques',
         //     icon: BarChart3,
         // },
     ];
@@ -46,13 +46,15 @@ export function AppSidebar() {
     const configNavItems: NavItem[] = [];
 
     // Gestion des localisations - accessible aux super_admin et admin_district
-    if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
+    if (user && (user.role === 'super_admin' || user.role === 'admin_district' || 'user_district' || 'central_user')) {
         configNavItems.push({
             title: 'Localisations',
             href: '/location',
             icon: MapPin,
         });
-        
+    }
+
+    if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
         // Logs d'activité
         configNavItems.push({
             title: 'Logs d\'activité',
@@ -61,8 +63,8 @@ export function AppSidebar() {
         });
     }
 
-    // Gestion des utilisateurs - super_admin seulement
-    if (user && user.role === 'super_admin') {
+ 
+    if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
         configNavItems.push({
             title: 'Utilisateurs',
             href: '/users',
@@ -89,9 +91,22 @@ export function AppSidebar() {
         if (!user) return null;
         
         const roleConfig = {
-            super_admin: { label: 'Super Admin', color: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20' },
-            admin_district: { label: 'Admin District', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' },
-            user: { label: 'Utilisateur', color: 'bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-500/20' },
+            super_admin: { 
+                label: 'Super Admin', 
+                color: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20' 
+            },
+            central_user: { 
+                label: 'Utilisateur Central', 
+                color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20' 
+            },
+            admin_district: { 
+                label: 'Admin District', 
+                color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' 
+            },
+            user_district: { 
+                label: 'Utilisateur District', 
+                color: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20' 
+            },
         };
 
         const config = roleConfig[user.role as keyof typeof roleConfig];

@@ -22,7 +22,7 @@ export default function NouveauLot() {
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
     
-    // ✅ CORRECTION : Initialiser avec id_dossier
+    
     const [proprietes, setProprietes] = useState<ProprieteFormData[]>([{
         ...emptyPropriete,
         id_dossier: dossier.id
@@ -35,7 +35,7 @@ export default function NouveauLot() {
     const addPropriete = () => {
         setProprietes([
             ...proprietes, 
-            { ...emptyPropriete, id_dossier: dossier.id }  // ✅ CORRECTION
+            { ...emptyPropriete, id_dossier: dossier.id }  
         ]);
         setSelectedChargesByPropriete({
             ...selectedChargesByPropriete,
@@ -61,7 +61,7 @@ export default function NouveauLot() {
         newProprietes[index] = { 
             ...newProprietes[index], 
             [field]: value,
-            id_dossier: dossier.id  // ✅ TOUJOURS maintenir id_dossier
+            id_dossier: dossier.id 
         };
         setProprietes(newProprietes);
     };
@@ -349,7 +349,6 @@ export default function NouveauLot() {
                                         <p className="text-sm text-muted-foreground">
                                             Créer une ou plusieurs propriétés en une fois
                                         </p>
-                                        <Badge variant="outline" className="text-xs">Création rapide</Badge>
                                     </div>
                                 </div>
 
@@ -370,7 +369,6 @@ export default function NouveauLot() {
                                         <p className="text-sm text-muted-foreground">
                                             Créer un ou plusieurs demandeurs en une fois
                                         </p>
-                                        <Badge variant="outline" className="text-xs">Base de données</Badge>
                                     </div>
                                 </div>
                             </div>

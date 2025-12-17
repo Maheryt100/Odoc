@@ -159,8 +159,8 @@ export interface Propriete {
     is_empty?: boolean;
     has_active_demandes?: boolean;
     status_label?: 'Vide' | 'Active' | 'Acquise' | 'Inconnu';
-    can_generate_document?: boolean;        // ✅ NOUVEAU
-    document_block_reason?: string | null;  // ✅ NOUVEAU
+    can_generate_document?: boolean;
+    document_block_reason?: string | null;
 }
 
 // ============================================

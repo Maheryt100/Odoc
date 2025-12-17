@@ -39,7 +39,7 @@ class StatisticsCalculator
     ];
     
     private const PROPRIETE_NUMERIC_FIELDS = ['contenance'];
-    private const PROPRIETE_DATE_FIELDS = ['date_requisition', 'date_inscription'];
+    // private const PROPRIETE_DATE_FIELDS = ['date_requisition', 'date_inscription'];
     
     /**
      *  Extraire filtres géographiques depuis $dates
@@ -570,9 +570,9 @@ class StatisticsCalculator
             foreach (self::PROPRIETE_STRING_FIELDS as $field) {
                 $query->orWhereNull($field)->orWhere($field, '=', '');
             }
-            foreach (self::PROPRIETE_DATE_FIELDS as $field) {
-                $query->orWhereNull($field);
-            }
+            // foreach (self::PROPRIETE_DATE_FIELDS as $field) {
+            //     $query->orWhereNull($field);
+            // }
             foreach (self::PROPRIETE_NUMERIC_FIELDS as $field) {
                 $query->orWhereNull($field)->orWhere($field, '<=', 0);
             }

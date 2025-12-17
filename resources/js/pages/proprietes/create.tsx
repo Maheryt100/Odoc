@@ -193,7 +193,7 @@ export default function ProprieteCreate({
                         <Input
                             value={data.proprietaire}
                             onChange={(e) => onChange('proprietaire', e.target.value)}
-                            placeholder="RAKOTO Jean"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>
@@ -222,7 +222,7 @@ export default function ProprieteCreate({
                             min={1}
                             value={data.contenance}
                             onChange={(e) => onChange('contenance', e.target.value)}
-                            placeholder="1500"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>
@@ -231,7 +231,7 @@ export default function ProprieteCreate({
                         <Input
                             value={data.numero_FN}
                             onChange={(e) => onChange('numero_FN', e.target.value)}
-                            placeholder="FN-123"
+                            placeholder=""
                             className="h-11"
                         />
                     </div>
@@ -241,7 +241,7 @@ export default function ProprieteCreate({
                             <Input
                                 value={data.numero_requisition}
                                 onChange={(e) => onChange('numero_requisition', e.target.value)}
-                                placeholder="REQ-456"
+                                placeholder=""
                                 className="h-11"
                             />
                         </div>
@@ -271,7 +271,7 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* ✅ NOUVELLE SECTION : DATES */}
+            {/* NOUVELLE SECTION : DATES */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-orange-200 dark:border-orange-800">
                     <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
@@ -290,7 +290,7 @@ export default function ProprieteCreate({
                     <Input
                         value={data.situation}
                         onChange={(e) => onChange('situation', e.target.value)}
-                        placeholder="Ambohimanarina, Antananarivo"
+                        placeholder=""
                         className="h-11"
                     />
                 </div>
@@ -316,7 +316,7 @@ export default function ProprieteCreate({
                             <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                                 Dépôt 1
                             </Badge>
-                            <span className="text-sm text-muted-foreground">Inscription</span>
+                            <span className="text-sm text-muted-foreground">( date d'inscription bordereau n°1 )</span>
                         </div>
                         <div className="space-y-3">
                             <div className="space-y-2">
@@ -333,7 +333,7 @@ export default function ProprieteCreate({
                                 <Input
                                     value={data.dep_vol_inscription}
                                     onChange={(e) => onChange('dep_vol_inscription', e.target.value)}
-                                    placeholder="254"
+                                    placeholder=""
                                     className="h-11"
                                 />
                             </div>
@@ -342,7 +342,7 @@ export default function ProprieteCreate({
                                 <Input
                                     value={data.numero_dep_vol_inscription}
                                     onChange={(e) => onChange('numero_dep_vol_inscription', e.target.value)}
-                                    placeholder="054"
+                                    placeholder=""
                                     className="h-11"
                                 />
                             </div>
@@ -354,7 +354,7 @@ export default function ProprieteCreate({
                             <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                                 Dépôt 2
                             </Badge>
-                            <span className="text-sm text-muted-foreground">Réquisition</span>
+                            <span className="text-sm text-muted-foreground">( date d'inscription bordereau n°2 )</span>
                         </div>
                         <div className="space-y-3">
                             <div className="space-y-2">
@@ -371,7 +371,7 @@ export default function ProprieteCreate({
                                 <Input
                                     value={data.dep_vol_requisition}
                                     onChange={(e) => onChange('dep_vol_requisition', e.target.value)}
-                                    placeholder="299"
+                                    placeholder=""
                                     className="h-11"
                                 />
                             </div>
@@ -380,7 +380,7 @@ export default function ProprieteCreate({
                                 <Input
                                     value={data.numero_dep_vol_requisition}
                                     onChange={(e) => onChange('numero_dep_vol_requisition', e.target.value)}
-                                    placeholder="041"
+                                    placeholder=""
                                     className="h-11"
                                 />
                             </div>
@@ -389,7 +389,7 @@ export default function ProprieteCreate({
                 </div>
             </div>
 
-            {/* ✅ BLOC DATES ADMINISTRATIVES */}
+            {/* BLOC DATES ADMINISTRATIVES */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-emerald-200 dark:border-emerald-800">
                     <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
@@ -412,17 +412,11 @@ export default function ProprieteCreate({
                             onChange={(e) => onChange('date_requisition', e.target.value)}
                             className="h-11"
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Date officielle de la réquisition foncière
-                        </p>
                     </div>
 
                     <div className="space-y-2">
                         <Label className="text-sm font-medium flex items-center gap-2">
                             Date approbation acte
-                            <Badge variant="destructive" className="text-[10px] px-1 py-0">
-                                Obligatoire
-                            </Badge>
                         </Label>
                         <Input
                             type="date"
@@ -431,10 +425,6 @@ export default function ProprieteCreate({
                             className="h-11 border-emerald-300 dark:border-emerald-700"
                             min={data.date_requisition || undefined}
                         />
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Requis pour générer le document Word
-                        </p>
                     </div>
                 </div>
             </div>

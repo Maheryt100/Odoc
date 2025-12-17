@@ -222,8 +222,8 @@ export default function ProprieteDetailDialog({
                                     </Badge>
                                 )}
                                 
-                                {/* ✅ Badge statut document */}
-                                {propriete.can_generate_document ? (
+                                {/* Badge statut document */}
+                                {/* {propriete.can_generate_document ? (
                                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
                                         <CheckCircle2 className="mr-1 h-3 w-3" />
                                         Prêt pour document
@@ -233,7 +233,7 @@ export default function ProprieteDetailDialog({
                                         <AlertCircle className="mr-1 h-3 w-3" />
                                         Date approbation manquante
                                     </Badge>
-                                )}
+                                )} */}
                             </div>
                         </div>
                     </div>
@@ -515,7 +515,7 @@ export default function ProprieteDetailDialog({
                                                     >
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <Badge variant={demande.ordre === 1 ? 'default' : 'secondary'}>
-                                                                {demande.ordre === 1 ? '👑 Principal' : `Consort #${demande.ordre}`}
+                                                                {demande.ordre === 1 ? 'Principal' : `Consort #${demande.ordre}`}
                                                             </Badge>
                                                         </div>
                                                         <p className="font-semibold text-lg group-hover:text-primary transition-colors mb-1">
@@ -524,12 +524,12 @@ export default function ProprieteDetailDialog({
                                                         <p className="text-sm text-muted-foreground font-mono mb-2">
                                                             CIN: {demande.demandeur?.cin || 'N/A'}
                                                         </p>
-                                                        {demande.total_prix > 0 && (
+                                                        {/* {demande.total_prix > 0 && (
                                                             <div className="flex items-center gap-2 text-sm font-medium text-green-600">
                                                                 <CreditCard className="h-4 w-4" />
                                                                 {formatPrix(demande.total_prix)}
                                                             </div>
-                                                        )}
+                                                        )} */}
                                                     </button>
                                                     
                                                     <div className="flex items-center gap-2 shrink-0">

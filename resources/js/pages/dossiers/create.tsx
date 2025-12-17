@@ -31,7 +31,7 @@ export default function Create() {
                     </h1>
                     <div className="text-muted-foreground mt-2 space-y-1">
                         <p>Créer un nouveau dossier de terrain</p>
-                        {last_numero !== null && (
+                        {/* {last_numero !== null && (
                             <p className="text-sm">
                                 <span className="text-blue-600 font-medium">
                                     Dernier numéro utilisé : {last_numero}
@@ -41,7 +41,7 @@ export default function Create() {
                                     Numéro suggéré : {suggested_numero}
                                 </span>
                             </p>
-                        )}
+                        )} */}
                     </div>
                 </div>
 

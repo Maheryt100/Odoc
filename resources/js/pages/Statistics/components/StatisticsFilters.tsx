@@ -16,8 +16,8 @@ interface Props {
     provinces: Province[];
     regions: Region[];
     districts: District[];
-    canFilterGeography: boolean; // ✅ true pour Super Admin/Central User
-    userDistrict?: District;      // ✅ District de l'utilisateur si Admin/User District
+    canFilterGeography: boolean;
+    userDistrict?: District;    
 }
 
 export function StatisticsFilters({ 
@@ -97,7 +97,7 @@ export function StatisticsFilters({
             params.date_to = debouncedDateTo || null;
         }
 
-        // ✅ LOGIQUE GÉOGRAPHIQUE HIÉRARCHIQUE
+        //  LOGIQUE GÉOGRAPHIQUE HIÉRARCHIQUE
         if (canFilterGeography) {
             // Si district sélectionné → on envoie uniquement district_id
             if (districtId !== 'all') {

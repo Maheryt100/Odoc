@@ -55,7 +55,7 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
         <Card className="hover:shadow-lg transition-shadow lg:col-span-2 md:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm font-medium">Revenus potentiels</CardTitle>
+                    <CardTitle className="text-2xl font-bold">Revenus potentiels</CardTitle>
                     <Badge variant="outline" className="text-xs">
                         <Info className="h-3 w-3 mr-1" />
                         Actifs uniquement

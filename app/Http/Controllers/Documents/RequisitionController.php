@@ -202,6 +202,11 @@ class RequisitionController extends Controller
         $locationData = $this->getLocationData($propriete);
         $contenanceData = $this->formatContenance($propriete->contenance);
 
+        // ✅ AJOUT : Date de réquisition
+        $dateRequisition = $propriete->date_requisition 
+            ? $this->formatDateDocument(\Carbon\Carbon::parse($propriete->date_requisition))
+            : 'Non renseignée';
+
         $modele->setValues([
             'Province' => $locationData['province'],
             'Region' => $locationData['region'],
@@ -217,11 +222,18 @@ class RequisitionController extends Controller
             'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
             'ContenanceFormatLettre' => $contenanceData['lettres'],
             'ContenanceFormat' => $contenanceData['format'],
+            'DateRequisition' => $dateRequisition, // AJOUT
         ]);
 
         $fileName = 'REQUISITION_' . uniqid() . '_TN' . $propriete->titre . '.docx';
         $filePath = sys_get_temp_dir() . '/' . $fileName;
         $modele->saveAs($filePath);
+
+        Log::info('Document réquisition créé', [
+            'path' => $filePath,
+            'size' => filesize($filePath),
+            'date_requisition' => $dateRequisition,
+        ]);
 
         return $filePath;
     }
