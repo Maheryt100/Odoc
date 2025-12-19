@@ -150,6 +150,291 @@ class User extends Authenticatable
     }
 
     // ============ PERMISSIONS ============
+
+    /**
+     * NOUVELLE LOGIQUE : Super Admin et Central User NE PEUVENT PAS créer
+     */
+    public function canCreate(?string $resource = null): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : LECTURE SEULE
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+        
+        // ✅ Admin District et User District : peuvent créer
+        if ($this->isAdminDistrict() || $this->isUserDistrict()) {
+            return $this->id_district !== null;
+        }
+        
+        return false;
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Super Admin et Central User NE PEUVENT PAS modifier
+     */
+    public function canUpdate(?string $resource = null): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : LECTURE SEULE
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Admin District et User District : peuvent modifier
+        if ($this->isAdminDistrict() || $this->isUserDistrict()) {
+            return $this->id_district !== null;
+        }
+        
+        return false;
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Super Admin et Central User NE PEUVENT PAS supprimer
+     */
+    public function canDelete(?string $resource = null): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : LECTURE SEULE
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Seul Admin District peut supprimer
+        return $this->isAdminDistrict();
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Archivage uniquement pour Admin/User District
+     */
+    public function canArchive(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS archiver
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        return $this->isAdminDistrict() || $this->isUserDistrict();
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Export uniquement pour Admin/User District
+     */
+    public function canExportData(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ✅ Tous peuvent exporter (lecture seule)
+        return true;
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Gestion utilisateurs
+     * - Super Admin : UNIQUEMENT création admin_district
+     * - Admin District : gestion user_district de leur district
+     * - Central User : AUCUNE gestion
+     */
+    public function canManageUsers(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ✅ Super Admin peut gérer (mais seulement admin_district)
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        // ✅ Admin District peut gérer (user_district de leur district)
+        if ($this->isAdminDistrict()) {
+            return true;
+        }
+
+        // ❌ Central User : AUCUNE gestion
+        return false;
+    }
+
+    /**
+     * NOUVEAU : Vérifier quel type d'utilisateur peut être créé
+     */
+    public function canCreateUser(string $targetRole): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // Super Admin : UNIQUEMENT admin_district
+        if ($this->isSuperAdmin()) {
+            return $targetRole === self::ROLE_ADMIN_DISTRICT;
+        }
+        
+        // Admin District : UNIQUEMENT user_district
+        if ($this->isAdminDistrict()) {
+            return $targetRole === self::ROLE_USER_DISTRICT;
+        }
+        
+        // Central User : RIEN
+        return false;
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Configuration des prix
+     * Uniquement Admin District
+     */
+    public function canConfigurePrices(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : LECTURE SEULE
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        return $this->isAdminDistrict();
+    }
+
+    /**
+     * NOUVELLE LOGIQUE : Génération de documents
+     * Uniquement Admin District et User District
+     */
+    public function canGenerateDocuments(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Admin District et User District : PEUVENT
+        return ($this->isAdminDistrict() || $this->isUserDistrict()) 
+            && $this->id_district !== null;
+    }
+
+    /**
+     * NOUVEAU : Fermeture/Réouverture dossier
+     * Uniquement Admin District
+     */
+    public function canCloseDossier(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Seul Admin District peut fermer/rouvrir
+        return $this->isAdminDistrict();
+    }
+
+    // ============ MÉTHODES POUR DOSSIERS (Mise à jour) ============
+    
+    public function canUpdateDossier(\App\Models\Dossier $dossier): bool
+    {
+        if ($dossier->is_closed) {
+            return false;
+        }
+
+        if (!$this->canAccessDossier($dossier)) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : LECTURE SEULE
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Admin District et User District : peuvent modifier
+        if ($this->isAdminDistrict()) {
+            return $this->id_district === $dossier->id_district;
+        }
+
+        if ($this->isUserDistrict()) {
+            return $this->id === $dossier->id_user 
+                && $this->id_district === $dossier->id_district;
+        }
+
+        return false;
+    }
+
+    public function canDeleteDossier(\App\Models\Dossier $dossier): bool
+    {
+        if ($dossier->is_closed) {
+            return false;
+        }
+
+        if (!$this->canAccessDossier($dossier)) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Seul Admin District peut supprimer
+        return $this->isAdminDistrict() 
+            && $this->id_district === $dossier->id_district;
+    }
+
+    public function canCloseDossierInstance(\App\Models\Dossier $dossier): bool
+    {
+        if ($dossier->is_closed) {
+            return false;
+        }
+
+        if (!$this->canAccessDossier($dossier)) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return false;
+        }
+
+        // ✅ Seul Admin District peut fermer
+        return $this->isAdminDistrict() 
+            && $this->id_district === $dossier->id_district;
+    }
+
+    public function canArchiveDossier(\App\Models\Dossier $dossier): bool
+    {
+        // ❌ Personne ne peut archiver (fonctionnalité désactivée globalement)
+        return false;
+    }
+
+    public function canExportDossier(\App\Models\Dossier $dossier): bool
+    {
+        if (!$this->canAccessDossier($dossier)) {
+            return false;
+        }
+
+        // ✅ Tous peuvent exporter (lecture seule)
+        return true;
+    }
+
     
     public function canAccessDistrict(?int $districtId): bool
     {
@@ -173,85 +458,85 @@ class User extends Authenticatable
         return $this->id_district === $dossier->id_district;
     }
 
-    public function canCreate(?string $resource = null): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canCreate(?string $resource = null): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        if ($this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser()) {
-            return true;
-        }
+    //     if ($this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser()) {
+    //         return true;
+    //     }
         
-        if ($this->isUserDistrict() && $this->id_district) {
-            return true;
-        }
+    //     if ($this->isUserDistrict() && $this->id_district) {
+    //         return true;
+    //     }
         
-        return false;
-    }
+    //     return false;
+    // }
 
-    public function canUpdate(?string $resource = null): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canUpdate(?string $resource = null): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        if ($this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser()) {
-            return true;
-        }
+    //     if ($this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser()) {
+    //         return true;
+    //     }
         
-        return $this->isUserDistrict() && $this->id_district !== null;
-    }
+    //     return $this->isUserDistrict() && $this->id_district !== null;
+    // }
 
-    public function canDelete(?string $resource = null): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canDelete(?string $resource = null): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() || $this->isAdminDistrict();
-    }
+    //     return $this->isSuperAdmin() || $this->isAdminDistrict();
+    // }
 
-    public function canArchive(): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canArchive(): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        return in_array($this->role, [
-            self::ROLE_SUPER_ADMIN,
-            self::ROLE_ADMIN_DISTRICT,
-            self::ROLE_USER_DISTRICT,
-            self::ROLE_CENTRAL_USER,
-        ]);
-    }
+    //     return in_array($this->role, [
+    //         self::ROLE_SUPER_ADMIN,
+    //         self::ROLE_ADMIN_DISTRICT,
+    //         self::ROLE_USER_DISTRICT,
+    //         self::ROLE_CENTRAL_USER,
+    //     ]);
+    // }
 
-    public function canExportData(): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canExportData(): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser();
-    }
+    //     return $this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser();
+    // }
 
-    public function canManageUsers(): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canManageUsers(): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() || $this->isAdminDistrict();
-    }
+    //     return $this->isSuperAdmin() || $this->isAdminDistrict();
+    // }
 
-    public function canConfigurePrices(): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
+    // public function canConfigurePrices(): bool
+    // {
+    //     if (!$this->status) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() || $this->isAdminDistrict();
-    }
+    //     return $this->isSuperAdmin() || $this->isAdminDistrict();
+    // }
 
     // ============ SCOPES POUR FILTRAGE ============
     
@@ -507,70 +792,70 @@ class User extends Authenticatable
 
     // ============ MÉTHODES POUR DOSSIERS ============
     
-    public function canUpdateDossier(\App\Models\Dossier $dossier): bool
-    {
-        if ($dossier->is_closed) {
-            return false;
-        }
+    // public function canUpdateDossier(\App\Models\Dossier $dossier): bool
+    // {
+    //     if ($dossier->is_closed) {
+    //         return false;
+    //     }
 
-        if (!$this->canAccessDossier($dossier)) {
-            return false;
-        }
+    //     if (!$this->canAccessDossier($dossier)) {
+    //         return false;
+    //     }
 
-        if ($this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser()) {
-            return true;
-        }
+    //     if ($this->isSuperAdmin() || $this->isAdminDistrict() || $this->isCentralUser()) {
+    //         return true;
+    //     }
 
-        if ($this->isUserDistrict()) {
-            return $this->id === $dossier->id_user;
-        }
+    //     if ($this->isUserDistrict()) {
+    //         return $this->id === $dossier->id_user;
+    //     }
 
-        return false;
-    }
+    //     return false;
+    // }
 
-    public function canDeleteDossier(\App\Models\Dossier $dossier): bool
-    {
-        if ($dossier->is_closed) {
-            return false;
-        }
+    // public function canDeleteDossier(\App\Models\Dossier $dossier): bool
+    // {
+    //     if ($dossier->is_closed) {
+    //         return false;
+    //     }
 
-        if (!$this->canAccessDossier($dossier)) {
-            return false;
-        }
+    //     if (!$this->canAccessDossier($dossier)) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() || $this->isAdminDistrict();
-    }
+    //     return $this->isSuperAdmin() || $this->isAdminDistrict();
+    // }
 
-    public function canCloseDossier(\App\Models\Dossier $dossier): bool
-    {
-        if ($dossier->is_closed) {
-            return false;
-        }
+    // public function canCloseDossier(\App\Models\Dossier $dossier): bool
+    // {
+    //     if ($dossier->is_closed) {
+    //         return false;
+    //     }
 
-        if (!$this->canAccessDossier($dossier)) {
-            return false;
-        }
+    //     if (!$this->canAccessDossier($dossier)) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() 
-            || $this->isCentralUser() 
-            || $this->isAdminDistrict();
-    }
+    //     return $this->isSuperAdmin() 
+    //         || $this->isCentralUser() 
+    //         || $this->isAdminDistrict();
+    // }
 
-    public function canArchiveDossier(\App\Models\Dossier $dossier): bool
-    {
-        return $this->canUpdateDossier($dossier);
-    }
+    // public function canArchiveDossier(\App\Models\Dossier $dossier): bool
+    // {
+    //     return $this->canUpdateDossier($dossier);
+    // }
 
-    public function canExportDossier(\App\Models\Dossier $dossier): bool
-    {
-        if (!$this->canAccessDossier($dossier)) {
-            return false;
-        }
+    // public function canExportDossier(\App\Models\Dossier $dossier): bool
+    // {
+    //     if (!$this->canAccessDossier($dossier)) {
+    //         return false;
+    //     }
 
-        return $this->isSuperAdmin() 
-            || $this->isCentralUser() 
-            || $this->isAdminDistrict();
-    }
+    //     return $this->isSuperAdmin() 
+    //         || $this->isCentralUser() 
+    //         || $this->isAdminDistrict();
+    // }
 
     public function getRoleLabel(): string
     {

@@ -4,6 +4,7 @@
 
 import type { Demandeur, Dossier, Propriete } from '@/types';
 import type { LucideIcon } from 'lucide-react';
+import { DocumentDemande } from '../demandes/types';
 
 /**
  * ✅ Demandeur enrichi avec informations de propriétés
@@ -81,4 +82,12 @@ export interface FiltreState {
     recherche: string;
     tri: TriType;
     ordre: 'asc' | 'desc';
+}
+
+export interface DemandeWithDetails extends DocumentDemande {
+  _computed: {
+    isIncomplete: boolean;
+    hasValidDemandeurs: boolean;
+    isArchived: boolean;
+  };
 }

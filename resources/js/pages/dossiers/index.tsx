@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/index.tsx - ✅ VERSION AVEC FILTRAGE PAR DATES COMPLÈTES
+// resources/js/pages/dossiers/index.tsx - ✅ VERSION CORRIGÉE
 import { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
@@ -34,6 +34,9 @@ export default function Index() {
     const { dossiers = [], districts = [], auth } = usePage<PageProps>().props;
     const { flash } = usePage<SharedData>().props;
 
+    // ✅ CORRECTION : Extraire user depuis auth
+    const user = auth?.user;
+
     // États principaux
     const [currentPage, setCurrentPage] = useState(1);
     const [filtreStatut, setFiltreStatut] = useState<FiltreStatutDossierType>('tous');
@@ -51,6 +54,10 @@ export default function Index() {
 
     const itemsPerPage = 10;
 
+    // ✅ Permissions
+    const canCreateDossier = user?.role === 'admin_district' || user?.role === 'user_district';
+    const canShowAllDistricts = user?.role === 'super_admin' || user?.role === 'central_user';
+
     // Toasts
     useEffect(() => {
         if (flash?.message) toast.info(flash.message);
@@ -58,7 +65,7 @@ export default function Index() {
         if (flash?.error) toast.error(flash.error);
     }, [flash]);
 
-    // ✅ Filtrage avec dates complètes
+    // Filtrage avec dates complètes
     const filteredDossiers = useMemo(() => {
         let filtered = [...dossiers];
 
@@ -92,7 +99,7 @@ export default function Index() {
             filtered = filtered.filter(d => d.id_district === parseInt(districtFilter));
         }
 
-        // ✅ NOUVEAU : Filtrage par dates complètes (date_ouverture)
+        // Filtrage par dates
         if (dateStart) {
             const startDate = new Date(dateStart);
             startDate.setHours(0, 0, 0, 0);
@@ -118,7 +125,7 @@ export default function Index() {
         return filtered;
     }, [dossiers, filtreStatut, recherche, districtFilter, dateStart, dateEnd]);
 
-    // ✅ Tri amélioré
+    // Tri
     const sortedDossiers = useMemo(() => {
         const sorted = [...filteredDossiers];
 
@@ -199,8 +206,6 @@ export default function Index() {
         setDeleteDialogOpen(true);
     };
 
-    const canShowAllDistricts = auth.user.role === 'super_admin' || auth.user.role === 'central_user';
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dossiers" />
@@ -220,16 +225,35 @@ export default function Index() {
                         </p>
                     </div>
 
-                    {/* Bouton Créer */}
-                    <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
-                        <Link href={route('dossiers.create')}>
-                            <FolderPlus className="h-5 w-5 mr-2" />
-                            Créer un dossier
-                        </Link>
-                    </Button>
+                    {/* ✅ Bouton Créer (conditionnel) */}
+                    {canCreateDossier && (
+                        <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+                            <Link href={route('dossiers.create')}>
+                                <FolderPlus className="h-5 w-5 mr-2" />
+                                Créer un dossier
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
-                {/* Alerte */}
+                {/* ✅ Message read-only pour super_admin et central_user */}
+                {!canCreateDossier && (
+                    <Alert className="border-0 shadow-md bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
+                                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <AlertDescription className="text-sm text-amber-900 dark:text-amber-100">
+                                <span className="font-semibold">Mode consultation uniquement</span>
+                                <span className="text-amber-700 dark:text-amber-300 block mt-1">
+                                    Vous pouvez consulter tous les dossiers mais pas les créer ou les modifier.
+                                </span>
+                            </AlertDescription>
+                        </div>
+                    </Alert>
+                )}
+
+                {/* Alerte info */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">

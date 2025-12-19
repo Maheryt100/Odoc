@@ -1,4 +1,4 @@
-// pages/demandes/types.ts - ✅ TYPES COMPLETS
+// pages/demandes/types.ts - ✅ AVEC DATE_DEMANDE
 
 import type { Demandeur, Propriete, Dossier } from '@/types';
 
@@ -7,6 +7,7 @@ export interface DemandeBase {
     id: number;
     id_demandeur: number;
     id_propriete: number;
+    date_demande: string; // ✅ NOUVEAU (format YYYY-MM-DD)
     total_prix: number;
     ordre: number;
     created_at: string;
@@ -22,6 +23,8 @@ export interface DemandeWithStatus extends DemandeBase {
 export interface DemandeWithRelations extends DemandeWithStatus {
     demandeur?: Demandeur;
     propriete?: Propriete;
+    date_demande_formatted?: string; // ✅ Ex: "15 janvier 2025"
+    date_demande_short?: string; // ✅ Ex: "15/01/2025"
 }
 
 export type Demande = DemandeWithRelations;
@@ -30,6 +33,7 @@ export type Demande = DemandeWithRelations;
 export interface DocumentDemande {
     id: number;
     id_propriete: number;
+    date_demande?: string; // ✅ NOUVEAU
     propriete: {
         id: number;
         lot: string;
@@ -40,6 +44,7 @@ export interface DocumentDemande {
         proprietaire?: string;
         situation?: string;
         is_archived?: boolean;
+        date_requisition?: string; // ✅ Pour validation cohérence
     };
     demandeurs: Array<{
         id: number;
@@ -64,6 +69,8 @@ export interface DocumentDemande {
     status: 'active' | 'archive';
     status_consort: boolean;
     nombre_demandeurs: number;
+    created_at?: string;
+    updated_at?: string;
 }
 
 // Type avec propriétés computed
@@ -90,14 +97,15 @@ export interface DemandesIndexProps {
     onUnarchive: (doc: DocumentDemande) => void;
 }
 
-// Types pour les filtres
+// ✅ MISE À JOUR : Types pour les filtres (avec date_demande)
 export type FiltreStatutDemandeType = 'tous' | 'actives' | 'archivees' | 'incompletes';
-export type TriDemandeType = 'date' | 'lot' | 'demandeur' | 'prix' | 'statut';
+export type TriDemandeType = 'date' | 'date_demande' | 'lot' | 'demandeur' | 'prix' | 'statut';
 
 // Type pour les données de formulaire
 export interface DemandeFormData {
     id_demandeur: number;
     id_propriete: number;
+    date_demande: string; // ✅ NOUVEAU
     total_prix: number;
     status_consort: boolean;
 }
@@ -107,6 +115,14 @@ export interface DemandeFilters {
     status?: 'active' | 'archive' | 'all';
     propriete_id?: number;
     demandeur_id?: number;
+    date_debut?: string; // ✅ NOUVEAU
+    date_fin?: string; // ✅ NOUVEAU
+}
+
+// ✅ NOUVEAU : Type pour les filtres de période
+export interface DateRangeFilter {
+    dateDebut: string | null;
+    dateFin: string | null;
 }
 
 // Legacy support

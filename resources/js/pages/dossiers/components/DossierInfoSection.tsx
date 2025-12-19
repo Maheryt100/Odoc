@@ -17,7 +17,8 @@ export default function DossierInfoSection({
     demandeursCount, 
     proprietesCount,
     onCloseToggle,
-    permissions
+    permissions,
+    userRole 
 }: DossierInfoSectionProps) {
     
     const duration = getDurationInDays(dossier.date_descente_debut, dossier.date_descente_fin);
@@ -27,6 +28,7 @@ export default function DossierInfoSection({
     const displayNumero = typeof dossier.numero_ouverture === 'number' 
         ? `N° ${dossier.numero_ouverture}`
         : (dossier.numero_ouverture_display || dossier.numero_ouverture || 'Non assigné');
+
 
     return (
         <div className="space-y-4">

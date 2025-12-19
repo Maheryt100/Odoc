@@ -1,4 +1,4 @@
-// pages/DemandeursProprietes/NouveauLot.tsx - ✅ CORRECTION
+// pages/DemandeursProprietes/NouveauLot.tsx - ✅ AVEC DATE_DEMANDE
 
 import { useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -10,10 +10,11 @@ import { Save, Plus, ArrowLeft, LandPlot, Users, Sparkles, CheckCircle2, FileTex
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { BreadcrumbItem, Dossier } from '@/types';
 import ProprieteCreate, { ProprieteFormData, emptyPropriete } from '@/pages/proprietes/create';
 import DemandeurCreate, { DemandeurFormData, emptyDemandeur } from '@/pages/demandeurs/create';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import DatePickerDemande from '@/components/DatePickerDemande';
 
 type CreationMode = 'lot-demandeur' | 'lots-only' | 'demandeurs-only';
 
@@ -22,6 +23,10 @@ export default function NouveauLot() {
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
     
+    // ✅ NOUVEAU : État pour date_demande
+    const today = new Date().toISOString().split('T')[0];
+    const [dateDemande, setDateDemande] = useState<string>(today);
+    const [dateDemandeError, setDateDemandeError] = useState<string>('');
     
     const [proprietes, setProprietes] = useState<ProprieteFormData[]>([{
         ...emptyPropriete,
@@ -89,7 +94,7 @@ export default function NouveauLot() {
         updatePropriete(proprieteIndex, 'charge', newCharges.join(', '));
     };
 
-    // ========== GESTION DES DEMANDEURS (inchangé) ==========
+    // ========== GESTION DES DEMANDEURS ==========
     const addDemandeur = () => {
         setDemandeurs([...demandeurs, { ...emptyDemandeur }]);
     };
@@ -115,7 +120,33 @@ export default function NouveauLot() {
         });
     };
 
-    // ========== VALIDATION (inchangée) ==========
+    // ✅ NOUVEAU : Validation date_demande
+    const handleDateDemandeChange = (newDate: string) => {
+        setDateDemande(newDate);
+        
+        // Validation : pas dans le futur
+        if (new Date(newDate) > new Date()) {
+            setDateDemandeError('La date ne peut pas être dans le futur');
+            return;
+        }
+        
+        // Validation : pas avant 2020
+        if (new Date(newDate) < new Date('2020-01-01')) {
+            setDateDemandeError('La date ne peut pas être antérieure au 01/01/2020');
+            return;
+        }
+        
+        // Validation : cohérence avec date_requisition
+        const dateRequisition = proprietes[0]?.date_requisition;
+        if (dateRequisition && new Date(newDate) < new Date(dateRequisition)) {
+            setDateDemandeError('La date de demande ne peut pas être antérieure à la date de réquisition');
+            return;
+        }
+        
+        setDateDemandeError('');
+    };
+
+    // ========== VALIDATION ==========
     const validateProprietes = (): boolean => {
         for (let i = 0; i < proprietes.length; i++) {
             const p = proprietes[i];
@@ -179,9 +210,15 @@ export default function NouveauLot() {
         return true;
     };
 
-    // ========== SOUMISSION - ✅ CORRECTION ==========
+    // ========== SOUMISSION - ✅ AVEC DATE_DEMANDE ==========
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // ✅ Validation date_demande
+        if (dateDemandeError) {
+            toast.error('Erreur de date', { description: dateDemandeError });
+            return;
+        }
 
         if (creationMode === 'lots-only' || creationMode === 'lot-demandeur') {
             if (!validateProprietes()) return;
@@ -194,7 +231,6 @@ export default function NouveauLot() {
         setProcessing(true);
 
         if (creationMode === 'lot-demandeur') {
-            // ✅ S'assurer que id_dossier est présent
             const proprieteData = {
                 ...proprietes[0],
                 id_dossier: dossier.id
@@ -202,6 +238,7 @@ export default function NouveauLot() {
 
             router.post(route('nouveau-lot.store'), {
                 ...proprieteData,
+                date_demande: dateDemande, // ✅ NOUVEAU
                 demandeurs_json: JSON.stringify(demandeurs)
             }, {
                 onError: (errors) => {
@@ -220,7 +257,6 @@ export default function NouveauLot() {
                 }
             });
         } else if (creationMode === 'lots-only') {
-            // ✅ S'assurer que toutes les propriétés ont id_dossier
             const proprietesAvecDossier = proprietes.map(p => ({
                 ...p,
                 id_dossier: dossier.id
@@ -270,7 +306,7 @@ export default function NouveauLot() {
             <Toaster position="top-right" richColors />
 
             <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* Header (inchangé) */}
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
@@ -294,7 +330,7 @@ export default function NouveauLot() {
                     </Button>
                 </div>
 
-                {/* Mode sélection (inchangé) */}
+                {/* Mode sélection */}
                 <Card className="border-0 shadow-lg">
                     <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b">
                         <CardHeader>
@@ -310,7 +346,6 @@ export default function NouveauLot() {
                     <CardContent className="pt-6">
                         <RadioGroup value={creationMode} onValueChange={(value) => setCreationMode(value as CreationMode)}>
                             <div className="grid gap-4 md:grid-cols-3">
-                                {/* Options radio (inchangées) */}
                                 <div 
                                     className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lot-demandeur' 
@@ -375,6 +410,28 @@ export default function NouveauLot() {
                         </RadioGroup>
                     </CardContent>
                 </Card>
+
+                {/* ✅ NOUVEAU : Section Date de demande (seulement si lot-demandeur) */}
+                {creationMode === 'lot-demandeur' && (
+                    <Card className="border-0 shadow-lg">
+                        <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b">
+                            <CardHeader>
+                                <CardTitle className="text-lg">Date de la demande</CardTitle>
+                                <CardDescription>
+                                    Date officielle de la demande d'acquisition
+                                </CardDescription>
+                            </CardHeader>
+                        </div>
+                        <CardContent className="pt-6">
+                            <DatePickerDemande
+                                value={dateDemande}
+                                onChange={handleDateDemandeChange}
+                                error={dateDemandeError}
+                                required
+                            />
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
                     <div className="flex items-start gap-3">
@@ -457,7 +514,7 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
-                {/* Section Demandeurs (inchangée) */}
+                {/* Section Demandeurs */}
                 {(creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur') && (
                     <Card className="border-0 shadow-lg">
                         <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 border-b">
@@ -512,7 +569,7 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
-                {/* Actions (inchangé) */}
+                {/* Actions */}
                 <div className="flex gap-4 justify-end pb-6">
                     <Button
                         type="button"
@@ -526,7 +583,7 @@ export default function NouveauLot() {
                     <Button 
                         type="button" 
                         onClick={handleSubmit} 
-                        disabled={processing}
+                        disabled={processing || (creationMode === 'lot-demandeur' && !!dateDemandeError)}
                         size="lg"
                         className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
                     >

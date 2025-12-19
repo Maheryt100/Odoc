@@ -11,15 +11,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
-// use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Rules\ValidCIN;
 use App\Http\Requests\StoreDemandeurRequest;
+use Carbon\Carbon;
 
 class DemandeurProprieteController extends Controller
 {
     /**
-     *  NOUVEAU LOT : Afficher le formulaire
+     * NOUVEAU LOT : Afficher le formulaire
      */
     public function create($id)
     {
@@ -31,11 +31,10 @@ class DemandeurProprieteController extends Controller
     }
 
     /**
-     *  NOUVEAU LOT
+     * ✅ NOUVEAU LOT : Enregistrer (avec date_demande)
      */
     public function store(StoreDemandeurRequest $request)
     {
-        // Données déjà validées par StoreDemandeurRequest
         $validated = $request->validated();
         
         DB::beginTransaction();
@@ -60,26 +59,32 @@ class DemandeurProprieteController extends Controller
                 ]
             );
 
-            // Convertir chaînes vides en null
             $proprieteData = $this->convertEmptyToNull($proprieteData);
-
-            
             $propriete = Propriete::create($proprieteData);
 
-            // 2. Traiter les demandeurs
+            // ✅ 2. Préparer date_demande
+            $dateDemande = isset($validated['date_demande']) 
+                ? Carbon::parse($validated['date_demande']) 
+                : Carbon::today();
+
+            // ✅ VALIDATION : date_demande >= date_requisition
+            if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'date_demande' => "La date de demande ({$dateDemande->format('d/m/Y')}) ne peut pas être antérieure à la date de réquisition ({$propriete->date_requisition->format('d/m/Y')})."
+                ]);
+            }
+
+            // 3. Traiter les demandeurs
             $demandeursTraites = [];
             
             foreach ($validated['demandeurs'] as $index => $demandeurData) {
-                $num = $index + 1;
-
-                // Convertir chaînes vides en null
                 $cleanData = $this->convertEmptyToNull($demandeurData);
 
                 // Vérifier si demandeur existe
                 $demandeurExistant = Demandeur::where('cin', $cleanData['cin'])->first();
                 
                 if ($demandeurExistant) {
-                    // Mise à jour sélective (garde les valeurs existantes si nouvelles sont null)
                     $updateData = array_filter($cleanData, fn($v) => $v !== null);
                     $demandeurExistant->update($updateData);
                     $demandeur = $demandeurExistant;
@@ -92,13 +97,13 @@ class DemandeurProprieteController extends Controller
                     ]));
                 }
 
-                // 3. Ajouter au dossier
+                // 4. Ajouter au dossier
                 Contenir::firstOrCreate([
                     'id_demandeur' => $demandeur->id,
                     'id_dossier' => $validated['id_dossier'],
                 ]);
 
-                // 4. Créer la liaison (si pas déjà existante)
+                // ✅ 5. Créer la liaison AVEC date_demande
                 $liaisonExistante = Demander::where('id_demandeur', $demandeur->id)
                     ->where('id_propriete', $propriete->id)
                     ->exists();
@@ -107,11 +112,12 @@ class DemandeurProprieteController extends Controller
                     Demander::create([
                         'id_demandeur' => $demandeur->id,
                         'id_propriete' => $propriete->id,
+                        'date_demande' => $dateDemande, // ✅ NOUVEAU CHAMP
                         'id_user' => $id_user,
                         'status' => Demander::STATUS_ACTIVE,
                         'status_consort' => count($validated['demandeurs']) > 1,
-                        // ordre sera calculé automatiquement par le boot() du modèle
-                        // total_prix sera calculé par l'Observer
+                        // ordre calculé par boot()
+                        // total_prix calculé par Observer
                     ]);
                 }
                 
@@ -129,32 +135,9 @@ class DemandeurProprieteController extends Controller
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
-
-    /**
-     *  Vérifier via demandes
-     */
-    private function isPropertyArchived(Propriete $propriete): bool
-    {
-        $demandesActives = Demander::where('id_propriete', $propriete->id)
-            ->where('status', 'active')
-            ->count();
-            
-        $demandesArchivees = Demander::where('id_propriete', $propriete->id)
-            ->where('status', 'archive')
-            ->count();
-            
-        return $demandesArchivees > 0 && $demandesActives === 0;
-    }
-
-    private function getBlockedActionMessage(Propriete $propriete, string $action): string
-    {
-        return "Impossible d'effectuer l'action '{$action}' : la propriété Lot {$propriete->lot} est archivée (acquise).";
-    }
-
 
     /**
      * LIER EXISTANT : Afficher le formulaire
@@ -227,15 +210,15 @@ class DemandeurProprieteController extends Controller
         ]);
     }
 
-
     /**
-     * LIER EXISTANT : Enregistrer
+     * ✅ LIER EXISTANT : Enregistrer (avec date_demande)
      */
     public function storeLink(Request $request)
     {
         $request->validate([
             'id_propriete' => 'required|exists:proprietes,id',
             'mode' => 'required|in:existant,nouveau',
+            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01', // ✅ NOUVEAU
         ]);
 
         DB::beginTransaction();
@@ -244,7 +227,6 @@ class DemandeurProprieteController extends Controller
             $id_user = Auth::id();
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            // ✅ Vérification métier
             if ($propriete->is_archived) {
                 DB::rollBack();
                 return back()->with('error', "❌ Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
@@ -296,13 +278,27 @@ class DemandeurProprieteController extends Controller
                 return back()->withErrors(['error' => 'Ce demandeur est déjà lié à cette propriété']);
             }
 
-            // Créer la liaison
+            // ✅ Préparer date_demande
+            $dateDemande = $request->filled('date_demande') 
+                ? Carbon::parse($request->date_demande) 
+                : Carbon::today();
+
+            // ✅ VALIDATION
+            if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'date_demande' => "La date de demande ne peut pas être antérieure à la date de réquisition."
+                ]);
+            }
+
+            // ✅ Créer la liaison AVEC date_demande
             Demander::create([
                 'id_demandeur' => $id_demandeur,
                 'id_propriete' => $request->id_propriete,
+                'date_demande' => $dateDemande, // ✅ NOUVEAU
                 'id_user' => $id_user,
                 'status' => Demander::STATUS_ACTIVE,
-                // ordre calculé automatiquement par boot()
+                // ordre calculé automatiquement
                 // total_prix calculé par Observer
             ]);
 
@@ -340,13 +336,14 @@ class DemandeurProprieteController extends Controller
     }
 
     /**
-     * AJOUTER DEMANDEUR : Enregistrer
+     * ✅ AJOUTER DEMANDEUR : Enregistrer (avec date_demande)
      */
     public function storeToProperty(Request $request)
     {
         $request->validate([
             'id_propriete' => 'required|exists:proprietes,id',
             'mode' => 'required|in:nouveau,existant',
+            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01', // ✅ NOUVEAU
         ]);
 
         DB::beginTransaction();
@@ -355,7 +352,6 @@ class DemandeurProprieteController extends Controller
             $id_user = Auth::id();
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            // Vérification métier
             if ($propriete->is_archived) {
                 DB::rollBack();
                 return back()->withErrors(['error' => "❌ Impossible d'ajouter : la propriété Lot {$propriete->lot} est archivée (acquise)."]);
@@ -416,10 +412,24 @@ class DemandeurProprieteController extends Controller
                 ]);
             }
 
-            // Créer la liaison
+            // ✅ Préparer date_demande
+            $dateDemande = $request->filled('date_demande') 
+                ? Carbon::parse($request->date_demande) 
+                : Carbon::today();
+
+            // ✅ VALIDATION
+            if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'date_demande' => "La date de demande ne peut pas être antérieure à la date de réquisition."
+                ]);
+            }
+
+            // ✅ Créer la liaison AVEC date_demande
             Demander::create([
                 'id_demandeur' => $demandeur->id,
                 'id_propriete' => $request->id_propriete,
+                'date_demande' => $dateDemande, 
                 'id_user' => $id_user,
                 'status' => Demander::STATUS_ACTIVE,
                 // ordre calculé automatiquement
@@ -438,7 +448,7 @@ class DemandeurProprieteController extends Controller
     }
 
     /**
-     * DISSOCIER
+     * DISSOCIER (inchangé)
      */
     public function dissociate(Request $request)
     {
@@ -452,7 +462,6 @@ class DemandeurProprieteController extends Controller
         try {
             $propriete = Propriete::findOrFail($request->id_propriete);
             
-            // Vérification métier
             if ($propriete->is_archived) {
                 DB::rollBack();
                 return back()->with('error', "❌ Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
@@ -477,7 +486,7 @@ class DemandeurProprieteController extends Controller
     }
  
     /**
-     *  Convertir chaînes vides en null
+     * Convertir chaînes vides en null
      */
     private function convertEmptyToNull(array $data): array
     {

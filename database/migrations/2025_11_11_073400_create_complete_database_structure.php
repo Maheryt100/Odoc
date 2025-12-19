@@ -217,7 +217,15 @@ return new class extends Migration
             $table->string('dep_vol_requisition', 50)->nullable();
             $table->string('numero_dep_vol_requisition', 50)->nullable();
             
-            $table->date('date_inscription')->nullable();
+            // MODIFICATION: date_inscription renommée en date_depot_1
+            $table->date('date_depot_1')->nullable();
+            
+            // AJOUT: date_depot_2 (date de dépôt réquisition)
+            $table->date('date_depot_2')->nullable();
+            
+            // AJOUT: date_approbation_acte (obligatoire pour génération doc)
+            $table->date('date_approbation_acte')->nullable();
+            
             $table->string('dep_vol_inscription', 50)->nullable();
             $table->string('numero_dep_vol_inscription', 50)->nullable();
             
@@ -238,6 +246,11 @@ return new class extends Migration
             
             $table->index(['dep_vol_inscription', 'numero_dep_vol_inscription'], 'idx_dep_vol_inscription');
             $table->index(['dep_vol_requisition', 'numero_dep_vol_requisition'], 'idx_dep_vol_requisition');
+            
+            // AJOUT: Index pour les nouvelles colonnes
+            $table->index('date_approbation_acte', 'idx_date_approbation');
+            $table->index('date_depot_1', 'idx_date_depot_1');
+            $table->index('date_depot_2', 'idx_date_depot_2');
         });
 
         // ========================================
@@ -280,6 +293,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
             $table->foreignId('id_propriete')->constrained('proprietes')->onDelete('cascade');
+            
+            // AJOUT: Date officielle de la demande d'acquisition
+            $table->date('date_demande')
+                ->default(DB::raw('CURRENT_DATE'))
+                ->comment('Date officielle de la demande d\'acquisition');
+            
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             
             $table->enum('status', ['active', 'archive'])->default('active');
@@ -297,6 +316,9 @@ return new class extends Migration
             $table->unique(['id_demandeur', 'id_propriete']);
             $table->index('status');
             $table->index(['id_propriete', 'status']);
+            
+            // AJOUT: Index pour date_demande
+            $table->index('date_demande', 'idx_demander_date_demande');
         });
 
         Schema::create('contenir', function (Blueprint $table) {
@@ -491,7 +513,7 @@ return new class extends Migration
     {
         // Ordre inverse de création pour respecter les contraintes de clés étrangères
         
-        // Assignations utilisateurs
+        // Assignations utilisateurs 
         Schema::dropIfExists('user_csf');
         Schema::dropIfExists('user_demandes');
         Schema::dropIfExists('user_requisitions');

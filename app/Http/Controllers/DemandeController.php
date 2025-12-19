@@ -672,59 +672,7 @@ class DemandeController extends Controller
         return response()->download($filePath)->deleteFileAfterSend(true);
     }
 
-    /**
-     *LISTE DOSSIER 
-     */
-    public function list(Request $request, $dossierId)
-    {
-        $dossier = Dossier::findOrFail($dossierId);
-
-        $query = Demander::with([
-            'demandeur',
-            'propriete.demandes.demandeur'
-        ])->whereHas('propriete', fn($q) => $q->where('id_dossier', $dossier->id));
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('propriete', fn($sub) =>
-                    $sub->where('lot', 'ilike', "%{$search}%")
-                        ->orWhere('titre', 'ilike', "%{$search}%")
-                )
-                ->orWhereHas('demandeur', fn($sub) =>
-                    $sub->where('nom_demandeur', 'ilike', "%{$search}%")
-                        ->orWhere('prenom_demandeur', 'ilike', "%{$search}%")
-                        ->orWhere('cin', 'like', "%{$search}%")
-                );
-            });
-        }
-
-        $demandes = $query->get();
-        $documentsGroupes = $this->groupeDemandes($demandes);
-
-        // Pagination
-        $page = $request->get('page', 1);
-        $perPage = 20;
-        $total = $documentsGroupes->count();
-        $lastPage = ceil($total / $perPage);
-        
-        $paginatedData = $documentsGroupes->slice(($page - 1) * $perPage, $perPage)->values();
-
-        $documents = [
-            'data' => $paginatedData,
-            'current_page' => (int) $page,
-            'last_page' => (int) $lastPage,
-            'per_page' => $perPage,
-            'total' => $total,
-            'from' => ($page - 1) * $perPage + 1,
-            'to' => min($page * $perPage, $total),
-        ];
-
-        return Inertia::render('documents/index', [
-            'dossier' => $dossier,
-            'documents' => $documents,
-        ]);
-    }
+    
 
     public function unarchive(Request $request)
     {
@@ -773,9 +721,8 @@ class DemandeController extends Controller
 
 
     /**
-     * Méthode groupeDemandes() optimisée avec validation stricte
+     * ✅ CORRECTION 2 : Inclure date_demande dans le groupement
      */
-
     private function groupeDemandes($demandes)
     {
         return $demandes->groupBy('id_propriete')->map(function ($groupe) {
@@ -788,18 +735,15 @@ class DemandeController extends Controller
             
             // VALIDATION : S'assurer que la propriété existe
             if (!$premiere || !$premiere->propriete) {
-
-                return null; // Sera filtré plus tard
+                return null;
             }
             
             // MAPPER tous les demandeurs avec validation
             $tousLesDemandeurs = $groupeTrie->map(function ($demande, $index) {
                 if (!$demande->demandeur) {
-   
                     return null;
                 }
                 
-                // Vérification d'intégrité
                 $demandeur = $demande->demandeur;
                 $isIncomplete = !$demandeur->date_naissance ||
                             !$demandeur->lieu_naissance ||
@@ -820,11 +764,9 @@ class DemandeController extends Controller
                     'is_principal' => ($demande->ordre ?? ($index + 1)) === 1,
                     'is_incomplete' => $isIncomplete,
                 ];
-            })->filter()->values(); // Retirer les null
+            })->filter()->values();
             
-            // Si aucun demandeur valide, skip cette propriété
             if ($tousLesDemandeurs->isEmpty()) {
-
                 return null;
             }
             
@@ -834,41 +776,104 @@ class DemandeController extends Controller
                 'propriete' => $premiere->propriete,
                 'demandeurs' => $tousLesDemandeurs,
                 'demandeur' => $tousLesDemandeurs->first()['demandeur'] ?? null,
+                'date_demande' => $premiere->date_demande, // ✅ AJOUTÉ
                 'total_prix' => $premiere->total_prix,
                 'status_consort' => $groupe->count() > 1,
                 'status' => $premiere->status,
                 'nombre_demandeurs' => $tousLesDemandeurs->count(),
+                'created_at' => $premiere->created_at, // ✅ AJOUTÉ pour tri
             ];
         })
-        ->filter() // Retirer les null (propriétés invalides)
+        ->filter()
         ->values();
     }
 
+    /**
+     * ✅ CORRECTION 3 : Méthode list() aussi
+     */
+    public function list(Request $request, $dossierId)
+    {
+        $dossier = Dossier::findOrFail($dossierId);
+
+        $query = Demander::with([
+            'demandeur',
+            'propriete.demandes.demandeur'
+        ])
+        ->select('id', 'id_demandeur', 'id_propriete', 'date_demande', 'total_prix', 'status', 'status_consort', 'ordre', 'created_at')
+        ->whereHas('propriete', fn($q) => $q->where('id_dossier', $dossier->id));
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('propriete', fn($sub) =>
+                    $sub->where('lot', 'ilike', "%{$search}%")
+                        ->orWhere('titre', 'ilike', "%{$search}%")
+                )
+                ->orWhereHas('demandeur', fn($sub) =>
+                    $sub->where('nom_demandeur', 'ilike', "%{$search}%")
+                        ->orWhere('prenom_demandeur', 'ilike', "%{$search}%")
+                        ->orWhere('cin', 'like', "%{$search}%")
+                );
+            });
+        }
+
+        $demandes = $query->get();
+        $documentsGroupes = $this->groupeDemandes($demandes);
+
+        // Pagination
+        $page = $request->get('page', 1);
+        $perPage = 20;
+        $total = $documentsGroupes->count();
+        $lastPage = ceil($total / $perPage);
+        
+        $paginatedData = $documentsGroupes->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $documents = [
+            'data' => $paginatedData,
+            'current_page' => (int) $page,
+            'last_page' => (int) $lastPage,
+            'per_page' => $perPage,
+            'total' => $total,
+            'from' => ($page - 1) * $perPage + 1,
+            'to' => min($page * $perPage, $total),
+        ];
+
+        return Inertia::render('documents/index', [
+            'dossier' => $dossier,
+            'documents' => $documents,
+        ]);
+    }
 
     /**
-     * RÉSUMÉ DOSSIER 
+     * ✅ CORRECTION 1 : Assurer que date_demande est chargé + créé
      */
     public function resume(Request $request, $dossierId)
     {
         $dossier = Dossier::with([
             'proprietes' => function($q) {
-                $q->select('id', 'lot', 'titre', 'contenance', 'id_dossier')
+                $q->select('id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 'situation', 'proprietaire', 'id_dossier', 'date_requisition')
                     ->with([
                         'demandes' => function($subq) {
-                            $subq->select('id', 'id_propriete', 'id_demandeur', 'status', 'ordre', 'total_prix')
-                                ->with('demandeur:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin,domiciliation')
-                                ->orderBy('ordre');
+                            $subq->select(
+                                'id', 
+                                'id_propriete', 
+                                'id_demandeur', 
+                                'date_demande', // ✅ AJOUTÉ
+                                'status', 
+                                'ordre', 
+                                'total_prix',
+                                'created_at'
+                            )
+                            ->with('demandeur:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin,domiciliation')
+                            ->orderBy('ordre');
                         }
                     ]);
             },
             'demandeurs'
         ])->findOrFail($dossierId);
 
-        // L'accessor is_closed sera calculé automatiquement depuis date_fermeture
-        
         $query = Demander::with([
             'demandeur' => function($q) {
-                //  Charger TOUS les champs pour la validation d'intégrité
                 $q->select(
                     'id', 'titre_demandeur', 'nom_demandeur', 'prenom_demandeur', 'cin',
                     'date_naissance', 'lieu_naissance', 'date_delivrance', 'lieu_delivrance',
@@ -876,15 +881,16 @@ class DemandeController extends Controller
                 );
             },
             'propriete' => function($q) {
-                $q->select('id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 'situation', 'proprietaire', 'id_dossier')
+                $q->select('id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 'situation', 'proprietaire', 'id_dossier', 'date_requisition')
                     ->with([
                         'demandes' => function($subq) {
-                            $subq->select('id', 'id_propriete', 'id_demandeur', 'status', 'ordre')
+                            $subq->select('id', 'id_propriete', 'id_demandeur', 'date_demande', 'status', 'ordre')
                                 ->orderBy('ordre');
                         }
                     ]);
             }
         ])
+        ->select('id', 'id_demandeur', 'id_propriete', 'date_demande', 'total_prix', 'status', 'status_consort', 'ordre', 'created_at', 'updated_at') // ✅ EXPLICITE
         ->whereHas('propriete', fn($q) => $q->where('id_dossier', $dossier->id))
         ->orderBy('id_propriete')
         ->orderBy('ordre', 'asc');
@@ -911,7 +917,7 @@ class DemandeController extends Controller
 
         $demandes = $query->get();
 
-        // Grouper les demandes par propriété
+        // Grouper par propriété avec date_demande
         $documentsGroupes = $this->groupeDemandes($demandes);
 
         // Pagination
@@ -937,5 +943,6 @@ class DemandeController extends Controller
             'documents' => $documents,
         ]);
     }
+
 
 }

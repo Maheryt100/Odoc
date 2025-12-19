@@ -1,5 +1,7 @@
 // resources/js/pages/dossiers/types.ts - ✅ VERSION COMPLÈTE
 
+import { Demandeur, Dossier, Propriete } from '@/types';
+
 // ✅ Réexporter les types centraux
 export type { Dossier, Demandeur, Propriete, District, User } from '@/types';
 
@@ -48,11 +50,12 @@ export interface DossierCardProps {
 }
 
 export interface DossierInfoSectionProps {
-    dossier: import('@/types').Dossier;
+    dossier: Dossier;              // plus de &
     demandeursCount: number;
     proprietesCount: number;
     onCloseToggle: () => void;
     permissions: DossierPermissions;
+    userRole?: string;
 }
 
 export interface CloseDossierDialogProps {
@@ -129,6 +132,8 @@ export interface DossierFormData {
     circonscription: string;
     id_district: number;
 }
+
+
 
 // ============================================
 // 🎯 STATUS BADGES

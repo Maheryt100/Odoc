@@ -6,35 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
-// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
-
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * 🔗 MODÈLE PIVOT : Demander (table pivot demander)
- * ═══════════════════════════════════════════════════════════════════════════
- * 
- * LOGIQUE MÉTIER CONFIRMÉE :
- * 
- * STATUS :
- *    - 'active' : Demande en cours d'acquisition
- *    - 'archive' : Propriété ACQUISE par le demandeur
- * 
- *  ORDRE :
- *    - AUTOMATIQUE (1, 2, 3...)
- *    - ordre = 1 : Demandeur principal
- *    - ordre > 1 : Consorts
- *    - Calculé automatiquement à la création
- *    - Réorganisé automatiquement après suppression
- * 
- *  ARCHIVAGE :
- *    - Archiver une propriété = archiver TOUTES ses demandes actives
- *    - Désarchiver = réactiver TOUTES les demandes archivées
- * 
- *  SUPPRESSION :
- *    - Propriété archivée = NON supprimable
- *    - Demandeur avec propriétés (actives OU archivées) = NON supprimable
- */
+use Carbon\Carbon;
 
 class Demander extends Model
 {
@@ -43,6 +16,7 @@ class Demander extends Model
     protected $fillable = [
         'id_demandeur',
         'id_propriete',
+        'date_demande', // ✅ NOUVEAU CHAMP
         'total_prix',
         'status',
         'status_consort',
@@ -55,12 +29,14 @@ class Demander extends Model
         'total_prix' => 'integer',
         'status_consort' => 'boolean',
         'ordre' => 'integer',
+        'date_demande' => 'date', // ✅ CAST EN DATE
     ];
 
     protected $appends = [
         'is_principal',
         'is_active',
         'is_archived',
+        'date_demande_formatted', // ✅ NOUVEAU ACCESSOR
     ];
 
     // ════════════════════════════════════════════════════════════════════════
@@ -100,36 +76,52 @@ class Demander extends Model
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // ACCESSORS
+    // ✅ NOUVEAUX ACCESSORS POUR DATE_DEMANDE
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Vérifier si c'est le demandeur principal
+     * Date de demande formatée pour affichage (ex: "15 janvier 2025")
      */
+    public function getDateDemandeFormattedAttribute(): ?string
+    {
+        if (!$this->date_demande) {
+            return null;
+        }
+
+        return Carbon::parse($this->date_demande)->translatedFormat('d F Y');
+    }
+
+    /**
+     * Date de demande au format court (ex: "15/01/2025")
+     */
+    public function getDateDemandeShortAttribute(): ?string
+    {
+        if (!$this->date_demande) {
+            return null;
+        }
+
+        return Carbon::parse($this->date_demande)->format('d/m/Y');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ACCESSORS EXISTANTS
+    // ════════════════════════════════════════════════════════════════════════
+
     public function getIsPrincipalAttribute(): bool
     {
         return $this->ordre === 1;
     }
 
-    /**
-     * Vérifier si c'est un consort
-     */
     public function getIsConsortAttribute(): bool
     {
         return $this->ordre > 1;
     }
 
-    /**
-     * Vérifier si la demande est active
-     */
     public function getIsActiveAttribute(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
     }
 
-    /**
-     * Vérifier si la demande est archivée (propriété acquise)
-     */
     public function getIsArchivedAttribute(): bool
     {
         return $this->status === self::STATUS_ARCHIVE;
@@ -170,27 +162,49 @@ class Demander extends Model
         return $query->where('id_demandeur', $demandeurId);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // MÉTHODES MÉTIER
-    // ════════════════════════════════════════════════════════════════════════
+    /**
+     * ✅ NOUVEAU SCOPE : Filtrer par période de demande
+     */
+    public function scopeByDateDemandePeriod($query, ?string $dateDebut = null, ?string $dateFin = null)
+    {
+        if ($dateDebut) {
+            $query->where('date_demande', '>=', $dateDebut);
+        }
+
+        if ($dateFin) {
+            $query->where('date_demande', '<=', $dateFin);
+        }
+
+        return $query;
+    }
 
     /**
-     * Vérifier si peut être dissociée
-     * 
-     * ✅ RÈGLES CONFIRMÉES :
-     * - Une demande ACTIVE peut être dissociée
-     * - Une demande ARCHIVÉE ne peut PAS être dissociée
-     * - Le dossier ne doit pas être fermé
+     * ✅ NOUVEAU SCOPE : Demandes du mois en cours
      */
+    public function scopeCurrentMonth($query)
+    {
+        return $query->whereMonth('date_demande', Carbon::now()->month)
+                     ->whereYear('date_demande', Carbon::now()->year);
+    }
+
+    /**
+     * ✅ NOUVEAU SCOPE : Demandes de l'année en cours
+     */
+    public function scopeCurrentYear($query)
+    {
+        return $query->whereYear('date_demande', Carbon::now()->year);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MÉTHODES MÉTIER (inchangées)
+    // ════════════════════════════════════════════════════════════════════════
     
     public function canBeDissociated(): bool
     {
-        // ❌ Ne peut pas dissocier si demande archivée (propriété acquise)
         if ($this->status === self::STATUS_ARCHIVE) {
             return false;
         }
 
-        // ❌ Ne peut pas dissocier si dossier fermé
         if ($this->propriete && $this->propriete->dossier && $this->propriete->dossier->is_closed) {
             return false;
         }
@@ -198,9 +212,6 @@ class Demander extends Model
         return true;
     }
 
-    /**
-     * Vérifier si peut être modifiée
-     */
     public function canBeModified(): bool
     {
         if ($this->status === self::STATUS_ARCHIVE) {
@@ -214,9 +225,6 @@ class Demander extends Model
         return true;
     }
 
-    /**
-     * Archiver la demande (marquer propriété comme acquise)
-     */
     public function archive(string $motif = null): bool
     {
         if ($this->is_archived) {
@@ -229,16 +237,12 @@ class Demander extends Model
         ]);
     }
 
-    /**
-     * Désarchiver la demande (réactiver)
-     */
     public function unarchive(): bool
     {
         if (!$this->is_archived) {
             return false;
         }
 
-        // Vérifier que le dossier n'est pas fermé
         if ($this->propriete && $this->propriete->dossier && $this->propriete->dossier->is_closed) {
             return false;
         }
@@ -249,9 +253,6 @@ class Demander extends Model
         ]);
     }
 
-    /**
-     * Obtenir le libellé du statut
-     */
     public function getStatusLabel(): string
     {
         return match($this->status) {
@@ -261,33 +262,24 @@ class Demander extends Model
         };
     }
 
-    /**
-     * Obtenir le libellé du rôle (principal/consort)
-     */
     public function getRoleLabel(): string
     {
         return $this->is_principal ? 'Principal' : "Consort {$this->ordre}";
     }
 
-    /**
-     * ✅ NOUVEAU : Promouvoir un consort en principal
-     * Utile si le demandeur principal se retire
-     */
     public function promoteToMain(): bool
     {
         if ($this->ordre === 1) {
-            return false; // Déjà principal
+            return false;
         }
 
         DB::transaction(function () {
-            // Trouver l'actuel principal
             $currentMain = static::where('id_propriete', $this->id_propriete)
                 ->where('status', $this->status)
                 ->where('ordre', 1)
                 ->first();
 
             if ($currentMain) {
-                // Échanger les ordres
                 $currentMain->update(['ordre' => $this->ordre]);
             }
 
@@ -297,9 +289,6 @@ class Demander extends Model
         return true;
     }
 
-    /**
-     * Obtenir tous les demandeurs actifs de cette propriété (avec ordre)
-     */
     public function getAllDemandeurs(): array
     {
         $demandes = static::where('id_propriete', $this->id_propriete)
@@ -316,13 +305,12 @@ class Demander extends Model
                 'is_principal' => $demande->is_principal,
                 'is_consort' => $demande->is_consort,
                 'total_prix' => $demande->total_prix,
+                'date_demande' => $demande->date_demande, // ✅ AJOUTÉ
+                'date_demande_formatted' => $demande->date_demande_formatted, // ✅ AJOUTÉ
             ];
         })->toArray();
     }
 
-    /**
-     * Obtenir le demandeur principal de cette propriété
-     */
     public static function getMainDemandeur(int $proprieteId): ?self
     {
         return static::where('id_propriete', $proprieteId)
@@ -332,9 +320,6 @@ class Demander extends Model
             ->first();
     }
 
-    /**
-     * Obtenir tous les consorts de cette demande
-     */
     public function getConsorts()
     {
         if (!$this->is_principal) {
@@ -349,9 +334,6 @@ class Demander extends Model
             ->get();
     }
 
-    /**
-     * Obtenir le demandeur principal de cette propriété
-     */
     public function getPrincipal()
     {
         if ($this->is_principal) {
@@ -365,16 +347,13 @@ class Demander extends Model
             ->first();
     }
 
-    /**
-     * Formater le prix pour affichage
-     */
     public function getPrixFormatte(): string
     {
         return number_format($this->total_prix, 0, ',', ' ') . ' Ar';
     }
 
     /**
-     * Obtenir les statistiques de la demande
+     * ✅ MISE À JOUR : Inclure date_demande dans les stats
      */
     public function getStats(): array
     {
@@ -392,6 +371,9 @@ class Demander extends Model
             'can_be_dissociated' => $this->canBeDissociated(),
             'can_be_modified' => $this->canBeModified(),
             'motif_archive' => $this->motif_archive,
+            'date_demande' => $this->date_demande, // ✅ AJOUTÉ
+            'date_demande_formatted' => $this->date_demande_formatted, // ✅ AJOUTÉ
+            'date_demande_short' => $this->date_demande_short, // ✅ AJOUTÉ
         ];
     }
 
@@ -404,35 +386,36 @@ class Demander extends Model
         parent::boot();
 
         /**
-         * CRÉATION : Calcul automatique de l'ordre
-         * RÈGLE : L'ordre est automatique (1, 2, 3...)
+         * CRÉATION : Calcul automatique de l'ordre + date_demande par défaut
          */
         static::creating(function ($demande) {
+            // Ordre automatique
             if (!$demande->ordre) {
-                // Trouver le prochain ordre disponible
                 $maxOrdre = static::where('id_propriete', $demande->id_propriete)
                     ->where('status', self::STATUS_ACTIVE)
                     ->max('ordre') ?? 0;
                 
                 $demande->ordre = $maxOrdre + 1;
-    
             }
 
-            // Auto-calculer status_consort basé sur l'ordre
+            // Auto-calculer status_consort
             $demande->status_consort = $demande->ordre > 1;
+
+            // ✅ NOUVEAU : Date de demande par défaut = aujourd'hui
+            if (!$demande->date_demande) {
+                $demande->date_demande = Carbon::today();
+            }
         });
 
-        // Invalider dans Demander::boot()
+        // Invalider cache après mise à jour
         static::updated(function ($demande) {
             Cache::forget("propriete.{$demande->id_propriete}.status_info");
         });
 
         /**
          * SUPPRESSION : Réorganisation automatique des ordres
-         * RÈGLE : Après suppression d'une demande, réorganiser les ordres (1, 2, 3...)
          */
         static::deleted(function ($demande) {
-            // Ne réorganiser que si la demande était active
             if ($demande->status !== self::STATUS_ACTIVE) {
                 return;
             }
@@ -442,7 +425,6 @@ class Demander extends Model
                 ->orderBy('ordre')
                 ->get();
 
-            // Réorganiser seulement s'il reste des demandes
             if ($remaining->count() > 0) {
                 foreach ($remaining as $index => $d) {
                     $newOrdre = $index + 1;
@@ -451,17 +433,9 @@ class Demander extends Model
                             'ordre' => $newOrdre,
                             'status_consort' => $newOrdre > 1
                         ]);
-                        
                     }
                 }
             }
-        });
-        
-        /**
-         *  LOG : Après création
-         */
-        static::created(function ($demande) {
-
         });
     }
 }

@@ -1,4 +1,6 @@
 // pages/demandeurs/components/EditDemandeurDialog.tsx
+// ✅ VERSION AMÉLIORÉE - RESPONSIVE & COHÉRENT AVEC EditProprieteDialog
+
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import {
@@ -11,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { 
     User, 
     CreditCard, 
@@ -20,9 +21,15 @@ import {
     Heart,
     CheckCircle2,
     Loader2,
-    AlertTriangle
+    AlertTriangle,
+    Users,
+    MapPin,
+    Phone,
+    Briefcase,
+    Flag
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 import type { DemandeurWithProperty } from '../types';
 
 interface EditDemandeurDialogProps {
@@ -57,6 +64,27 @@ interface FormData {
     marie_a: string;
     telephone: string;
 }
+
+// ✅ Fonction utilitaire : Nettoyer les overlays résiduels
+const cleanupDialogOverlays = () => {
+    const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
+    overlays.forEach(overlay => {
+        if (overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
+    });
+    
+    const portals = document.querySelectorAll('[data-radix-portal]');
+    portals.forEach(portal => {
+        if (portal.childNodes.length === 0 && portal.parentNode) {
+            portal.parentNode.removeChild(portal);
+        }
+    });
+    
+    document.body.style.pointerEvents = '';
+    document.body.style.overflow = '';
+    document.body.removeAttribute('data-scroll-locked');
+};
 
 export default function EditDemandeurDialog({
     demandeur,
@@ -93,11 +121,27 @@ export default function EditDemandeurDialog({
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // ✅ CORRECTION : Charger les données quand le dialogue s'ouvre
+    // Nettoyage au démontage
+    useEffect(() => {
+        return () => {
+            cleanupDialogOverlays();
+        };
+    }, []);
+
+    // Nettoyage quand le dialog se ferme
+    useEffect(() => {
+        if (!open) {
+            const timer = setTimeout(() => {
+                cleanupDialogOverlays();
+            }, 300);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [open]);
+
+    // ✅ Charger les données quand le dialogue s'ouvre
     useEffect(() => {
         if (open && demandeur) {
-            console.log('📋 Chargement des données du demandeur:', demandeur);
-            
             // ✅ Fonction helper pour formater les dates
             const formatDate = (date: string | null | undefined): string => {
                 if (!date) return '';
@@ -140,14 +184,12 @@ export default function EditDemandeurDialog({
                 telephone: demandeur.telephone || ''
             });
             
-            console.log('✅ Données chargées dans le formulaire');
             setErrors({});
         }
     }, [open, demandeur]);
 
     const handleChange = (field: keyof FormData, value: string) => {
         setData(prev => ({ ...prev, [field]: value }));
-        // Effacer l'erreur du champ modifié
         if (errors[field]) {
             setErrors(prev => {
                 const newErrors = { ...prev };
@@ -162,6 +204,13 @@ export default function EditDemandeurDialog({
                      value === 'Madame' || value === 'Mademoiselle' ? 'Femme' : '';
         handleChange('titre_demandeur', value);
         handleChange('sexe', sexe);
+    };
+
+    const handleClose = () => {
+        onOpenChange(false);
+        setTimeout(() => {
+            cleanupDialogOverlays();
+        }, 100);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -189,12 +238,15 @@ export default function EditDemandeurDialog({
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    console.log('✅ Modification réussie');
-                    onOpenChange(false);
+                    toast.success('Demandeur modifié avec succès');
+                    handleClose();
                 },
                 onError: (errors) => {
                     console.error('❌ Erreurs de validation:', errors);
                     setErrors(errors);
+                    toast.error('Erreur de validation', {
+                        description: Object.values(errors)[0] as string
+                    });
                 },
                 onFinish: () => {
                     setProcessing(false);
@@ -206,84 +258,69 @@ export default function EditDemandeurDialog({
     if (!demandeur) return null;
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <Dialog open={open} onOpenChange={handleClose}>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Header */}
                 <DialogHeader className="pb-4 border-b">
-                    <DialogTitle className="text-2xl flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <DialogTitle className="text-xl sm:text-2xl flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex-shrink-0">
+                            <User className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        Modifier le demandeur
+                        <span className="truncate">Modifier le demandeur</span>
                     </DialogTitle>
                 </DialogHeader>
 
                 {dossierClosed && (
                     <Alert variant="destructive" className="border-0">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>
-                            Ce dossier est fermé. Aucune modification n'est possible.
-                        </AlertDescription>
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                            <AlertDescription>
+                                Ce dossier est fermé. Aucune modification n'est possible.
+                            </AlertDescription>
+                        </div>
                     </Alert>
                 )}
 
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-1">
+                <div className="flex-1 overflow-y-auto px-1">
                     <div className="space-y-6 pb-4">
-                        {/* CIN */}
+                        
+                        {/* CIN & IDENTITÉ */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b">
-                                <CreditCard className="h-4 w-4 text-violet-600" />
-                                <h4 className="font-semibold">Identification</h4>
+                                <CreditCard className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                                <h4 className="font-semibold text-sm sm:text-base">CIN & Identité</h4>
                             </div>
+                            
+                            {/* CIN - Version responsive simple */}
                             <div>
                                 <Label className="text-sm font-medium text-red-600">CIN *</Label>
-                                <div className="mt-2 bg-violet-50/50 dark:bg-violet-950/20 p-3 rounded-lg border">
-                                    <InputOTP
-                                        maxLength={12}
+                                <div className="mt-2 p-4 bg-violet-50/50 dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                    <Input
+                                        type="text"
                                         value={data.cin}
-                                        onChange={(value) => handleChange('cin', value)}
-                                        pattern="[0-9]*"
-                                    >
-                                        <InputOTPGroup>
-                                            <InputOTPSlot index={0} />
-                                            <InputOTPSlot index={1} />
-                                            <InputOTPSlot index={2} />
-                                        </InputOTPGroup>
-                                        <InputOTPSeparator />
-                                        <InputOTPGroup>
-                                            <InputOTPSlot index={3} />
-                                            <InputOTPSlot index={4} />
-                                            <InputOTPSlot index={5} />
-                                        </InputOTPGroup>
-                                        <InputOTPSeparator />
-                                        <InputOTPGroup>
-                                            <InputOTPSlot index={6} />
-                                            <InputOTPSlot index={7} />
-                                            <InputOTPSlot index={8} />
-                                        </InputOTPGroup>
-                                        <InputOTPSeparator />
-                                        <InputOTPGroup>
-                                            <InputOTPSlot index={9} />
-                                            <InputOTPSlot index={10} />
-                                            <InputOTPSlot index={11} />
-                                        </InputOTPGroup>
-                                    </InputOTP>
+                                        onChange={(e) => {
+                                            const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                                            handleChange('cin', value);
+                                        }}
+                                        placeholder="123456789012"
+                                        maxLength={12}
+                                        className="text-center font-mono text-lg tracking-wider"
+                                        disabled={dossierClosed}
+                                    />
+                                    <p className="text-xs text-center text-muted-foreground mt-2">
+                                        12 chiffres • Format: {data.cin.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4') || '--- --- --- ---'}
+                                    </p>
                                     {errors.cin && (
-                                        <p className="text-xs text-red-500 mt-1">{errors.cin}</p>
+                                        <p className="text-xs text-red-500 mt-1 text-center">{errors.cin}</p>
                                     )}
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Identité */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 pb-2 border-b">
-                                <User className="h-4 w-4 text-blue-600" />
-                                <h4 className="font-semibold">Identité</h4>
-                            </div>
-                            <div className="grid gap-4 md:grid-cols-3">
+                            {/* Titre, Nom, Prénom */}
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                                 <div>
                                     <Label className="text-sm font-medium text-red-600">Titre *</Label>
-                                    <Select value={data.titre_demandeur} onValueChange={handleTitreChange}>
+                                    <Select value={data.titre_demandeur} onValueChange={handleTitreChange} disabled={dossierClosed}>
                                         <SelectTrigger className="mt-1">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -300,136 +337,202 @@ export default function EditDemandeurDialog({
                                         value={data.nom_demandeur}
                                         onChange={(e) => handleChange('nom_demandeur', e.target.value.toUpperCase())}
                                         className="mt-1 uppercase"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
-                                <div>
+                                <div className="sm:col-span-2 lg:col-span-1">
                                     <Label className="text-sm font-medium text-red-600">Prénom *</Label>
                                     <Input
                                         value={data.prenom_demandeur}
                                         onChange={(e) => handleChange('prenom_demandeur', e.target.value)}
                                         className="mt-1"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-4">
+
+                            {/* Date et Lieu de naissance, Parents */}
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                                 <div>
-                                    <Label className="text-sm font-medium text-red-600">Date naissance *</Label>
+                                    <Label className="text-sm font-medium text-red-600">Date de naissance *</Label>
                                     <Input
                                         type="date"
                                         value={data.date_naissance}
                                         onChange={(e) => handleChange('date_naissance', e.target.value)}
                                         className="mt-1"
+                                        max={new Date().toISOString().split('T')[0]}
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-sm font-medium">Lieu naissance</Label>
+                                    <Label className="text-sm font-medium">Lieu de naissance</Label>
                                     <Input
                                         value={data.lieu_naissance}
                                         onChange={(e) => handleChange('lieu_naissance', e.target.value)}
                                         className="mt-1"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-sm font-medium">Nom père</Label>
+                                    <Label className="text-sm font-medium">Nom du père</Label>
                                     <Input
                                         value={data.nom_pere}
                                         onChange={(e) => handleChange('nom_pere', e.target.value)}
                                         className="mt-1"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-sm font-medium">Nom mère</Label>
+                                    <Label className="text-sm font-medium">Nom de la mère</Label>
                                     <Input
                                         value={data.nom_mere}
                                         onChange={(e) => handleChange('nom_mere', e.target.value)}
                                         className="mt-1"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Délivrance CIN */}
+                        {/* DÉLIVRANCE CIN */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b">
-                                <Calendar className="h-4 w-4 text-indigo-600" />
-                                <h4 className="font-semibold">Délivrance CIN</h4>
+                                <Calendar className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                                <h4 className="font-semibold text-sm sm:text-base">Délivrance CIN</h4>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-4">
-                                <div>
-                                    <Label className="text-sm font-medium">Date délivrance</Label>
-                                    <Input
-                                        type="date"
-                                        value={data.date_delivrance}
-                                        onChange={(e) => handleChange('date_delivrance', e.target.value)}
-                                        className="mt-1"
-                                    />
+                            
+                            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+                                {/* CIN Original */}
+                                <div className="p-4 border-2 rounded-xl bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800">
+                                    <div className="mb-3">
+                                        <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded border border-blue-300">
+                                            <CreditCard className="h-3 w-3" />
+                                            CIN Original
+                                        </span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <Label className="text-sm font-medium">Date de délivrance</Label>
+                                            <Input
+                                                type="date"
+                                                value={data.date_delivrance}
+                                                onChange={(e) => handleChange('date_delivrance', e.target.value)}
+                                                className="mt-1"
+                                                disabled={dossierClosed}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm font-medium">Lieu de délivrance</Label>
+                                            <Input
+                                                value={data.lieu_delivrance}
+                                                onChange={(e) => handleChange('lieu_delivrance', e.target.value)}
+                                                className="mt-1"
+                                                disabled={dossierClosed}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <Label className="text-sm font-medium">Lieu délivrance</Label>
-                                    <Input
-                                        value={data.lieu_delivrance}
-                                        onChange={(e) => handleChange('lieu_delivrance', e.target.value)}
-                                        className="mt-1"
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-sm font-medium">Date duplicata</Label>
-                                    <Input
-                                        type="date"
-                                        value={data.date_delivrance_duplicata}
-                                        onChange={(e) => handleChange('date_delivrance_duplicata', e.target.value)}
-                                        className="mt-1"
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-sm font-medium">Lieu duplicata</Label>
-                                    <Input
-                                        value={data.lieu_delivrance_duplicata}
-                                        onChange={(e) => handleChange('lieu_delivrance_duplicata', e.target.value)}
-                                        className="mt-1"
-                                    />
+
+                                {/* Duplicata */}
+                                <div className="p-4 border-2 rounded-xl bg-gradient-to-br from-orange-50/70 to-amber-50/70 dark:from-orange-950/20 dark:to-amber-950/20 border-orange-200 dark:border-orange-800">
+                                    <div className="mb-3">
+                                        <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-xs font-medium rounded border border-orange-300">
+                                            <CreditCard className="h-3 w-3" />
+                                            Duplicata (optionnel)
+                                        </span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <Label className="text-sm font-medium">Date de délivrance</Label>
+                                            <Input
+                                                type="date"
+                                                value={data.date_delivrance_duplicata}
+                                                onChange={(e) => handleChange('date_delivrance_duplicata', e.target.value)}
+                                                className="mt-1"
+                                                disabled={dossierClosed}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm font-medium">Lieu de délivrance</Label>
+                                            <Input
+                                                value={data.lieu_delivrance_duplicata}
+                                                onChange={(e) => handleChange('lieu_delivrance_duplicata', e.target.value)}
+                                                className="mt-1"
+                                                disabled={dossierClosed}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Contact */}
+                        {/* CONTACT & RÉSIDENCE */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b">
-                                <Home className="h-4 w-4 text-green-600" />
-                                <h4 className="font-semibold">Contact & Résidence</h4>
+                                <Home className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                <h4 className="font-semibold text-sm sm:text-base">Contact & Résidence</h4>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-3">
+                            
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                                 <div>
-                                    <Label className="text-sm font-medium">Occupation</Label>
+                                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                                        <Briefcase className="h-3.5 w-3.5" />
+                                        Profession
+                                    </Label>
                                     <Input
                                         value={data.occupation}
                                         onChange={(e) => handleChange('occupation', e.target.value)}
                                         className="mt-1"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-sm font-medium">Domiciliation</Label>
-                                    <Input
-                                        value={data.domiciliation}
-                                        onChange={(e) => handleChange('domiciliation', e.target.value)}
-                                        className="mt-1"
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="text-sm font-medium">Téléphone</Label>
+                                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                                        <Phone className="h-3.5 w-3.5" />
+                                        Téléphone
+                                    </Label>
                                     <Input
                                         type="tel"
                                         value={data.telephone}
                                         onChange={(e) => handleChange('telephone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                                         className="mt-1"
+                                        placeholder="0340123456"
                                         maxLength={10}
+                                        disabled={dossierClosed}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                                        <Flag className="h-3.5 w-3.5" />
+                                        Nationalité
+                                    </Label>
+                                    <Input
+                                        value={data.nationalite}
+                                        onChange={(e) => handleChange('nationalite', e.target.value)}
+                                        className="mt-1"
+                                        disabled={dossierClosed}
                                     />
                                 </div>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-3">
+
+                            <div>
+                                <Label className="text-sm font-medium flex items-center gap-1.5">
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    Domiciliation
+                                </Label>
+                                <Input
+                                    value={data.domiciliation}
+                                    onChange={(e) => handleChange('domiciliation', e.target.value)}
+                                    className="mt-1"
+                                    placeholder="Adresse complète"
+                                    disabled={dossierClosed}
+                                />
+                            </div>
+
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                                 <div>
                                     <Label className="text-sm font-medium">Situation familiale</Label>
-                                    <Select value={data.situation_familiale} onValueChange={(v) => handleChange('situation_familiale', v)}>
+                                    <Select value={data.situation_familiale} onValueChange={(v) => handleChange('situation_familiale', v)} disabled={dossierClosed}>
                                         <SelectTrigger className="mt-1">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -444,7 +547,7 @@ export default function EditDemandeurDialog({
                                 </div>
                                 <div>
                                     <Label className="text-sm font-medium">Régime matrimonial</Label>
-                                    <Select value={data.regime_matrimoniale} onValueChange={(v) => handleChange('regime_matrimoniale', v)}>
+                                    <Select value={data.regime_matrimoniale} onValueChange={(v) => handleChange('regime_matrimoniale', v)} disabled={dossierClosed}>
                                         <SelectTrigger className="mt-1">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -456,48 +559,52 @@ export default function EditDemandeurDialog({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div>
-                                    <Label className="text-sm font-medium">Nationalité</Label>
-                                    <Input
-                                        value={data.nationalite}
-                                        onChange={(e) => handleChange('nationalite', e.target.value)}
-                                        className="mt-1"
-                                    />
-                                </div>
                             </div>
                         </div>
 
-                        {/* Mariage (si marié) */}
+                        {/* MARIAGE (conditionnel) */}
                         {data.situation_familiale === 'Marié(e)' && (
-                            <div className="space-y-4 p-4 bg-pink-50 dark:bg-pink-950/20 rounded-lg border border-pink-200">
-                                <div className="flex items-center gap-2 pb-2 border-b border-pink-300">
-                                    <Heart className="h-4 w-4 text-pink-600" />
-                                    <h4 className="font-semibold">Informations de mariage</h4>
+                            <div className="space-y-4 p-4 bg-pink-50/70 dark:bg-pink-950/20 rounded-xl border-2 border-pink-200 dark:border-pink-800">
+                                <div className="flex items-center gap-2 pb-2 border-b border-pink-300 dark:border-pink-700">
+                                    <Heart className="h-4 w-4 text-pink-600 flex-shrink-0" />
+                                    <h4 className="font-semibold text-sm sm:text-base">Informations de mariage</h4>
                                 </div>
-                                <div className="grid gap-4 md:grid-cols-3">
-                                    <div>
-                                        <Label className="text-sm font-medium">Marié(e) à</Label>
+                                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="sm:col-span-2 lg:col-span-1">
+                                        <Label className="text-sm font-medium flex items-center gap-1.5">
+                                            <Users className="h-3.5 w-3.5" />
+                                            Marié(e) à
+                                        </Label>
                                         <Input
                                             value={data.marie_a}
                                             onChange={(e) => handleChange('marie_a', e.target.value)}
                                             className="mt-1"
+                                            disabled={dossierClosed}
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-sm font-medium">Date mariage</Label>
+                                        <Label className="text-sm font-medium flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            Date mariage
+                                        </Label>
                                         <Input
                                             type="date"
                                             value={data.date_mariage}
                                             onChange={(e) => handleChange('date_mariage', e.target.value)}
                                             className="mt-1"
+                                            disabled={dossierClosed}
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-sm font-medium">Lieu mariage</Label>
+                                        <Label className="text-sm font-medium flex items-center gap-1.5">
+                                            <MapPin className="h-3.5 w-3.5" />
+                                            Lieu mariage
+                                        </Label>
                                         <Input
                                             value={data.lieu_mariage}
                                             onChange={(e) => handleChange('lieu_mariage', e.target.value)}
                                             className="mt-1"
+                                            disabled={dossierClosed}
                                         />
                                     </div>
                                 </div>
@@ -507,19 +614,20 @@ export default function EditDemandeurDialog({
 
                     {/* Actions */}
                     <div className="sticky bottom-0 pt-4 pb-2 bg-white dark:bg-gray-950 border-t">
-                        <div className="flex gap-3 justify-end">
+                        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => onOpenChange(false)}
+                                onClick={handleClose}
                                 disabled={processing}
+                                className="w-full sm:w-auto"
                             >
                                 Annuler
                             </Button>
                             <Button
-                                type="submit"
+                                onClick={handleSubmit}
                                 disabled={processing || dossierClosed}
-                                className="gap-2"
+                                className="w-full sm:w-auto gap-2"
                             >
                                 {processing ? (
                                     <>
@@ -535,7 +643,7 @@ export default function EditDemandeurDialog({
                             </Button>
                         </div>
                     </div>
-                </form>
+                </div>
             </DialogContent>
         </Dialog>
     );

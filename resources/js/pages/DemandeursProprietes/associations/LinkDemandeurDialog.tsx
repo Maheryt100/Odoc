@@ -1,4 +1,4 @@
-// associations/LinkDemandeurDialog.tsx - VERSION CORRIGÉE
+// associations/LinkDemandeurDialog.tsx - ✅ AVEC DATE_DEMANDE
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Search, User, Link2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import DatePickerDemande from '@/components/DatePickerDemande';
 import type { Demandeur, Propriete } from '@/types';
 
 interface LinkDemandeurDialogProps {
@@ -29,21 +30,30 @@ export function LinkDemandeurDialog({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDemandeur, setSelectedDemandeur] = useState<Demandeur | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // ✅ NOUVEAU : État pour date_demande
+    const today = new Date().toISOString().split('T')[0];
+    const [dateDemande, setDateDemande] = useState<string>(today);
+    const [dateDemandeError, setDateDemandeError] = useState<string>('');
 
-    // ✅ Réinitialiser l'état à la fermeture
+    // Réinitialiser l'état à la fermeture
     useEffect(() => {
         if (!open) {
             setSearchTerm('');
             setSelectedDemandeur(null);
             setIsSubmitting(false);
+            setDateDemande(today);
+            setDateDemandeError('');
         }
-    }, [open]);
+    }, [open, today]);
 
+    // Filtrer les demandeurs disponibles
     const demandeursDisponibles = demandeursDossier.filter(dem => {
         const dejaLie = propriete.demandeurs?.some(d => d.id === dem.id);
         return !dejaLie;
     });
 
+    // Recherche
     const demandeursFiltres = demandeursDisponibles.filter(dem => {
         if (!searchTerm) return true;
         const search = searchTerm.toLowerCase();
@@ -54,20 +64,51 @@ export function LinkDemandeurDialog({
         );
     });
 
+    // ✅ NOUVEAU : Validation date_demande avec cohérence date_requisition
+    const handleDateDemandeChange = (newDate: string) => {
+        setDateDemande(newDate);
+        
+        if (new Date(newDate) > new Date()) {
+            setDateDemandeError('La date ne peut pas être dans le futur');
+            return;
+        }
+        
+        if (new Date(newDate) < new Date('2020-01-01')) {
+            setDateDemandeError('La date ne peut pas être antérieure au 01/01/2020');
+            return;
+        }
+        
+        // ✅ Vérifier cohérence avec date_requisition
+        if (propriete.date_requisition) {
+            const dateRequisition = new Date(propriete.date_requisition);
+            if (new Date(newDate) < dateRequisition) {
+                setDateDemandeError('La date de demande ne peut pas être antérieure à la date de réquisition');
+                return;
+            }
+        }
+        
+        setDateDemandeError('');
+    };
+
+    // ✅ MISE À JOUR : Soumission avec date_demande
     const handleSubmit = () => {
         if (!selectedDemandeur) {
             toast.error('Veuillez sélectionner un demandeur');
             return;
         }
 
+        if (dateDemandeError) {
+            toast.error('Erreur de date', { description: dateDemandeError });
+            return;
+        }
+
         setIsSubmitting(true);
 
-        // ✅ NE PAS CALCULER L'ORDRE ICI
         router.post(route('association.link'), {
             id_demandeur: selectedDemandeur.id,
             id_propriete: propriete.id,
             id_dossier: dossierId,
-            // ❌ PAS D'ORDRE
+            date_demande: dateDemande, // ✅ NOUVEAU
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -86,7 +127,6 @@ export function LinkDemandeurDialog({
         });
     };
 
-    // ✅ Gestionnaire d'annulation propre
     const handleCancel = () => {
         if (!isSubmitting) {
             onOpenChange(false);
@@ -97,7 +137,6 @@ export function LinkDemandeurDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent 
                 className="max-w-3xl max-h-[80vh] flex flex-col"
-                // ✅ Empêcher la fermeture pendant la soumission
                 onInteractOutside={(e) => {
                     if (isSubmitting) {
                         e.preventDefault();
@@ -113,11 +152,30 @@ export function LinkDemandeurDialog({
                     <DialogTitle>Lier un demandeur existant</DialogTitle>
                     <DialogDescription>
                         Propriété : Lot {propriete.lot} {propriete.titre ? `- TNº${propriete.titre}` : ''}
+                        {propriete.date_requisition && (
+                            <span className="block text-xs mt-1">
+                                Date réquisition : {new Date(propriete.date_requisition).toLocaleDateString('fr-FR')}
+                            </span>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto space-y-4">
+                    {/* ✅ NOUVEAU : Section Date de demande */}
                     <div className="sticky top-0 bg-background pb-4 border-b z-10">
+                        <DatePickerDemande
+                            value={dateDemande}
+                            onChange={handleDateDemandeChange}
+                            error={dateDemandeError}
+                            required
+                            label="Date de la demande"
+                            description="Date à laquelle le demandeur fait sa demande"
+                            minDate={propriete.date_requisition || '2020-01-01'}
+                        />
+                    </div>
+
+                    {/* Barre de recherche */}
+                    <div>
                         <Label>Rechercher par nom ou CIN</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -131,6 +189,7 @@ export function LinkDemandeurDialog({
                         </div>
                     </div>
 
+                    {/* Liste des demandeurs */}
                     {demandeursDisponibles.length === 0 ? (
                         <Alert>
                             <AlertCircle className="h-4 w-4" />
@@ -182,6 +241,7 @@ export function LinkDemandeurDialog({
                     )}
                 </div>
 
+                {/* Footer avec actions */}
                 <div className="flex justify-between items-center pt-4 border-t">
                     <p className="text-sm text-muted-foreground">
                         {demandeursFiltres.length} demandeur(s) disponible(s)
@@ -196,7 +256,7 @@ export function LinkDemandeurDialog({
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={!selectedDemandeur || isSubmitting}
+                            disabled={!selectedDemandeur || isSubmitting || !!dateDemandeError}
                         >
                             {isSubmitting ? (
                                 <>

@@ -46,7 +46,7 @@ export function AppSidebar() {
     const configNavItems: NavItem[] = [];
 
     // Gestion des localisations - accessible aux super_admin et admin_district
-    if (user && (user.role === 'super_admin' || user.role === 'admin_district' || 'user_district' || 'central_user')) {
+    if (user && (user.role === 'super_admin' || user.role === 'admin_district' || user.role === 'central_user')) {
         configNavItems.push({
             title: 'Localisations',
             href: '/location',

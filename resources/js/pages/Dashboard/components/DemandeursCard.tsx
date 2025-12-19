@@ -251,12 +251,6 @@ export function DemandeursCard({ details, variation = '+15%' }: Props) {
                         </div>
                     </div>
                 </div>
-
-                {/* Tendance */}
-                <div className="flex items-center gap-1 mt-4 pt-4 border-t">
-                    <TrendingUp className="h-3 w-3 text-green-600" />
-                    <span className="text-xs text-green-600 font-medium">{variation} ce mois</span>
-                </div>
             </CardContent>
         </Card>
     );

@@ -107,12 +107,6 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
                             
                             {showRevenue && (
                                 <>
-                                    <div className="flex items-center gap-1 pt-2 border-t">
-                                        <TrendingUp className="h-3 w-3 text-green-600" />
-                                        <span className="text-xs text-green-600 font-medium">
-                                            {variation} ce trimestre
-                                        </span>
-                                    </div>
                                     
                                     <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t">
                                         <div className="p-2 bg-green-50 rounded-lg">

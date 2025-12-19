@@ -1,4 +1,4 @@
-// associations/LinkProprieteDialog.tsx - VERSION CORRIGÉE
+// associations/LinkProprieteDialog.tsx - ✅ AVEC DATE_DEMANDE
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Search, LandPlot, Link2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import DatePickerDemande from '@/components/DatePickerDemande';
 import type { Demandeur, Propriete } from '@/types';
 
 interface LinkProprieteDialogProps {
@@ -29,22 +30,26 @@ export function LinkProprieteDialog({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPropriete, setSelectedPropriete] = useState<Propriete | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // ✅ NOUVEAU : État pour date_demande
+    const today = new Date().toISOString().split('T')[0];
+    const [dateDemande, setDateDemande] = useState<string>(today);
+    const [dateDemandeError, setDateDemandeError] = useState<string>('');
 
-    // ✅ Réinitialiser l'état à la fermeture
+    // Réinitialiser l'état à la fermeture
     useEffect(() => {
         if (!open) {
             setSearchTerm('');
             setSelectedPropriete(null);
             setIsSubmitting(false);
+            setDateDemande(today);
+            setDateDemandeError('');
         }
-    }, [open]);
+    }, [open, today]);
 
-    // Filtrer les propriétés déjà liées à ce demandeur
+    // Filtrer les propriétés disponibles
     const proprietesDisponibles = proprietesDossier.filter(prop => {
-        // Exclure les propriétés archivées
         if (prop.is_archived) return false;
-
-        // Exclure les propriétés déjà liées
         const dejaLie = prop.demandeurs?.some(d => d.id === demandeur.id);
         return !dejaLie;
     });
@@ -60,20 +65,51 @@ export function LinkProprieteDialog({
         );
     });
 
+    // ✅ NOUVEAU : Validation date_demande avec cohérence date_requisition
+    const handleDateDemandeChange = (newDate: string) => {
+        setDateDemande(newDate);
+        
+        if (new Date(newDate) > new Date()) {
+            setDateDemandeError('La date ne peut pas être dans le futur');
+            return;
+        }
+        
+        if (new Date(newDate) < new Date('2020-01-01')) {
+            setDateDemandeError('La date ne peut pas être antérieure au 01/01/2020');
+            return;
+        }
+        
+        // Vérifier cohérence avec date_requisition de la propriété sélectionnée
+        if (selectedPropriete?.date_requisition) {
+            const dateRequisition = new Date(selectedPropriete.date_requisition);
+            if (new Date(newDate) < dateRequisition) {
+                setDateDemandeError('La date de demande ne peut pas être antérieure à la date de réquisition');
+                return;
+            }
+        }
+        
+        setDateDemandeError('');
+    };
+
+    // ✅ MISE À JOUR : Soumission avec date_demande
     const handleSubmit = () => {
         if (!selectedPropriete) {
             toast.error('Veuillez sélectionner une propriété');
             return;
         }
 
+        if (dateDemandeError) {
+            toast.error('Erreur de date', { description: dateDemandeError });
+            return;
+        }
+
         setIsSubmitting(true);
 
-        // ✅ NE PAS CALCULER L'ORDRE ICI
         router.post(route('association.link'), {
             id_demandeur: demandeur.id,
             id_propriete: selectedPropriete.id,
             id_dossier: dossierId,
-            // ❌ PAS D'ORDRE
+            date_demande: dateDemande, // ✅ NOUVEAU
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -92,7 +128,6 @@ export function LinkProprieteDialog({
         });
     };
 
-    // ✅ Gestionnaire d'annulation propre
     const handleCancel = () => {
         if (!isSubmitting) {
             onOpenChange(false);
@@ -103,7 +138,6 @@ export function LinkProprieteDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent 
                 className="max-w-4xl max-h-[80vh] flex flex-col"
-                // ✅ Empêcher la fermeture pendant la soumission
                 onInteractOutside={(e) => {
                     if (isSubmitting) {
                         e.preventDefault();
@@ -123,8 +157,20 @@ export function LinkProprieteDialog({
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto space-y-4">
-                    {/* Barre de recherche */}
+                    {/* ✅ NOUVEAU : Section Date de demande */}
                     <div className="sticky top-0 bg-background pb-4 border-b z-10">
+                        <DatePickerDemande
+                            value={dateDemande}
+                            onChange={handleDateDemandeChange}
+                            error={dateDemandeError}
+                            required
+                            label="Date de la demande"
+                            description="Date à laquelle le demandeur fait sa demande"
+                        />
+                    </div>
+
+                    {/* Barre de recherche */}
+                    <div>
                         <Label>Rechercher par lot, titre ou propriétaire</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -190,6 +236,12 @@ export function LinkProprieteDialog({
                                                 {prop.situation && (
                                                     <p className="col-span-2"><strong>Situation:</strong> {prop.situation}</p>
                                                 )}
+                                                {/* ✅ NOUVEAU : Afficher date_requisition si existe */}
+                                                {prop.date_requisition && (
+                                                    <p className="col-span-2 text-xs">
+                                                        <strong>Date réquisition:</strong> {new Date(prop.date_requisition).toLocaleDateString('fr-FR')}
+                                                    </p>
+                                                )}
                                             </div>
                                             {prop.demandeurs && prop.demandeurs.length > 0 && (
                                                 <div className="mt-2 pt-2 border-t">
@@ -221,7 +273,7 @@ export function LinkProprieteDialog({
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={!selectedPropriete || isSubmitting}
+                            disabled={!selectedPropriete || isSubmitting || !!dateDemandeError}
                         >
                             {isSubmitting ? (
                                 <>

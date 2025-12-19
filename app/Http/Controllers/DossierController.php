@@ -206,13 +206,16 @@ class DossierController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $permissions = [
-            'canEdit' => $dossier->canBeModifiedBy($user),
-            'canDelete' => $user->isSuperAdmin() || 
-                        ($user->isAdminDistrict() && $user->id_district === $dossier->id_district),
-            'canClose' => $dossier->canBeClosedBy($user),
-            'canArchive' => !$dossier->is_closed,
-            'canExport' => true,
-            'canGenerateDocuments' => !$dossier->is_closed
+            'canEdit' => $dossier->canBeModifiedBy($user) && $user->canUpdate(),
+            'canDelete' => $user->canDelete() 
+                && ($user->isAdminDistrict() && $user->id_district === $dossier->id_district),
+            'canClose' => $user->canCloseDossier() 
+                && $user->isAdminDistrict() 
+                && $user->id_district === $dossier->id_district,
+            'canArchive' => false, 
+            'canExport' => true, 
+            'canGenerateDocuments' => !$dossier->is_closed 
+                && $user->canGenerateDocuments()
         ];
 
         $enrichedDemandeurs = $dossier->demandeurs->map(function($demandeur) {
@@ -433,6 +436,12 @@ class DossierController extends Controller
         $user = Auth::user();
         $dossier = Dossier::findOrFail($id);
 
+        if (!$user->canCloseDossier()) {
+            return back()->withErrors([
+                'error' => 'Seul un administrateur district peut fermer un dossier.'
+            ]);
+        }
+
         if (!$this->canCloseDossier($dossier, $user)) {
             return back()->withErrors([
                 'error' => 'Vous n\'avez pas la permission de fermer ce dossier.'
@@ -485,6 +494,12 @@ class DossierController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $dossier = Dossier::findOrFail($id);
+
+        if (!$user->canCloseDossier()) {
+            return back()->withErrors([
+                'error' => 'Seul un administrateur district peut rouvrir un dossier.'
+            ]);
+        }
 
         if (!$this->canCloseDossier($dossier, $user)) {
             return back()->withErrors([

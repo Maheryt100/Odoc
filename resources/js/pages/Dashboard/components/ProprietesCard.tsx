@@ -83,12 +83,6 @@ export function ProprietesCard({ disponibles, acquises, superficie }: Props) {
                         </span>
                     </div>
                 </div>
-
-                {/* Tendance */}
-                <div className="flex items-center gap-1 mt-3 pt-3 border-t">
-                    <TrendingUp className="h-3 w-3 text-green-600" />
-                    <span className="text-xs text-green-600 font-medium">+8% ce mois</span>
-                </div>
             </CardContent>
         </Card>
     );

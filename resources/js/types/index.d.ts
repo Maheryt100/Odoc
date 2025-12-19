@@ -1,8 +1,4 @@
-// js/types/index.d.ts
-
-// ============================================
-// 📦 types/index.d.ts - VERSION CORRIGÉE FINALE
-// ============================================
+// js/types/index.d.ts - VERSION AVEC DATE_DEMANDE
 
 import { LucideIcon } from 'lucide-react';
 import type { Config } from 'ziggy-js';
@@ -51,7 +47,7 @@ export interface SharedData {
 }
 
 // ============================================
-// 👤 USER - TYPE GLOBAL UNIFIÉ
+// 👤 USER
 // ============================================
 
 export type UserRole = 'super_admin' | 'central_user' | 'admin_district' | 'user_district';
@@ -69,7 +65,6 @@ export interface User {
     created_at: string;
     updated_at: string;
     
-    // Relations
     district?: {
         id: number;
         nom_district: string;
@@ -105,7 +100,7 @@ export interface District {
 }
 
 // ============================================
-// 🏠 PROPRIETE - ✅ HARMONISÉ AVEC LARAVEL
+// 🏠 PROPRIETE
 // ============================================
 
 export type Nature = 'Urbaine' | 'Suburbaine' | 'Rurale';
@@ -128,13 +123,11 @@ export interface Propriete {
     numero_requisition: string | null;
     type_operation: TypeOperation;
     
-    
     date_requisition: string | null;
     date_depot_1: string | null;
     date_depot_2: string | null;
     date_approbation_acte: string | null;
     
-    // Dep/Vol
     dep_vol_inscription: string | null;
     numero_dep_vol_inscription: string | null;
     dep_vol_requisition: string | null;
@@ -145,12 +138,10 @@ export interface Propriete {
     created_at: string;
     updated_at: string;
     
-    // Relations
     dossier?: Dossier;
     demandes?: Demande[];
     demandeurs?: Demandeur[];
     
-    // Accessors
     dep_vol_inscription_complet?: string;
     dep_vol_requisition_complet?: string;
     titre_complet?: string;
@@ -164,7 +155,7 @@ export interface Propriete {
 }
 
 // ============================================
-// 👥 DEMANDEUR - ✅ HARMONISÉ AVEC LARAVEL
+// 👥 DEMANDEUR
 // ============================================
 
 export interface Demandeur {
@@ -195,12 +186,10 @@ export interface Demandeur {
     created_at: string;
     updated_at: string;
     
-    // Relations
     demandes?: Demande[];
     proprietes?: Propriete[];
     dossiers?: Dossier[];
     
-    // Accessors
     nom_complet?: string;
     is_incomplete?: boolean;
     hasProperty?: boolean;
@@ -209,7 +198,7 @@ export interface Demandeur {
 }
 
 // ============================================
-// 🔗 DEMANDE (PIVOT TABLE)
+// 🔗 DEMANDE (PIVOT TABLE) - ✅ AVEC DATE_DEMANDE
 // ============================================
 
 export type DemandeStatus = 'active' | 'archive';
@@ -218,6 +207,7 @@ export interface Demande {
     id: number;
     id_demandeur: number;
     id_propriete: number;
+    date_demande: string; // ✅ NOUVEAU CHAMP (format YYYY-MM-DD)
     total_prix: number;
     status: DemandeStatus;
     status_consort: boolean;
@@ -236,19 +226,21 @@ export interface Demande {
     is_consort?: boolean;
     is_active?: boolean;
     is_archived?: boolean;
+    date_demande_formatted?: string; // ✅ Ex: "15 janvier 2025"
+    date_demande_short?: string; // ✅ Ex: "15/01/2025"
 }
 
 export type Demander = Demande;
 
 // ============================================
-// 📁 DOSSIER - ✅ CORRIGÉ
+// 📁 DOSSIER
 // ============================================
 
 export interface Dossier {
     id: number;
     nom_dossier: string;
-    numero_ouverture: number | null; // ✅ TOUJOURS number
-    numero_ouverture_display?: string; // ✅ Pour l'affichage
+    numero_ouverture: number | null;
+    numero_ouverture_display?: string;
     date_descente_debut: string;
     date_descente_fin: string;
     date_ouverture: string;
@@ -264,19 +256,16 @@ export interface Dossier {
     created_at: string;
     updated_at: string;
     
-    // ✅ Counts toujours définis (0 par défaut)
     demandeurs_count: number;
     proprietes_count: number;
     pieces_jointes_count: number;
     
-    // Relations
     closedBy?: User;
     demandeurs?: Demandeur[];
     proprietes?: Propriete[];
     district?: District;
     user?: User;
     
-    // Accessors
     is_closed: boolean;
     is_open: boolean;
     can_close?: boolean;
@@ -321,7 +310,7 @@ export interface PageProps {
     proprietes?: Propriete[];
     documents?: Paginated<Demande>;
     districts?: District[];
-    suggested_numero?: number; // ✅ Toujours number
+    suggested_numero?: number;
     [key: string]: unknown;
 }
 

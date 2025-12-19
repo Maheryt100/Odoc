@@ -27,8 +27,7 @@ export function DossiersCard({
     fermes, 
     nouveaux, 
     enRetard,
-    completion,
-    variation = '+12%' 
+    completion
 }: Props) {
     const total = ouverts + fermes;
     const tauxIncomplet = completion.total_dossiers > 0
@@ -127,11 +126,7 @@ export function DossiersCard({
                     )}
                 </div>
 
-                {/* Tendance */}
-                <div className="flex items-center gap-1 mt-3 pt-3 border-t">
-                    <TrendingUp className="h-3 w-3 text-green-600" />
-                    <span className="text-xs text-green-600 font-medium">{variation} ce mois</span>
-                </div>
+                
             </CardContent>
         </Card>
     );

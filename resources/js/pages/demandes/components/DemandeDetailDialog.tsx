@@ -1,17 +1,42 @@
-// components/DemandeDetailDialog.tsx - VERSION OPTIMISÉE
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     MapPin, FileText, Users, AlertCircle, 
-    DollarSign, ArrowRight
+    DollarSign, ArrowRight, Calendar, Clock
 } from 'lucide-react';
-import type { Demandeur, Propriete } from '@/types';
+
+interface Demandeur {
+    id: number;
+    titre_demandeur?: string;
+    nom_demandeur: string;
+    prenom_demandeur?: string;
+    cin: string;
+    domiciliation?: string;
+    telephone?: string;
+    nationalite?: string;
+    date_naissance?: string;
+    lieu_naissance?: string;
+}
+
+interface Propriete {
+    id: number;
+    lot: string;
+    titre?: string;
+    contenance?: number;
+    nature?: string;
+    vocation?: string;
+    proprietaire?: string;
+    situation?: string;
+    date_requisition?: string;
+}
 
 interface DemandeData {
     id: number;
     id_demandeur: number;
     id_propriete: number;
+    date_demande?: string;
     total_prix: number;
     status: 'active' | 'archive';
     status_consort: boolean;
@@ -27,6 +52,7 @@ interface DemandeData {
         status: string;
     }>;
     nombre_demandeurs?: number;
+    created_at?: string;
 }
 
 interface DemandeDetailDialogProps {
@@ -65,7 +91,6 @@ export default function DemandeDetailDialog({
             }];
         }
         
-        // Aucun demandeur
         return [];
     })();
 
@@ -79,10 +104,55 @@ export default function DemandeDetailDialog({
         ].filter(Boolean).join(' ');
     };
 
+    const formatDate = (dateStr: string | null | undefined, format: 'short' | 'long' = 'short'): string => {
+        if (!dateStr) return '-';
+        
+        try {
+            const date = new Date(dateStr + 'T00:00:00');
+            
+            if (format === 'long') {
+                return date.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+            
+            return date.toLocaleDateString('fr-FR');
+        } catch {
+            return dateStr;
+        }
+    };
+
+    const getDemandeAge = (dateDemande: string | null | undefined): number | null => {
+        if (!dateDemande) return null;
+        
+        try {
+            const date = new Date(dateDemande + 'T00:00:00');
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - date.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        } catch {
+            return null;
+        }
+    };
+
+    const age = getDemandeAge(demande.date_demande);
+    const ageLabel = age !== null ? (
+        age === 0 ? "Aujourd'hui" :
+        age === 1 ? "Hier" :
+        age < 7 ? `Il y a ${age} jours` :
+        age < 30 ? `Il y a ${Math.floor(age / 7)} semaine(s)` :
+        age < 365 ? `Il y a ${Math.floor(age / 30)} mois` :
+        `Il y a ${Math.floor(age / 365)} an(s)`
+    ) : null;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                <DialogHeader className="px-6 pt-6">
                     <DialogTitle className="flex items-center gap-2 flex-wrap">
                         <FileText className="h-5 w-5" />
                         Détails de la demande
@@ -98,179 +168,247 @@ export default function DemandeDetailDialog({
                     </DialogTitle>
                 </DialogHeader>
 
-                {!hasValidData ? (
-                    <div className="py-12 text-center space-y-4">
-                        <AlertCircle className="h-12 w-12 text-orange-500 mx-auto" />
-                        <div>
-                            <p className="text-lg font-semibold">Données incomplètes</p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                                {!propriete && 'Propriété manquante. '}
-                                {allDemandeurs.length === 0 && 'Aucun demandeur associé. '}
-                            </p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                Demandeur{allDemandeurs.length > 1 ? 's' : ''} ({allDemandeurs.length})
-                            </h3>
-                            <div className="space-y-3">
-                                {allDemandeurs.map((dem, index) => (
+                <ScrollArea className="max-h-[calc(90vh-100px)]">
+                    <div className="px-6 pb-6">
+                        {!hasValidData ? (
+                            <div className="py-12 text-center space-y-4">
+                                <AlertCircle className="h-12 w-12 text-orange-500 mx-auto" />
+                                <div>
+                                    <p className="text-lg font-semibold">Données incomplètes</p>
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                        {!propriete && 'Propriété manquante. '}
+                                        {allDemandeurs.length === 0 && 'Aucun demandeur associé. '}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Section Date de demande - Mise en avant */}
+                                {demande.date_demande && (
+                                    <div className="p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium text-muted-foreground mb-1">
+                                                    Date de la demande
+                                                </p>
+                                                <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                                                    {formatDate(demande.date_demande, 'long')}
+                                                </p>
+                                                {ageLabel && (
+                                                    <div className="flex items-center gap-1.5 mt-2">
+                                                        <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                                                            {ageLabel}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Section Demandeurs */}
+                                <div>
+                                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                        <Users className="h-4 w-4" />
+                                        Demandeur{allDemandeurs.length > 1 ? 's' : ''} ({allDemandeurs.length})
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {allDemandeurs.map((dem, index) => (
+                                            <div 
+                                                key={dem.id}
+                                                className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
+                                                onClick={() => onSelectDemandeur?.(dem.demandeur)}
+                                            >
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-semibold">
+                                                            {index === 0 ? 'Demandeur principal' : `Consort ${index}`}
+                                                        </p>
+                                                        {index > 0 && <Badge variant="secondary" className="text-xs">Consort</Badge>}
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">Nom complet</p>
+                                                        <p className="text-sm font-medium">
+                                                            {formatNomComplet(dem.demandeur)}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">CIN</p>
+                                                        <p className="text-sm font-mono">{dem.demandeur.cin}</p>
+                                                    </div>
+                                                    {dem.demandeur.domiciliation && (
+                                                        <div className="sm:col-span-2">
+                                                            <p className="text-xs text-muted-foreground">Domiciliation</p>
+                                                            <p className="text-sm">{dem.demandeur.domiciliation}</p>
+                                                        </div>
+                                                    )}
+                                                    {dem.demandeur.telephone && (
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Téléphone</p>
+                                                            <p className="text-sm">{dem.demandeur.telephone}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Section Propriété */}
+                                <div>
+                                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                        <MapPin className="h-4 w-4" />
+                                        Propriété
+                                    </h3>
                                     <div 
-                                        key={dem.id}
                                         className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
-                                        onClick={() => onSelectDemandeur?.(dem.demandeur)}
+                                        onClick={() => propriete && onSelectPropriete?.(propriete)}
                                     >
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-semibold">
-                                                    {index === 0 ? 'Demandeur principal' : `Consort ${index}`}
-                                                </p>
-                                                {index > 0 && <Badge variant="secondary" className="text-xs">Consort</Badge>}
-                                            </div>
-                                            <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p className="text-xs text-muted-foreground">Nom complet</p>
-                                                <p className="text-sm font-medium">
-                                                    {formatNomComplet(dem.demandeur)}
+                                                <p className="text-sm text-muted-foreground">Lot</p>
+                                                <p className="font-medium text-lg flex items-center gap-2">
+                                                    {propriete.lot}
+                                                    <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 </p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-muted-foreground">CIN</p>
-                                                <p className="text-sm font-mono">{dem.demandeur.cin}</p>
+                                                <p className="text-sm text-muted-foreground">Titre</p>
+                                                <p className="font-mono">
+                                                    {propriete.titre ? `TNº${propriete.titre}` : <span className="text-muted-foreground italic">Non attribué</span>}
+                                                </p>
                                             </div>
-                                            {dem.demandeur.domiciliation && (
-                                                <div>
-                                                    <p className="text-xs text-muted-foreground">Domiciliation</p>
-                                                    <p className="text-sm">{dem.demandeur.domiciliation}</p>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Contenance</p>
+                                                <p>
+                                                    {propriete.contenance 
+                                                        ? `${new Intl.NumberFormat('fr-FR').format(propriete.contenance)} m²`
+                                                        : <span className="text-muted-foreground italic">Non définie</span>
+                                                    }
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Nature / Vocation</p>
+                                                <p>{propriete.nature || '-'} / {propriete.vocation || '-'}</p>
+                                            </div>
+                                            
+                                            {propriete.proprietaire && (
+                                                <div className="sm:col-span-2">
+                                                    <p className="text-sm text-muted-foreground">Propriétaire</p>
+                                                    <p className="text-sm">{propriete.proprietaire}</p>
                                                 </div>
                                             )}
-                                            {dem.demandeur.telephone && (
+                                            
+                                            {propriete.situation && (
+                                                <div className="sm:col-span-2">
+                                                    <p className="text-sm text-muted-foreground">Situation</p>
+                                                    <p className="text-sm">{propriete.situation}</p>
+                                                </div>
+                                            )}
+
+                                            {propriete.date_requisition && (
                                                 <div>
-                                                    <p className="text-xs text-muted-foreground">Téléphone</p>
-                                                    <p className="text-sm">{dem.demandeur.telephone}</p>
+                                                    <p className="text-sm text-muted-foreground">Date réquisition</p>
+                                                    <p className="text-sm font-medium">
+                                                        {formatDate(propriete.date_requisition)}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+                                </div>
 
-                        <Separator />
+                                <Separator />
 
-                        <div>
-                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                Propriété
-                            </h3>
-                            <div 
-                                className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
-                                onClick={() => propriete && onSelectPropriete?.(propriete)}
-                            >
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Lot</p>
-                                        <p className="font-medium text-lg flex items-center gap-2">
-                                            {propriete.lot}
-                                            <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Titre</p>
-                                        <p className="font-mono">
-                                            {propriete.titre ? `TNº${propriete.titre}` : <span className="text-muted-foreground italic">Non attribué</span>}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Contenance</p>
-                                        <p>
-                                            {propriete.contenance 
-                                                ? `${new Intl.NumberFormat('fr-FR').format(propriete.contenance)} m²`
-                                                : <span className="text-muted-foreground italic">Non définie</span>
-                                            }
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Nature / Vocation</p>
-                                        <p>{propriete.nature || '-'} / {propriete.vocation || '-'}</p>
-                                    </div>
-                                    
-                                    {propriete.proprietaire && (
-                                        <div className="col-span-2">
-                                            <p className="text-sm text-muted-foreground">Propriétaire</p>
-                                            <p className="text-sm">{propriete.proprietaire}</p>
+                                {/* Détails financiers */}
+                                <div>
+                                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                        <DollarSign className="h-4 w-4" />
+                                        Détails financiers
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground mb-1">Prix total</p>
+                                            <p className="text-2xl sm:text-3xl font-bold text-primary">
+                                                {demande.total_prix 
+                                                    ? new Intl.NumberFormat('fr-FR').format(demande.total_prix)
+                                                    : '0'
+                                                } Ar
+                                            </p>
                                         </div>
-                                    )}
+                                        <div className="flex flex-col justify-center">
+                                            <p className="text-sm text-muted-foreground mb-2">Type de demande</p>
+                                            <Badge variant="outline" className="w-fit">
+                                                {allDemandeurs.length > 1 ? '👥 Avec consorts' : '👤 Individuel'}
+                                            </Badge>
+                                        </div>
+                                    </div>
                                     
-                                    {propriete.situation && (
-                                        <div className="col-span-2">
-                                            <p className="text-sm text-muted-foreground">Situation</p>
-                                            <p className="text-sm">{propriete.situation}</p>
+                                    {propriete.contenance && demande.total_prix > 0 && (
+                                        <div className="mt-3 text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded">
+                                            <p className="font-medium mb-1">Détail du calcul :</p>
+                                            <p>• Prix au m² : {new Intl.NumberFormat('fr-FR').format(Math.round(demande.total_prix / propriete.contenance))} Ar</p>
+                                            <p>• Contenance : {new Intl.NumberFormat('fr-FR').format(propriete.contenance)} m²</p>
+                                            <p>• Vocation : {propriete.vocation}</p>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </div>
 
-                        <Separator />
+                                {/* Informations de traçabilité */}
+                                {(demande.created_at || demande.date_demande) && (
+                                    <>
+                                        <Separator />
+                                        <div className="text-xs text-muted-foreground space-y-2 bg-muted/20 p-3 rounded">
+                                            <p className="font-semibold mb-2">Informations de traçabilité</p>
+                                            {demande.date_demande && (
+                                                <div className="flex items-start gap-2">
+                                                    <Calendar className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                                    <p>
+                                                        <strong>Date officielle de la demande :</strong> {formatDate(demande.date_demande, 'long')}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {demande.created_at && (
+                                                <div className="flex items-start gap-2">
+                                                    <Clock className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                                    <p>
+                                                        <strong>Créé dans le système le :</strong> {formatDate(demande.created_at, 'long')}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
 
-                        {/* Détails financiers */}
-                        <div>
-                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <DollarSign className="h-4 w-4" />
-                                Détails financiers
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
-                                <div>
-                                    <p className="text-sm text-muted-foreground mb-1">Prix total</p>
-                                    <p className="text-3xl font-bold text-primary">
-                                        {demande.total_prix 
-                                            ? new Intl.NumberFormat('fr-FR').format(demande.total_prix)
-                                            : '0'
-                                        } Ar
-                                    </p>
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                    <p className="text-sm text-muted-foreground mb-2">Type de demande</p>
-                                    <Badge variant="outline" className="w-fit">
-                                        {allDemandeurs.length > 1 ? '👥 Avec consorts' : '👤 Individuel'}
-                                    </Badge>
-                                </div>
-                            </div>
-                            
-                            {propriete.contenance && demande.total_prix > 0 && (
-                                <div className="mt-3 text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded">
-                                    <p className="font-medium mb-1">Détail du calcul :</p>
-                                    <p>• Prix au m² : {new Intl.NumberFormat('fr-FR').format(Math.round(demande.total_prix / propriete.contenance))} Ar</p>
-                                    <p>• Contenance : {new Intl.NumberFormat('fr-FR').format(propriete.contenance)} m²</p>
-                                    <p>• Vocation : {propriete.vocation}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {demande.status === 'archive' && (
-                            <div className="flex items-start gap-3 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200">
-                                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                                        Demande archivée
-                                    </p>
-                                    {demande.motif_archive && (
-                                        <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-                                            {demande.motif_archive}
-                                        </p>
-                                    )}
-                                </div>
+                                {demande.status === 'archive' && (
+                                    <div className="flex items-start gap-3 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200">
+                                        <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                                                Demande archivée
+                                            </p>
+                                            {demande.motif_archive && (
+                                                <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+                                                    {demande.motif_archive}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                )}
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     );

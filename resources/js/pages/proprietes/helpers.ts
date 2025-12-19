@@ -68,6 +68,10 @@ export const filterProprietesByStatus = (
  */
 export const matchesSearch = (prop: Propriete, search: string): boolean => {
     const searchLower = search.toLowerCase();
+    
+    // On crée un raccourci pour éviter les répétitions et gérer le typage dynamique
+    const p = prop as any; 
+
     return (
         // Recherche de base
         prop.lot?.toLowerCase().includes(searchLower) ||
@@ -76,7 +80,7 @@ export const matchesSearch = (prop: Propriete, search: string): boolean => {
         prop.nature?.toLowerCase().includes(searchLower) ||
         prop.situation?.toLowerCase().includes(searchLower) ||
         
-        // ✅ AJOUT : Recherche dans propriétaire
+        // ✅ Recherche dans propriétaire
         prop.proprietaire?.toLowerCase().includes(searchLower) ||
         
         // Recherche dans Dep/Vol Inscription
@@ -89,11 +93,11 @@ export const matchesSearch = (prop: Propriete, search: string): boolean => {
         prop.numero_dep_vol_requisition?.toLowerCase().includes(searchLower) ||
         prop.dep_vol_requisition_complet?.toLowerCase().includes(searchLower) ||
         
-        // ⚠️ Recherche dans anciens champs (compatibilité)
-        prop.dep_vol?.toLowerCase().includes(searchLower) ||
-        prop.numero_dep_vol?.toLowerCase().includes(searchLower) ||
-        prop.dep_vol_complet?.toLowerCase().includes(searchLower)
-    );
+        // ⚠️ Recherche dans anciens champs (Cast en any pour éviter l'erreur TS)
+        (p.dep_vol?.toLowerCase().includes(searchLower) || false) ||
+        (p.numero_dep_vol?.toLowerCase().includes(searchLower) || false) ||
+        (p.dep_vol_complet?.toLowerCase().includes(searchLower) || false)
+    ); // ✅ Le dernier "||" a été supprimé ici
 };
 
 /**
