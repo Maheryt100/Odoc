@@ -1,3 +1,6 @@
+// ============================================
+// hooks/use-initials.tsx
+// ============================================
 import { useCallback } from 'react';
 
 export function useInitials() {

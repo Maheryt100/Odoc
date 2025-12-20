@@ -5,7 +5,7 @@ import type { Config } from 'ziggy-js';
 import { ReactNode } from 'react';
 
 // ============================================
-// 🔐 AUTHENTIFICATION & NAVIGATION
+// AUTHENTIFICATION & NAVIGATION
 // ============================================
 
 export interface Auth {
@@ -47,7 +47,7 @@ export interface SharedData {
 }
 
 // ============================================
-// 👤 USER
+// USER
 // ============================================
 
 export type UserRole = 'super_admin' | 'central_user' | 'admin_district' | 'user_district';
@@ -78,7 +78,7 @@ export interface User {
 }
 
 // ============================================
-// 🏢 DISTRICT
+// DISTRICT
 // ============================================
 
 export interface District {
@@ -100,7 +100,7 @@ export interface District {
 }
 
 // ============================================
-// 🏠 PROPRIETE
+// PROPRIETE
 // ============================================
 
 export type Nature = 'Urbaine' | 'Suburbaine' | 'Rurale';
@@ -155,7 +155,7 @@ export interface Propriete {
 }
 
 // ============================================
-// 👥 DEMANDEUR
+// DEMANDEUR
 // ============================================
 
 export interface Demandeur {
@@ -198,7 +198,7 @@ export interface Demandeur {
 }
 
 // ============================================
-// 🔗 DEMANDE (PIVOT TABLE) - ✅ AVEC DATE_DEMANDE
+// DEMANDE (PIVOT TABLE) 
 // ============================================
 
 export type DemandeStatus = 'active' | 'archive';
@@ -207,7 +207,7 @@ export interface Demande {
     id: number;
     id_demandeur: number;
     id_propriete: number;
-    date_demande: string; // ✅ NOUVEAU CHAMP (format YYYY-MM-DD)
+    date_demande: string; 
     total_prix: number;
     status: DemandeStatus;
     status_consort: boolean;
@@ -226,14 +226,14 @@ export interface Demande {
     is_consort?: boolean;
     is_active?: boolean;
     is_archived?: boolean;
-    date_demande_formatted?: string; // ✅ Ex: "15 janvier 2025"
-    date_demande_short?: string; // ✅ Ex: "15/01/2025"
+    date_demande_formatted?: string;
+    date_demande_short?: string; 
 }
 
 export type Demander = Demande;
 
 // ============================================
-// 📁 DOSSIER
+// DOSSIER
 // ============================================
 
 export interface Dossier {
@@ -274,7 +274,7 @@ export interface Dossier {
 }
 
 // ============================================
-// 📄 PAGINATION
+// PAGINATION
 // ============================================
 
 export interface Paginated<T> {
@@ -295,7 +295,7 @@ export interface Link {
 }
 
 // ============================================
-// 📄 PAGE PROPS
+// PAGE PROPS
 // ============================================
 
 export interface PageProps {

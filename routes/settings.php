@@ -12,24 +12,30 @@ use Inertia\Inertia;
 | Paramètres utilisateur: profil, mot de passe, apparence
 */
 
-Route::prefix('settings')->name('settings.')->group(function () {
+Route::prefix('settings')->group(function () {
     
     // Redirection par défaut vers le profil
     Route::redirect('/', '/settings/profile');
     
-    // Profil utilisateur
+    // ============ PROFIL UTILISATEUR ============
+    // GET: Afficher le formulaire
     Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
+        ->name('settings.profile.edit');
+    
+    // PATCH: Mettre à jour le profil (utilisé par Inertia)
     Route::patch('/profile', [ProfileController::class, 'update'])
         ->name('profile.update');
     
-    // Mot de passe
+    // ============ MOT DE PASSE ============
+    // GET: Afficher le formulaire
     Route::get('/password', [PasswordController::class, 'edit'])
-        ->name('password.edit');
+        ->name('settings.password.edit');
+    
+    // PUT: Mettre à jour le mot de passe (utilisé par Inertia)
     Route::put('/password', [PasswordController::class, 'update'])
         ->name('password.update');
     
-    // Apparence
+    // ============ APPARENCE ============
     Route::get('/appearance', fn() => Inertia::render('settings/appearance'))
-        ->name('appearance');
+        ->name('settings.appearance');
 });

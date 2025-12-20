@@ -316,7 +316,7 @@ export default function ProprieteCreate({
                             <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                                 Dépôt 1
                             </Badge>
-                            <span className="text-sm text-muted-foreground">( date d'inscription bordereau n°1 )</span>
+                            <span className="text-sm text-muted-foreground">Bordereau n°1</span>
                         </div>
                         <div className="space-y-3">
                             <div className="space-y-2">
@@ -354,7 +354,7 @@ export default function ProprieteCreate({
                             <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                                 Dépôt 2
                             </Badge>
-                            <span className="text-sm text-muted-foreground">( date d'inscription bordereau n°2 )</span>
+                            <span className="text-sm text-muted-foreground">Bordereau n°2</span>
                         </div>
                         <div className="space-y-3">
                             <div className="space-y-2">

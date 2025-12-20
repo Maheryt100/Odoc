@@ -37,8 +37,8 @@ class ProfileController extends Controller
 
         $request->user()->save(); 
 
-        return to_route('profile.edit');
+        // ✅ CORRECTION: Utiliser le nom complet de la route avec préfixe
+        return to_route('settings.profile.edit')
+            ->with('success', 'Profil mis à jour avec succès');
     }
-
- 
 }

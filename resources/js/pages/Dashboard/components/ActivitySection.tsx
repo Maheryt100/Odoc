@@ -1,4 +1,4 @@
-// Dashboard/components/ActivitySection.tsx
+// Dashboard/components/ActivitySection.tsx - VERSION CORRIGÉE
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin } from 'lucide-react';
@@ -11,15 +11,16 @@ interface Props {
 
 export function ActivitySection({ recentActivity, topCommunes }: Props) {
     return (
-        <div className="grid gap-6 lg:grid-cols-2">
+        // ✅ CORRECTION : Grid responsive 1/2 colonnes
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             {/* Top communes */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                        <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
                         Top 5 Communes
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                         Communes avec le plus de dossiers
                     </CardDescription>
                 </CardHeader>
@@ -27,29 +28,31 @@ export function ActivitySection({ recentActivity, topCommunes }: Props) {
                     {topCommunes && topCommunes.length > 0 ? (
                         <div className="space-y-3">
                             {topCommunes.map((commune: TopCommune, index: number) => (
-                                <div key={index} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3 flex-1">
+                                <div key={index} className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                         <Badge 
                                             variant="outline" 
-                                            className="w-8 h-8 flex items-center justify-center font-bold"
+                                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center font-bold shrink-0"
                                         >
                                             {index + 1}
                                         </Badge>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium">{commune.commune}</p>
-                                            <p className="text-xs text-muted-foreground">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs sm:text-sm font-medium truncate">
+                                                {commune.commune}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate">
                                                 {commune.fokontany} • {commune.type_commune}
                                             </p>
                                         </div>
                                     </div>
-                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
-                                        {commune.count} dossiers
+                                    <Badge className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-950/70 text-xs shrink-0">
+                                        {commune.count}
                                     </Badge>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground text-center py-8">
+                        <p className="text-xs sm:text-sm text-muted-foreground text-center py-8">
                             Aucune donnée disponible
                         </p>
                     )}
@@ -59,11 +62,11 @@ export function ActivitySection({ recentActivity, topCommunes }: Props) {
             {/* Activité récente */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                        <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                         Activité récente
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                         Dernières actions sur la plateforme
                     </CardDescription>
                 </CardHeader>
@@ -73,11 +76,11 @@ export function ActivitySection({ recentActivity, topCommunes }: Props) {
                             {recentActivity.slice(0, 5).map((activity: Activity) => (
                                 <div 
                                     key={activity.id} 
-                                    className="flex items-start gap-3 pb-3 border-b last:border-0"
+                                    className="flex items-start gap-3 pb-3 border-b border-border last:border-0"
                                 >
-                                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 mt-2 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">
+                                        <p className="text-xs sm:text-sm font-medium truncate">
                                             {activity.description}
                                         </p>
                                         <p className="text-xs text-muted-foreground mt-1">
@@ -88,7 +91,7 @@ export function ActivitySection({ recentActivity, topCommunes }: Props) {
                             ))}
                         </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground text-center py-8">
+                        <p className="text-xs sm:text-sm text-muted-foreground text-center py-8">
                             Aucune activité récente
                         </p>
                     )}

@@ -1,8 +1,7 @@
-// Dashboard/components/ProprietesCard.tsx
+// Dashboard/components/ProprietesCard.tsx - VERSION CORRIGÉE
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LandPlot, TrendingUp, Maximize2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { LandPlot, Maximize2 } from 'lucide-react';
 import type { SuperficieDetails } from '../types';
 
 interface Props {
@@ -29,20 +28,20 @@ export function ProprietesCard({ disponibles, acquises, superficie }: Props) {
     return (
         <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-2xl font-bold">Propriétés</CardTitle>
+                <CardTitle className="text-lg sm:text-2xl font-bold">Propriétés</CardTitle>
                 <LandPlot className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
                 {/* Nombre de propriétés */}
-                <div className="flex items-baseline gap-2 mb-3">
-                    <div className="text-2xl font-bold">{disponibles}</div>
-                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                <div className="flex items-baseline gap-2 mb-3 flex-wrap">
+                    <div className="text-xl sm:text-2xl font-bold">{disponibles}</div>
+                    <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
                         En cours de traitement
                     </Badge>
                 </div>
 
                 {/* Propriétés acquises */}
-                <div className="flex items-center justify-between mb-3 pb-3 border-b">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-border">
                     <span className="text-xs text-muted-foreground">Propriétés acquises</span>
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold">{acquises}</span>
@@ -60,25 +59,25 @@ export function ProprietesCard({ disponibles, acquises, superficie }: Props) {
                     </div>
 
                     {/* Superficie totale */}
-                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                    <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                         <span className="text-xs font-medium">Total</span>
-                        <span className="text-xs font-bold text-slate-700">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                             {formatSuperficie(superficie.totale)}
                         </span>
                     </div>
 
                     {/* Superficie disponible */}
-                    <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                        <span className="text-xs font-medium text-green-700">En cours</span>
-                        <span className="text-xs font-bold text-green-700">
+                    <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                        <span className="text-xs font-medium text-green-700 dark:text-green-400">En cours</span>
+                        <span className="text-xs font-bold text-green-700 dark:text-green-300">
                             {formatSuperficie(superficie.disponible)}
                         </span>
                     </div>
 
                     {/* Superficie acquise */}
-                    <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
-                        <span className="text-xs font-medium text-blue-700">Acquise</span>
-                        <span className="text-xs font-bold text-blue-700">
+                    <div className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Acquise</span>
+                        <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
                             {formatSuperficie(superficie.acquise)}
                         </span>
                     </div>

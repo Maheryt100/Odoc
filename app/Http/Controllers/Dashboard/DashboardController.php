@@ -98,7 +98,7 @@ class DashboardController extends Controller
     public function clearCache()
     {
         /** @var \App\Models\User $user */
-        $user = auth()->user();
+        $user = Auth::user();
         
         // Seuls les admins peuvent vider le cache
         if (!$user->canAccessAllDistricts()) {
@@ -124,7 +124,7 @@ class DashboardController extends Controller
     public function cacheStats()
     {
         /** @var \App\Models\User $user */
-        $user = auth()->user();
+        $user = Auth::user();
 
         
         if (!$user->canAccessAllDistricts()) {

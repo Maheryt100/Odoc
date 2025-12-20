@@ -1,4 +1,4 @@
-// users/components/ConfirmationDialogs.tsx
+// users/components/ConfirmationDialogs.tsx - MOBILE OPTIMIZED
 import {
     AlertDialog,
     AlertDialogAction,
@@ -28,34 +28,45 @@ export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDia
 
     return (
         <AlertDialog open={!!user} onOpenChange={(open) => !open && onClose()}>
-            <AlertDialogContent>
+            <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>
+                    <AlertDialogTitle className="text-base sm:text-lg">
                         {user.status ? 'Désactiver' : 'Activer'} l'utilisateur
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
-                        <div className="space-y-3">
-                            <p className="text-sm text-muted-foreground">
+                        <div className="space-y-2 sm:space-y-3">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                                 Voulez-vous vraiment {user.status ? 'désactiver' : 'activer'} l'utilisateur{' '}
-                                <span className="font-medium text-foreground">{user.name}</span> ?
+                                <span className="font-medium text-foreground break-words">{user.name}</span> ?
                             </p>
                             {user.status && (
                                 <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
-                                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                                    <AlertDescription className="text-amber-800 dark:text-amber-200">
-                                        <span className="font-medium block mb-1">Attention</span>
-                                        <span className="text-sm">L'utilisateur ne pourra plus se connecter ni accéder aux dossiers.</span>
-                                    </AlertDescription>
+                                    <div className="flex gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                        <AlertDescription className="text-amber-800 dark:text-amber-200">
+                                            <span className="font-medium block mb-1 text-xs sm:text-sm">Attention</span>
+                                            <span className="text-xs sm:text-sm">
+                                                L'utilisateur ne pourra plus se connecter ni accéder aux dossiers.
+                                            </span>
+                                        </AlertDescription>
+                                    </div>
                                 </Alert>
                             )}
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onClose}>Annuler</AlertDialogCancel>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                    <AlertDialogCancel 
+                        onClick={onClose}
+                        className="w-full sm:w-auto order-2 sm:order-1 mt-0"
+                    >
+                        Annuler
+                    </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirm}
-                        className={user.status ? 'bg-amber-600 hover:bg-amber-700' : ''}
+                        className={`w-full sm:w-auto order-1 sm:order-2 ${
+                            user.status ? 'bg-amber-600 hover:bg-amber-700' : ''
+                        }`}
                     >
                         Confirmer
                     </AlertDialogAction>
@@ -80,23 +91,25 @@ export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogP
 
     return (
         <AlertDialog open={!!user} onOpenChange={(open) => !open && onClose()}>
-            <AlertDialogContent>
+            <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                        Supprimer l'utilisateur
+                    <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
+                        <span className="truncate">Supprimer l'utilisateur</span>
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
-                        <div className="space-y-3">
-                            <p className="text-sm text-muted-foreground">
+                        <div className="space-y-2 sm:space-y-3">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                                 Voulez-vous vraiment supprimer l'utilisateur{' '}
-                                <span className="font-medium text-foreground">{user.name}</span> ?
+                                <span className="font-medium text-foreground break-words">{user.name}</span> ?
                             </p>
                             <Alert variant="destructive" className="bg-destructive/10">
                                 <AlertDescription>
-                                    <span className="font-medium block mb-2">⚠️ Cette action est irréversible</span>
-                                    <ul className="text-sm space-y-1 list-disc list-inside">
-                                        <li>Toutes les données de l'utilisateur seront supprimées</li>
+                                    <span className="font-medium block mb-1.5 sm:mb-2 text-xs sm:text-sm">
+                                        ⚠️ Cette action est irréversible
+                                    </span>
+                                    <ul className="text-xs sm:text-sm space-y-0.5 sm:space-y-1 list-disc list-inside">
+                                        <li>Toutes les données seront supprimées</li>
                                         <li>L'accès aux dossiers sera révoqué</li>
                                         <li>Cette opération ne peut pas être annulée</li>
                                     </ul>
@@ -105,11 +118,16 @@ export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogP
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onClose}>Annuler</AlertDialogCancel>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                    <AlertDialogCancel 
+                        onClick={onClose}
+                        className="w-full sm:w-auto order-2 sm:order-1 mt-0"
+                    >
+                        Annuler
+                    </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirm}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        className="w-full sm:w-auto order-1 sm:order-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                         Supprimer définitivement
                     </AlertDialogAction>

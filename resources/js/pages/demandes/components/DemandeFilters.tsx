@@ -1,7 +1,16 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// pages/demandes/components/DemandeFilters.tsx - ✅ VERSION RESPONSIVE
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, SortAsc, SortDesc, Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Search, ArrowUpDown, Filter } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Sheet,
     SheetContent,
@@ -10,10 +19,8 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
-import { useState } from 'react';
-
-type FiltreStatutDemandeType = 'tous' | 'actives' | 'archivees' | 'incompletes';
-type TriDemandeType = 'date' | 'date_demande' | 'lot' | 'demandeur' | 'prix' | 'statut';
+import { useIsMobile } from '@/hooks/useResponsive';
+import type { FiltreStatutDemandeType, TriDemandeType } from '../types';
 
 interface DemandeFiltersProps {
     filtreStatut: FiltreStatutDemandeType;
@@ -38,283 +45,208 @@ export default function DemandeFilters({
     ordre,
     onOrdreToggle,
     totalDemandes,
-    totalFiltres
+    totalFiltres,
 }: DemandeFiltersProps) {
-    
-    const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-    const hasActiveFilters = filtreStatut !== 'tous' || recherche !== '';
+    const isMobile = useIsMobile();
 
-    const getTriLabel = (triValue: TriDemandeType): string => {
-        switch (triValue) {
-            case 'date':
-                return 'Date création';
-            case 'date_demande':
-                return 'Date demande';
-            case 'lot':
-                return 'Lot';
-            case 'demandeur':
-                return 'Demandeur';
-            case 'prix':
-                return 'Prix';
-            case 'statut':
-                return 'Statut';
-            default:
-                return 'Inconnu';
-        }
-    };
+    const filterOptions = [
+        { value: 'tous', label: 'Toutes', count: totalDemandes },
+        { value: 'actives', label: 'Actives', count: null },
+        { value: 'archivees', label: 'Archivées', count: null },
+        { value: 'incompletes', label: 'Incomplètes', count: null },
+    ] as const;
 
-    return (
-        <div className="mb-4">
-            {/* Vue Desktop - Tous les filtres sur une ligne */}
-            <div className="hidden lg:flex items-center gap-2">
-                {/* Barre de recherche */}
-                <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="text"
-                        placeholder="Rechercher par lot, nom ou CIN..."
-                        value={recherche}
-                        onChange={(e) => onRechercheChange(e.target.value)}
-                        className="pl-9 pr-9 h-9"
-                    />
-                    {recherche && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRechercheChange('')}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                        </Button>
-                    )}
-                </div>
+    const sortOptions = [
+        { value: 'date', label: 'Date' },
+        { value: 'lot', label: 'N° Lot' },
+        { value: 'demandeur', label: 'Demandeur' },
+        { value: 'prix', label: 'Prix' },
+    ] as const;
 
-                {/* Filtre statut */}
-                <Select value={filtreStatut} onValueChange={onFiltreStatutChange}>
-                    <SelectTrigger className="w-[160px] h-9">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="tous">
-                            Toutes ({totalDemandes})
-                        </SelectItem>
-                        <SelectItem value="actives">
-                            Actives
-                        </SelectItem>
-                        <SelectItem value="archivees">
-                            Archivées
-                        </SelectItem>
-                        <SelectItem value="incompletes">
-                            Incomplètes
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-
-                {/* Tri */}
-                <Select value={tri} onValueChange={onTriChange}>
-                    <SelectTrigger className="w-[180px] h-9">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="date">📅 Date création</SelectItem>
-                        <SelectItem value="date_demande">🗓️ Date demande</SelectItem>
-                        <SelectItem value="lot">🏠 Lot</SelectItem>
-                        <SelectItem value="demandeur">👤 Demandeur</SelectItem>
-                        <SelectItem value="prix">💰 Prix</SelectItem>
-                        <SelectItem value="statut">🔖 Statut</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                {/* Bouton ordre */}
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={onOrdreToggle}
-                    className="h-9 w-9 flex-shrink-0"
-                    title={ordre === 'asc' ? 'Croissant' : 'Décroissant'}
-                >
-                    {ordre === 'asc' ? (
-                        <SortAsc className="h-4 w-4" />
-                    ) : (
-                        <SortDesc className="h-4 w-4" />
-                    )}
-                </Button>
-
-                {/* Reset filtres */}
-                {hasActiveFilters && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            onFiltreStatutChange('tous');
-                            onRechercheChange('');
-                        }}
-                        className="h-9 px-3 flex-shrink-0"
-                    >
-                        <X className="h-4 w-4 mr-1" />
-                        Réinitialiser
-                    </Button>
-                )}
-            </div>
-
-            {/* Vue Mobile - Recherche + Bouton Filtres */}
-            <div className="lg:hidden space-y-3">
-                {/* Barre de recherche mobile */}
+    // Version Mobile avec Sheet
+    if (isMobile) {
+        return (
+            <div className="space-y-3 mb-4">
+                {/* Recherche */}
                 <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        type="text"
                         placeholder="Rechercher..."
                         value={recherche}
                         onChange={(e) => onRechercheChange(e.target.value)}
-                        className="pl-9 pr-9 h-10"
+                        className="pl-9 h-10"
                     />
-                    {recherche && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRechercheChange('')}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    )}
                 </div>
 
-                {/* Bouton Filtres Mobile */}
-                <div className="flex items-center gap-2">
-                    <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+                {/* Boutons Filtres et Tri */}
+                <div className="flex gap-2">
+                    {/* Sheet Filtres */}
+                    <Sheet>
                         <SheetTrigger asChild>
-                            <Button variant="outline" className="flex-1 h-10 relative">
+                            <Button variant="outline" className="flex-1">
                                 <Filter className="h-4 w-4 mr-2" />
-                                Filtres et tri
-                                {hasActiveFilters && (
-                                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                                        !
-                                    </span>
+                                Filtres
+                                {filtreStatut !== 'tous' && (
+                                    <Badge variant="secondary" className="ml-2">
+                                        1
+                                    </Badge>
                                 )}
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="h-[80vh]">
                             <SheetHeader>
-                                <SheetTitle>Filtres et tri</SheetTitle>
+                                <SheetTitle>Filtrer les demandes</SheetTitle>
                                 <SheetDescription>
-                                    Personnalisez l'affichage de vos demandes
+                                    {totalFiltres} sur {totalDemandes} demandes
                                 </SheetDescription>
                             </SheetHeader>
-                            
-                            <div className="mt-6 space-y-6">
-                                {/* Statut */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Statut</label>
-                                    <Select value={filtreStatut} onValueChange={onFiltreStatutChange}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="tous">
-                                                Toutes ({totalDemandes})
-                                            </SelectItem>
-                                            <SelectItem value="actives">
-                                                Actives
-                                            </SelectItem>
-                                            <SelectItem value="archivees">
-                                                Archivées
-                                            </SelectItem>
-                                            <SelectItem value="incompletes">
-                                                Incomplètes
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Tri */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Trier par</label>
-                                    <Select value={tri} onValueChange={onTriChange}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="date">📅 Date création</SelectItem>
-                                            <SelectItem value="date_demande">🗓️ Date demande</SelectItem>
-                                            <SelectItem value="lot">🏠 Lot</SelectItem>
-                                            <SelectItem value="demandeur">👤 Demandeur</SelectItem>
-                                            <SelectItem value="prix">💰 Prix</SelectItem>
-                                            <SelectItem value="statut">🔖 Statut</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Ordre */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Ordre</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Button
-                                            variant={ordre === 'asc' ? 'default' : 'outline'}
-                                            onClick={() => ordre !== 'asc' && onOrdreToggle()}
-                                            className="w-full"
-                                        >
-                                            <SortAsc className="h-4 w-4 mr-2" />
-                                            Croissant
-                                        </Button>
-                                        <Button
-                                            variant={ordre === 'desc' ? 'default' : 'outline'}
-                                            onClick={() => ordre !== 'desc' && onOrdreToggle()}
-                                            className="w-full"
-                                        >
-                                            <SortDesc className="h-4 w-4 mr-2" />
-                                            Décroissant
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Boutons d'action */}
-                                <div className="space-y-2 pt-4 border-t">
-                                    {hasActiveFilters && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => {
-                                                onFiltreStatutChange('tous');
-                                                onRechercheChange('');
-                                            }}
-                                            className="w-full"
-                                        >
-                                            <X className="h-4 w-4 mr-2" />
-                                            Réinitialiser les filtres
-                                        </Button>
-                                    )}
-                                    
-                                    <Button 
-                                        onClick={() => setMobileFilterOpen(false)}
-                                        className="w-full"
+                            <div className="space-y-3 mt-6">
+                                {filterOptions.map((option) => (
+                                    <Button
+                                        key={option.value}
+                                        variant={filtreStatut === option.value ? 'default' : 'outline'}
+                                        className="w-full justify-start"
+                                        onClick={() => onFiltreStatutChange(option.value as FiltreStatutDemandeType)}
                                     >
-                                        Appliquer
+                                        {option.label}
+                                        {option.count !== null && (
+                                            <Badge variant="secondary" className="ml-auto">
+                                                {option.count}
+                                            </Badge>
+                                        )}
                                     </Button>
-                                </div>
+                                ))}
                             </div>
                         </SheetContent>
                     </Sheet>
 
-                    {/* Badge nombre de résultats */}
-                    <div className="px-3 py-2 border rounded-lg text-sm font-medium whitespace-nowrap">
-                        {totalFiltres} / {totalDemandes}
-                    </div>
+                    {/* Sheet Tri */}
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant="outline" className="flex-1">
+                                <ArrowUpDown className="h-4 w-4 mr-2" />
+                                Trier
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="h-[60vh]">
+                            <SheetHeader>
+                                <SheetTitle>Trier par</SheetTitle>
+                            </SheetHeader>
+                            <div className="space-y-3 mt-6">
+                                {sortOptions.map((option) => (
+                                    <Button
+                                        key={option.value}
+                                        variant={tri === option.value ? 'default' : 'outline'}
+                                        className="w-full justify-start"
+                                        onClick={() => onTriChange(option.value as TriDemandeType)}
+                                    >
+                                        {option.label}
+                                    </Button>
+                                ))}
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={onOrdreToggle}
+                                >
+                                    <ArrowUpDown className="h-4 w-4 mr-2" />
+                                    {ordre === 'asc' ? 'Croissant' : 'Décroissant'}
+                                </Button>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
+
+                {/* Badge résultat */}
+                {(recherche || filtreStatut !== 'tous') && (
+                    <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                            {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''}
+                        </Badge>
+                        {recherche && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onRechercheChange('')}
+                                className="h-6 text-xs"
+                            >
+                                Effacer recherche
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Version Desktop
+    return (
+        <div className="space-y-4 mb-4">
+            {/* Ligne 1 : Filtres rapides */}
+            <div className="flex flex-wrap items-center gap-2">
+                {filterOptions.map((option) => (
+                    <Button
+                        key={option.value}
+                        variant={filtreStatut === option.value ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => onFiltreStatutChange(option.value as FiltreStatutDemandeType)}
+                        className="h-8"
+                    >
+                        {option.label}
+                        {option.count !== null && (
+                            <Badge 
+                                variant={filtreStatut === option.value ? 'secondary' : 'outline'} 
+                                className="ml-2"
+                            >
+                                {option.count}
+                            </Badge>
+                        )}
+                    </Button>
+                ))}
+                
+                {totalFiltres !== totalDemandes && (
+                    <Badge variant="secondary" className="ml-2">
+                        {totalFiltres} / {totalDemandes}
+                    </Badge>
+                )}
             </div>
 
-            {/* Résumé des filtres actifs (Desktop) */}
-            {hasActiveFilters && (
-                <div className="hidden lg:block text-xs text-muted-foreground mt-2 ml-1">
-                    {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''} sur {totalDemandes}
+            {/* Ligne 2 : Recherche et Tri */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                {/* Recherche */}
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Rechercher par lot, demandeur, CIN..."
+                        value={recherche}
+                        onChange={(e) => onRechercheChange(e.target.value)}
+                        className="pl-9"
+                    />
                 </div>
-            )}
 
-            {/* Indicateur du tri actif */}
-            <div className="flex items-center gap-2 mt-2 ml-1">
-                <span className="text-xs text-muted-foreground">
-                    Tri : <strong>{getTriLabel(tri)}</strong> ({ordre === 'asc' ? 'croissant' : 'décroissant'})
-                </span>
+                {/* Tri */}
+                <div className="flex gap-2 shrink-0">
+                    <Select value={tri} onValueChange={(value) => onTriChange(value as TriDemandeType)}>
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Trier par" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {sortOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onOrdreToggle}
+                        title={ordre === 'asc' ? 'Croissant' : 'Décroissant'}
+                    >
+                        <ArrowUpDown className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
         </div>
     );

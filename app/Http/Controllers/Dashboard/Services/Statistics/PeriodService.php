@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Dashboard\Services\Statistics;
 
-
 use Carbon\Carbon;
 use App\Models\Dossier;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
-
 
 /**
  * Service de gestion des périodes pour les statistiques
@@ -71,27 +69,68 @@ class PeriodService
     }
     
     /**
-     * Calculer le taux de croissance entre deux périodes
+     * ✅ CORRECTION : Calculer le taux de croissance entre deux périodes
+     * 
+     * @param array $dates ['from' => Carbon|string, 'to' => Carbon|string]
+     * @param array $geoFilters ['province_id' => ?int, 'region_id' => ?int, 'district_id' => ?int]
+     * @return float Taux de croissance en pourcentage
      */
-    public function calculateGrowthRate(array $dates): float
+    public function calculateGrowthRate(array $dates, array $geoFilters = []): float
     {
-        $currentPeriod = $this->baseQuery()
+        // Obtenir les IDs de districts filtrés
+        $districtIds = $this->getFilteredDistrictIds($geoFilters);
+        
+        // PÉRIODE ACTUELLE
+        $currentPeriod = Dossier::query()
+            ->whereIn('id_district', $districtIds)
             ->whereBetween('date_ouverture', [$dates['from'], $dates['to']])
             ->count();
         
+        // PÉRIODE PRÉCÉDENTE (même durée)
         $periodLength = Carbon::parse($dates['from'])->diffInDays(Carbon::parse($dates['to']));
-        $previousFrom = Carbon::parse($dates['from'])->subDays($periodLength);
-        $previousTo = Carbon::parse($dates['to'])->subDays($periodLength);
+        $previousFrom = Carbon::parse($dates['from'])->subDays($periodLength + 1);
+        $previousTo = Carbon::parse($dates['from'])->subDay();
         
-        $previousPeriod = $this->baseQuery()
+        $previousPeriod = Dossier::query()
+            ->whereIn('id_district', $districtIds)
             ->whereBetween('date_ouverture', [$previousFrom, $previousTo])
             ->count();
         
+        // CALCUL
         if ($previousPeriod === 0) {
             return $currentPeriod > 0 ? 100.0 : 0.0;
         }
         
         return round((($currentPeriod - $previousPeriod) / $previousPeriod) * 100, 1);
+    }
+    
+    /**
+     * ✅ NOUVEAU : Obtenir les IDs de districts selon les filtres géographiques
+     */
+    private function getFilteredDistrictIds(array $geoFilters): array
+    {
+        // Si district spécifique
+        if (!empty($geoFilters['district_id'])) {
+            return [(int) $geoFilters['district_id']];
+        }
+
+        // Si région spécifique
+        if (!empty($geoFilters['region_id'])) {
+            return \App\Models\District::where('id_region', $geoFilters['region_id'])
+                ->pluck('id')
+                ->toArray();
+        }
+
+        // Si province spécifique
+        if (!empty($geoFilters['province_id'])) {
+            return \App\Models\District::query()
+                ->whereHas('region', fn($q) => $q->where('id_province', $geoFilters['province_id']))
+                ->pluck('id')
+                ->toArray();
+        }
+
+        // Tous les districts (ou ceux accessibles via baseQuery)
+        return \App\Models\District::pluck('id')->toArray();
     }
     
     /**
@@ -131,5 +170,44 @@ class PeriodService
         }
         
         return $quarters->toArray();
+    }
+    
+    /**
+     * ✅ NOUVEAU : Obtenir les statistiques de comparaison de période
+     */
+    public function getComparisonStats(array $dates, array $geoFilters = []): array
+    {
+        $districtIds = $this->getFilteredDistrictIds($geoFilters);
+        
+        // Période actuelle
+        $current = Dossier::query()
+            ->whereIn('id_district', $districtIds)
+            ->whereBetween('date_ouverture', [$dates['from'], $dates['to']])
+            ->count();
+
+        // Période précédente
+        $from = Carbon::parse($dates['from']);
+        $to = Carbon::parse($dates['to']);
+        $duration = $from->diffInDays($to);
+        
+        $previousFrom = $from->copy()->subDays($duration + 1);
+        $previousTo = $from->copy()->subDay();
+        
+        $previous = Dossier::query()
+            ->whereIn('id_district', $districtIds)
+            ->whereBetween('date_ouverture', [$previousFrom, $previousTo])
+            ->count();
+
+        $growth = $previous > 0 
+            ? round((($current - $previous) / $previous) * 100, 1)
+            : ($current > 0 ? 100.0 : 0.0);
+
+        return [
+            'current_count' => $current,
+            'previous_count' => $previous,
+            'growth_rate' => $growth,
+            'difference' => $current - $previous,
+            'trend' => $growth > 0 ? 'up' : ($growth < 0 ? 'down' : 'stable'),
+        ];
     }
 }

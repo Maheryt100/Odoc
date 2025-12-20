@@ -1,5 +1,5 @@
 // pages/demandeurs/components/EditDemandeurDialog.tsx
-// ✅ VERSION AMÉLIORÉE - RESPONSIVE & COHÉRENT AVEC EditProprieteDialog
+// ✅ CONFLIT D'IMPORT RÉSOLU
 
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
@@ -31,6 +31,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import type { DemandeurWithProperty } from '../types';
+import { useDialogCleanup } from '@/hooks/useDialogCleanup'; // ✅ Import du hook
 
 interface EditDemandeurDialogProps {
     demandeur: DemandeurWithProperty | null;
@@ -64,27 +65,6 @@ interface FormData {
     marie_a: string;
     telephone: string;
 }
-
-// ✅ Fonction utilitaire : Nettoyer les overlays résiduels
-const cleanupDialogOverlays = () => {
-    const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
-    overlays.forEach(overlay => {
-        if (overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-        }
-    });
-    
-    const portals = document.querySelectorAll('[data-radix-portal]');
-    portals.forEach(portal => {
-        if (portal.childNodes.length === 0 && portal.parentNode) {
-            portal.parentNode.removeChild(portal);
-        }
-    });
-    
-    document.body.style.pointerEvents = '';
-    document.body.style.overflow = '';
-    document.body.removeAttribute('data-scroll-locked');
-};
 
 export default function EditDemandeurDialog({
     demandeur,
@@ -121,36 +101,18 @@ export default function EditDemandeurDialog({
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Nettoyage au démontage
-    useEffect(() => {
-        return () => {
-            cleanupDialogOverlays();
-        };
-    }, []);
-
-    // Nettoyage quand le dialog se ferme
-    useEffect(() => {
-        if (!open) {
-            const timer = setTimeout(() => {
-                cleanupDialogOverlays();
-            }, 300);
-            
-            return () => clearTimeout(timer);
-        }
-    }, [open]);
+    // ✅ Utilisation du hook pour le cleanup
+    useDialogCleanup(open);
 
     // ✅ Charger les données quand le dialogue s'ouvre
     useEffect(() => {
         if (open && demandeur) {
-            // ✅ Fonction helper pour formater les dates
             const formatDate = (date: string | null | undefined): string => {
                 if (!date) return '';
                 try {
-                    // Si c'est déjà au format YYYY-MM-DD, on le retourne tel quel
                     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
                         return date;
                     }
-                    // Sinon on parse et reformate
                     const d = new Date(date);
                     if (isNaN(d.getTime())) return '';
                     return d.toISOString().split('T')[0];
@@ -206,13 +168,6 @@ export default function EditDemandeurDialog({
         handleChange('sexe', sexe);
     };
 
-    const handleClose = () => {
-        onOpenChange(false);
-        setTimeout(() => {
-            cleanupDialogOverlays();
-        }, 100);
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -221,7 +176,6 @@ export default function EditDemandeurDialog({
         setProcessing(true);
         setErrors({});
 
-        // ✅ Nettoyer les données (convertir chaînes vides en null)
         const cleanData = Object.fromEntries(
             Object.entries(data).map(([key, value]) => [
                 key, 
@@ -239,7 +193,7 @@ export default function EditDemandeurDialog({
                 preserveScroll: true,
                 onSuccess: () => {
                     toast.success('Demandeur modifié avec succès');
-                    handleClose();
+                    onOpenChange(false);
                 },
                 onError: (errors) => {
                     console.error('❌ Erreurs de validation:', errors);
@@ -258,7 +212,7 @@ export default function EditDemandeurDialog({
     if (!demandeur) return null;
 
     return (
-        <Dialog open={open} onOpenChange={handleClose}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <DialogHeader className="pb-4 border-b">
@@ -618,7 +572,7 @@ export default function EditDemandeurDialog({
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={handleClose}
+                                onClick={() => onOpenChange(false)}
                                 disabled={processing}
                                 className="w-full sm:w-auto"
                             >

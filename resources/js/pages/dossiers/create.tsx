@@ -1,8 +1,10 @@
+// resources/js/pages/dossiers/Create.tsx - ✅ VERSION RESPONSIVE
 import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
 import { Toaster } from 'sonner';
 import type { BreadcrumbItem, District } from '@/types';
 import DossierForm from '@/pages/dossiers/components/DossierForm';
+import { route } from 'ziggy-js';
 
 interface PageProps {
     districts: District[];
@@ -21,30 +23,48 @@ export default function Create() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Nouveau Dossier" />
-            <Toaster position="top-right" richColors />
+            <Head title="Nouveau dossier" />
+            <Toaster richColors position="top-center" />
 
-            <div className="container mx-auto p-6 max-w-4xl">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            {/* ✅ Container responsive avec padding adaptatif */}
+            <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-6 lg:py-8">
+                
+                {/* ✅ Header responsive */}
+                <div className="mb-4 sm:mb-6 space-y-2">
+                    {/* Titre adaptatif */}
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight">
                         Nouveau Dossier
                     </h1>
-                    <div className="text-muted-foreground mt-2 space-y-1">
-                        <p>Créer un nouveau dossier de terrain</p>
-                        {/* {last_numero !== null && (
-                            <p className="text-sm">
-                                <span className="text-blue-600 font-medium">
-                                    Dernier numéro utilisé : {last_numero}
+                    
+                    {/* Description */}
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                        Créer un nouveau dossier de terrain avec les informations complètes.
+                    </p>
+                    
+                    {/* ✅ Info numéros - Masqué sur mobile, visible desktop */}
+                    {(last_numero !== null || suggested_numero) && (
+                        <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground pt-1">
+                            {last_numero !== null && (
+                                <span className="flex items-center gap-1">
+                                    <span className="font-medium">Dernier :</span>
+                                    <span className="font-mono text-blue-600 dark:text-blue-400">
+                                        {last_numero}
+                                    </span>
                                 </span>
-                                <span className="mx-2">•</span>
-                                <span className="text-emerald-600 font-medium">
-                                    Numéro suggéré : {suggested_numero}
+                            )}
+                            {suggested_numero && (
+                                <span className="flex items-center gap-1">
+                                    <span className="font-medium">Suggéré :</span>
+                                    <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                                        {suggested_numero}
+                                    </span>
                                 </span>
-                            </p>
-                        )} */}
-                    </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
+                {/* ✅ Formulaire */}
                 <DossierForm
                     districts={districts}
                     suggested_numero={suggested_numero}
@@ -52,7 +72,6 @@ export default function Create() {
                     mode="create"
                 />
             </div>
-            
         </AppLayout>
     );
 }

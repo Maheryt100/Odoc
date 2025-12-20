@@ -1,4 +1,4 @@
-// this is components/FileUploader.tsx
+// components/FileUploader.tsx - VERSION RESPONSIVE AMÉLIORÉE
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,13 +54,11 @@ export default function FileUploader({
         const validFiles: FileWithPreview[] = [];
 
         fileArray.forEach((file) => {
-            // Validation taille (10 MB)
             if (file.size > 10 * 1024 * 1024) {
                 toast.error(`${file.name}: Fichier trop volumineux (max 10 MB)`);
                 return;
             }
 
-            // Validation extensions
             const ext = file.name.split('.').pop()?.toLowerCase();
             const allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'rar', '7z'];
             
@@ -69,7 +67,6 @@ export default function FileUploader({
                 return;
             }
 
-            // Créer preview pour images
             let preview: string | undefined;
             if (file.type.startsWith('image/')) {
                 preview = URL.createObjectURL(file);
@@ -166,7 +163,6 @@ export default function FileUploader({
             if (data.success) {
                 toast.success(data.message);
                 
-                // Nettoyer
                 files.forEach(f => {
                     if (f.preview) URL.revokeObjectURL(f.preview);
                 });
@@ -175,7 +171,6 @@ export default function FileUploader({
                 if (onUploadComplete) {
                     onUploadComplete();
                 } else {
-                    // Recharger la page
                     router.reload();
                 }
             } else {
@@ -203,10 +198,10 @@ export default function FileUploader({
     };
 
     return (
-        <div className="space-y-4">
-            {/* Zone de drop */}
+        <div className="space-y-3 sm:space-y-4">
+            {/* Zone de drop - Responsive */}
             <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-lg p-4 sm:p-8 text-center transition-colors ${
                     dragActive 
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' 
                         : 'border-gray-300 dark:border-gray-700 hover:border-blue-400'
@@ -216,19 +211,21 @@ export default function FileUploader({
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
             >
-                <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-lg font-medium mb-2">
-                    Glissez-déposez vos fichiers ici
+                <Upload className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mb-2 sm:mb-4" />
+                <p className="text-sm sm:text-lg font-medium mb-1 sm:mb-2">
+                    Glissez-déposez vos fichiers
                 </p>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                     ou cliquez pour sélectionner
                 </p>
                 <Button
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
+                    size="sm"
+                    className="h-8 sm:h-9 text-xs sm:text-sm"
                 >
-                    <Upload className="mr-2 h-4 w-4" />
+                    <Upload className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Parcourir
                 </Button>
                 <input
@@ -239,19 +236,19 @@ export default function FileUploader({
                     onChange={handleFileInput}
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.zip,.rar,.7z"
                 />
-                <p className="text-xs text-muted-foreground mt-4">
+                <p className="text-xs text-muted-foreground mt-3 sm:mt-4 leading-relaxed">
                     Max {maxFiles} fichiers • 10 MB par fichier
                     <br />
-                    PDF, Word, Excel, Images, Archives
+                    <span className="hidden sm:inline">PDF, Word, Excel, Images, Archives</span>
                 </p>
             </div>
 
-            {/* Liste des fichiers */}
+            {/* Liste des fichiers - Mobile optimisé */}
             {files.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                     <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">
-                            Fichiers sélectionnés ({files.length})
+                        <Label className="text-xs sm:text-sm font-medium">
+                            Fichiers ({files.length})
                         </Label>
                         {files.length > 0 && !uploading && (
                             <Button
@@ -263,8 +260,9 @@ export default function FileUploader({
                                     });
                                     setFiles([]);
                                 }}
+                                className="h-7 text-xs"
                             >
-                                Tout effacer
+                                Effacer tout
                             </Button>
                         )}
                     </div>
@@ -274,39 +272,39 @@ export default function FileUploader({
                         
                         return (
                             <Card key={fileItem.id}>
-                                <CardContent className="p-4">
-                                    <div className="flex items-start gap-3">
-                                        {/* Preview ou icône */}
+                                <CardContent className="p-2.5 sm:p-4">
+                                    <div className="flex items-start gap-2 sm:gap-3">
+                                        {/* Preview ou icône - Plus grande sur mobile */}
                                         <div className="flex-shrink-0">
                                             {fileItem.preview ? (
                                                 <img
                                                     src={fileItem.preview}
                                                     alt={fileItem.file.name}
-                                                    className="w-16 h-16 object-cover rounded"
+                                                    className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded"
                                                 />
                                             ) : (
-                                                <div className="w-16 h-16 flex items-center justify-center bg-muted rounded">
-                                                    <Icon className="h-8 w-8 text-muted-foreground" />
+                                                <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-muted rounded">
+                                                    <Icon className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Informations */}
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium truncate">
+                                            <p className="font-medium truncate text-xs sm:text-sm leading-tight">
                                                 {fileItem.file.name}
                                             </p>
-                                            <p className="text-sm text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground mt-0.5">
                                                 {formatFileSize(fileItem.file.size)}
                                             </p>
 
-                                            {/* Description */}
+                                            {/* Description - Input plus compact sur mobile */}
                                             <Input
                                                 type="text"
-                                                placeholder="Description (optionnelle)"
+                                                placeholder="Description..."
                                                 value={fileItem.description}
                                                 onChange={(e) => updateDescription(fileItem.id, e.target.value)}
-                                                className="mt-2 h-8 text-sm"
+                                                className="mt-1.5 sm:mt-2 h-7 sm:h-8 text-xs sm:text-sm"
                                                 disabled={uploading}
                                             />
                                         </div>
@@ -318,9 +316,9 @@ export default function FileUploader({
                                             size="icon"
                                             onClick={() => removeFile(fileItem.id)}
                                             disabled={uploading}
-                                            className="flex-shrink-0"
+                                            className="flex-shrink-0 h-7 w-7 sm:h-9 sm:w-9"
                                         >
-                                            <X className="h-4 w-4" />
+                                            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                         </Button>
                                     </div>
                                 </CardContent>
@@ -330,12 +328,12 @@ export default function FileUploader({
                 </div>
             )}
 
-            {/* Bouton upload */}
+            {/* Bouton upload - Fixe en bas sur mobile */}
             {files.length > 0 && (
                 <Button
                     onClick={uploadFiles}
                     disabled={uploading}
-                    className="w-full"
+                    className="w-full h-9 sm:h-10 text-sm sticky bottom-0 z-10 shadow-lg sm:static sm:shadow-none"
                 >
                     {uploading ? (
                         <>

@@ -1,4 +1,4 @@
-// pages/demandes/index.tsx - ✅ VERSION REFONTE COMPLÈTE
+// pages/demandes/index.tsx - ✅ CORRECTIONS POUR LES ERREURS TYPESCRIPT
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,11 +9,13 @@ import DemandeurDetailDialog from '@/pages/demandeurs/components/DemandeurDetail
 import ProprieteDetailDialog from '@/pages/proprietes/components/ProprieteDetailDialog';
 import DemandeFilters from './components/DemandeFilters';
 import DemandeTable from './components/DemandeTable';
+import { useIsMobile } from '@/hooks/useResponsive';
 import type { 
     DemandesIndexProps,
     DemandeWithDetails,
     FiltreStatutDemandeType,
-    TriDemandeType
+    TriDemandeType,
+    DocumentDemande // ✅ Import ajouté
 } from './types';
 import {
     filterDemandesByStatus,
@@ -27,6 +29,8 @@ export default function DemandesIndex({
     onArchive,
     onUnarchive,
 }: DemandesIndexProps) {
+    const isMobile = useIsMobile();
+
     // STATE
     const [currentPage, setCurrentPage] = useState(1);
     const [filtreStatut, setFiltreStatut] = useState<FiltreStatutDemandeType>('tous');
@@ -41,9 +45,9 @@ export default function DemandesIndex({
     const [selectedPropriete, setSelectedPropriete] = useState<any>(null);
     const [showProprieteDetail, setShowProprieteDetail] = useState(false);
 
-    const itemsPerPage = 10;
+    const itemsPerPage = isMobile ? 5 : 10;
 
-    // Nettoyer les overlays résiduels
+    // Nettoyer les overlays
     useEffect(() => {
         const cleanupOverlays = () => {
             const overlays = document.querySelectorAll('[data-radix-dialog-overlay]');
@@ -81,7 +85,7 @@ export default function DemandesIndex({
         }
     }, [showDemandeDetail, showDemandeurDetail, showProprieteDetail]);
 
-    // Helpers (déclarés AVANT useMemo)
+    // Helpers
     const isDemandeurIncomplete = (demandeur: any): boolean => {
         if (!demandeur) return true;
         const champsRequis = ['date_naissance', 'lieu_naissance', 'date_delivrance', 
@@ -94,30 +98,22 @@ export default function DemandesIndex({
                !prop?.nature || !prop?.vocation || !prop?.situation;
     };
 
-    // FILTRAGE ET TRI
-    const demandesFiltrees = useMemo(() => {
-        let filtered = filterDemandesByStatus(documents.data, filtreStatut);
-        
-        if (recherche) {
-            filtered = filtered.filter(d => matchesDemandeSearch(d, recherche));
-        }
-        
-        filtered = sortDemandes(filtered, tri, ordre);
-        
-        return filtered;
-    }, [documents.data, filtreStatut, recherche, tri, ordre]);
-
-    // CALCUL DES DEMANDES AVEC _computed
-    const processedDemandes = useMemo(() => {
-        if (!demandesFiltrees || !Array.isArray(demandesFiltrees)) {
+    // ✅ FIX 1: Transformation DocumentDemande → DemandeWithDetails
+    const processedDemandes = useMemo((): DemandeWithDetails[] => {
+        if (!documents.data || !Array.isArray(documents.data)) {
             return [];
         }
-        return demandesFiltrees.map((doc): DemandeWithDetails => {
-            const hasValidDemandeurs = doc.demandeurs && Array.isArray(doc.demandeurs) && doc.demandeurs.length > 0;
+        
+        // Convertir DocumentDemande[] en DemandeWithDetails[]
+        return documents.data.map((doc): DemandeWithDetails => {
+            const hasValidDemandeurs = doc.demandeurs && 
+                                      Array.isArray(doc.demandeurs) && 
+                                      doc.demandeurs.length > 0;
             const isArchived = doc.status === 'archive';
             
             const hasIncompleteData = hasValidDemandeurs
-                ? doc.demandeurs.some((d: any) => isDemandeurIncomplete(d.demandeur)) || isProprieteIncomplete(doc.propriete)
+                ? doc.demandeurs.some((d: any) => isDemandeurIncomplete(d.demandeur)) || 
+                  isProprieteIncomplete(doc.propriete)
                 : isProprieteIncomplete(doc.propriete);
 
             return {
@@ -129,9 +125,58 @@ export default function DemandesIndex({
                 }
             };
         });
-    }, [demandesFiltrees, isDemandeurIncomplete, isProprieteIncomplete]);
+    }, [documents.data]);
 
-    // HANDLERS - DIALOGUES
+    // ✅ FIX 2: FILTRAGE ET TRI sur DemandeWithDetails
+    const demandesFiltrees = useMemo(() => {
+        let filtered = filterDemandesByStatus(processedDemandes, filtreStatut);
+        
+        if (recherche) {
+            filtered = filtered.filter(d => matchesDemandeSearch(d, recherche));
+        }
+        
+        filtered = sortDemandes(filtered, tri, ordre);
+        
+        return filtered;
+    }, [processedDemandes, filtreStatut, recherche, tri, ordre]);
+
+    // ✅ FIX 3: Handlers convertis pour accepter DemandeWithDetails
+    const handleArchiveClick = (demandeWithDetails: DemandeWithDetails) => {
+        // Convertir DemandeWithDetails → format attendu par le parent
+        const docForParent: DocumentDemande = {
+            id: demandeWithDetails.id,
+            id_propriete: demandeWithDetails.id_propriete,
+            date_demande: demandeWithDetails.date_demande,
+            propriete: demandeWithDetails.propriete,
+            demandeurs: demandeWithDetails.demandeurs,
+            total_prix: demandeWithDetails.total_prix,
+            status: demandeWithDetails.status,
+            status_consort: demandeWithDetails.status_consort,
+            nombre_demandeurs: demandeWithDetails.nombre_demandeurs,
+            created_at: demandeWithDetails.created_at,
+            updated_at: demandeWithDetails.updated_at,
+        };
+        onArchive(demandeWithDetails);
+    };
+
+    const handleUnarchiveClick = (demandeWithDetails: DemandeWithDetails) => {
+        const docForParent: DocumentDemande = {
+            id: demandeWithDetails.id,
+            id_propriete: demandeWithDetails.id_propriete,
+            date_demande: demandeWithDetails.date_demande,
+            propriete: demandeWithDetails.propriete,
+            demandeurs: demandeWithDetails.demandeurs,
+            total_prix: demandeWithDetails.total_prix,
+            status: demandeWithDetails.status,
+            status_consort: demandeWithDetails.status_consort,
+            nombre_demandeurs: demandeWithDetails.nombre_demandeurs,
+            created_at: demandeWithDetails.created_at,
+            updated_at: demandeWithDetails.updated_at,
+        };
+        onUnarchive(demandeWithDetails);
+    };
+
+    // HANDLERS - DIALOGUES (inchangés)
     const handleSelectDemande = (doc: any) => {
         if (showDemandeurDetail || showProprieteDetail) {
             setShowDemandeurDetail(false);
@@ -150,7 +195,6 @@ export default function DemandesIndex({
 
     const handleSelectDemandeurFromDemande = (demandeur: any) => {
         setShowDemandeDetail(false);
-        
         setTimeout(() => {
             setSelectedDemande(null);
             setSelectedDemandeur(demandeur);
@@ -160,7 +204,6 @@ export default function DemandesIndex({
 
     const handleSelectProprieteFromDemande = (propriete: any) => {
         setShowDemandeDetail(false);
-        
         setTimeout(() => {
             setSelectedDemande(null);
             setSelectedPropriete(propriete);
@@ -170,7 +213,6 @@ export default function DemandesIndex({
 
     const handleSelectProprieteFromDemandeur = (propriete: any) => {
         setShowDemandeurDetail(false);
-        
         setTimeout(() => {
             setSelectedDemandeur(null);
             setSelectedPropriete(propriete);
@@ -180,7 +222,6 @@ export default function DemandesIndex({
 
     const handleSelectDemandeurFromPropriete = (demandeur: any) => {
         setShowProprieteDetail(false);
-        
         setTimeout(() => {
             setSelectedPropriete(null);
             setSelectedDemandeur(demandeur);
@@ -191,27 +232,21 @@ export default function DemandesIndex({
     const handleCloseDemandeDialog = (open: boolean) => {
         setShowDemandeDetail(open);
         if (!open) {
-            setTimeout(() => {
-                setSelectedDemande(null);
-            }, 100);
+            setTimeout(() => setSelectedDemande(null), 100);
         }
     };
 
     const handleCloseDemandeurDialog = (open: boolean) => {
         setShowDemandeurDetail(open);
         if (!open) {
-            setTimeout(() => {
-                setSelectedDemandeur(null);
-            }, 100);
+            setTimeout(() => setSelectedDemandeur(null), 100);
         }
     };
 
     const handleCloseProprieteDialog = (open: boolean) => {
         setShowProprieteDetail(open);
         if (!open) {
-            setTimeout(() => {
-                setSelectedPropriete(null);
-            }, 100);
+            setTimeout(() => setSelectedPropriete(null), 100);
         }
     };
 
@@ -242,24 +277,21 @@ export default function DemandesIndex({
     // RENDER
     return (
         <>
-            <Card className="border-0 shadow-lg">
-                {/* Header Compact */}
-                <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-6 py-3 border-b">
-                    <div className="flex items-center justify-between gap-4">
-                        {/* Titre */}
+            <Card className="border-0 shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-3 sm:px-6 py-3 border-b">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                         <div className="flex items-center gap-2 min-w-0">
                             <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
-                                <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <div className="min-w-0">
-                                <h2 className="text-lg font-bold leading-tight">Demandes</h2>
+                            <div className="min-w-0 flex-1">
+                                <h2 className="text-base sm:text-lg font-bold leading-tight">Demandes</h2>
                                 <p className="text-xs text-muted-foreground truncate">
                                     {demandesFiltrees.length} / {documents.total}
                                 </p>
                             </div>
                         </div>
                         
-                        {/* Légende compacte */}
                         <div className="hidden xl:flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 bg-red-200 dark:bg-red-900/50 rounded border border-red-300 dark:border-red-800"></div>
@@ -277,8 +309,7 @@ export default function DemandesIndex({
                     </div>
                 </div>
 
-                <CardContent className="p-4">
-                    {/* Filtres sur une seule ligne */}
+                <CardContent className="p-3 sm:p-4">
                     <DemandeFilters
                         filtreStatut={filtreStatut}
                         onFiltreStatutChange={handleFiltreStatutChange}
@@ -292,12 +323,11 @@ export default function DemandesIndex({
                         totalFiltres={demandesFiltrees.length}
                     />
 
-                    {/* Tableau */}
                     <DemandeTable
-                        demandes={processedDemandes}
+                        demandes={demandesFiltrees}
                         dossier={dossier}
-                        onArchive={onArchive}
-                        onUnarchive={onUnarchive}
+                        onArchive={handleArchiveClick}
+                        onUnarchive={handleUnarchiveClick}
                         onSelectDemande={handleSelectDemande}
                         currentPage={currentPage}
                         itemsPerPage={itemsPerPage}
@@ -306,7 +336,6 @@ export default function DemandesIndex({
                 </CardContent>
             </Card>
 
-            {/* Dialogues */}
             <DemandeDetailDialog
                 demande={selectedDemande}
                 open={showDemandeDetail}
@@ -319,7 +348,7 @@ export default function DemandesIndex({
                 demandeur={selectedDemandeur}
                 open={showDemandeurDetail}
                 onOpenChange={handleCloseDemandeurDialog}
-                proprietes={dossier.proprietes || []}
+                proprietes={(dossier.proprietes || []).map(p => ({ ...p, titre: p.titre ?? undefined, contenance: p.contenance ?? undefined, vocation: p.vocation ?? undefined, situation: p.situation ?? undefined }))}
                 onSelectPropriete={handleSelectProprieteFromDemandeur}
                 dossierId={dossier.id}
                 dossierClosed={dossier.is_closed}

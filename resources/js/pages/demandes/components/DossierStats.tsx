@@ -1,5 +1,8 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { FileText, LockOpen, Lock, MapPin } from 'lucide-react';
+// pages/demandes/components/DossierStats.tsx - ✅ VERSION RESPONSIVE
+
+import { Card } from '@/components/ui/card';
+import { FileText, CheckCircle2, Archive, LandPlot } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useResponsive';
 
 interface DossierStatsProps {
     totalDemandes: number;
@@ -12,117 +15,92 @@ export default function DossierStats({
     totalDemandes,
     activeCount,
     archivedCount,
-    proprietesCount
+    proprietesCount,
 }: DossierStatsProps) {
+    const isMobile = useIsMobile();
+
     const stats = [
         {
             label: 'Total demandes',
             value: totalDemandes,
             icon: FileText,
             color: 'blue',
-            bgClass: 'bg-blue-100 dark:bg-blue-900',
-            textClass: 'text-blue-600 dark:text-blue-400',
-            valueClass: 'text-blue-600'
+            bgColor: 'bg-blue-50/50 dark:bg-blue-950/20',
+            borderColor: 'border-blue-100 dark:border-blue-900',
+            iconColor: 'text-blue-600 dark:text-blue-400',
+            iconBg: 'bg-blue-100 dark:bg-blue-900/30',
         },
         {
             label: 'Actives',
             value: activeCount,
-            icon: LockOpen,
+            icon: CheckCircle2,
             color: 'green',
-            bgClass: 'bg-green-100 dark:bg-green-900',
-            textClass: 'text-green-600 dark:text-green-400',
-            valueClass: 'text-green-600'
+            bgColor: 'bg-green-50/50 dark:bg-green-950/20',
+            borderColor: 'border-green-100 dark:border-green-900',
+            iconColor: 'text-green-600 dark:text-green-400',
+            iconBg: 'bg-green-100 dark:bg-green-900/30',
         },
         {
             label: 'Archivées',
             value: archivedCount,
-            icon: Lock,
+            icon: Archive,
             color: 'orange',
-            bgClass: 'bg-orange-100 dark:bg-orange-900',
-            textClass: 'text-orange-600 dark:text-orange-400',
-            valueClass: 'text-orange-600'
+            bgColor: 'bg-orange-50/50 dark:bg-orange-950/20',
+            borderColor: 'border-orange-100 dark:border-orange-900',
+            iconColor: 'text-orange-600 dark:text-orange-400',
+            iconBg: 'bg-orange-100 dark:bg-orange-900/30',
         },
         {
             label: 'Propriétés',
             value: proprietesCount,
-            icon: MapPin,
+            icon: LandPlot,
             color: 'purple',
-            bgClass: 'bg-purple-100 dark:bg-purple-900',
-            textClass: 'text-purple-600 dark:text-purple-400',
-            valueClass: 'text-purple-600'
-        }
+            bgColor: 'bg-purple-50/50 dark:bg-purple-950/20',
+            borderColor: 'border-purple-100 dark:border-purple-900',
+            iconColor: 'text-purple-600 dark:text-purple-400',
+            iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+        },
     ];
 
     return (
-        <>
-            {/* Vue Desktop - Grid 4 colonnes */}
-            <div className="hidden md:grid grid-cols-4 gap-4">
-                {stats.map((stat, index) => (
-                    <Card key={index} className="shadow-sm hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 ${stat.bgClass} rounded-lg flex-shrink-0`}>
-                                    <stat.icon className={`h-6 w-6 ${stat.textClass}`} />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm text-muted-foreground font-medium truncate">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+            {stats.map((stat) => {
+                const Icon = stat.icon;
+                
+                return (
+                    <Card
+                        key={stat.label}
+                        className={`border-0 shadow-md ${stat.bgColor} ${stat.borderColor} border overflow-hidden`}
+                    >
+                        <div className="p-3 sm:p-4">
+                            <div className="flex items-start justify-between gap-2">
+                                {/* Contenu principal */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
                                         {stat.label}
                                     </p>
-                                    <p className={`text-2xl font-bold ${stat.valueClass}`}>
+                                    <p className="text-2xl sm:text-3xl font-bold tracking-tight">
                                         {stat.value}
                                     </p>
+                                    {!isMobile && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {stat.label === 'Total demandes' && 'Toutes les demandes'}
+                                            {stat.label === 'Actives' && 'En cours de traitement'}
+                                            {stat.label === 'Archivées' && 'Propriétés acquises'}
+                                            {stat.label === 'Propriétés' && 'Lots concernés'}
+                                        </p>
+                                    )}
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
 
-            {/* Vue Tablette - Grid 2 colonnes */}
-            <div className="hidden sm:grid md:hidden grid-cols-2 gap-3">
-                {stats.map((stat, index) => (
-                    <Card key={index} className="shadow-sm hover:shadow-md transition-shadow">
-                        <CardContent className="p-3">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 ${stat.bgClass} rounded-lg flex-shrink-0`}>
-                                    <stat.icon className={`h-5 w-5 ${stat.textClass}`} />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs text-muted-foreground font-medium truncate">
-                                        {stat.label}
-                                    </p>
-                                    <p className={`text-xl font-bold ${stat.valueClass}`}>
-                                        {stat.value}
-                                    </p>
+                                {/* Icône */}
+                                <div className={`p-2 sm:p-2.5 ${stat.iconBg} rounded-lg flex-shrink-0`}>
+                                    <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.iconColor}`} />
                                 </div>
                             </div>
-                        </CardContent>
+                        </div>
                     </Card>
-                ))}
-            </div>
-
-            {/* Vue Mobile - Cards empilées compactes */}
-            <div className="sm:hidden space-y-2">
-                {stats.map((stat, index) => (
-                    <Card key={index} className="shadow-sm">
-                        <CardContent className="p-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 ${stat.bgClass} rounded-lg flex-shrink-0`}>
-                                        <stat.icon className={`h-4 w-4 ${stat.textClass}`} />
-                                    </div>
-                                    <p className="text-sm text-muted-foreground font-medium">
-                                        {stat.label}
-                                    </p>
-                                </div>
-                                <p className={`text-xl font-bold ${stat.valueClass}`}>
-                                    {stat.value}
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </>
+                );
+            })}
+        </div>
     );
 }

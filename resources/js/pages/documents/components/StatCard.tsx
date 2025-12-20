@@ -1,7 +1,9 @@
-// documents/components/StatCard.tsx - COMPOSANT RÉUTILISABLE
+// documents/components/StatCard.tsx - ✅ VERSION RESPONSIVE
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, CheckCircle2, LucideIcon } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useResponsive';
 
 interface StatCardProps {
     title: string;
@@ -12,10 +14,6 @@ interface StatCardProps {
     label?: string;
 }
 
-/**
- * ✅ Composant de carte statistique réutilisable
- * Design cohérent avec users/Index.tsx
- */
 export default function StatCard({
     title,
     value,
@@ -25,6 +23,7 @@ export default function StatCard({
     label = 'éléments'
 }: StatCardProps) {
     
+    const isMobile = useIsMobile();
     const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
 
     const colorClasses = {
@@ -70,30 +69,32 @@ export default function StatCard({
     return (
         <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
             <div className={`bg-gradient-to-br ${colors.gradient}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                    <div className={`p-2 ${colors.iconBg} rounded-lg`}>
-                        <Icon className={`h-4 w-4 ${colors.iconColor}`} />
+                <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${isMobile ? 'pb-2 px-3 pt-3' : 'pb-2'}`}>
+                    <CardTitle className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium truncate pr-2`}>
+                        {title}
+                    </CardTitle>
+                    <div className={`${colors.iconBg} rounded-lg shrink-0 ${isMobile ? 'p-1.5' : 'p-2'}`}>
+                        <Icon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${colors.iconColor}`} />
                     </div>
                 </CardHeader>
             </div>
-            <CardContent className="pt-4">
-                <div className={`text-3xl font-bold bg-gradient-to-r ${colors.textGradient} bg-clip-text text-transparent`}>
+            <CardContent className={isMobile ? 'pt-3 px-3 pb-3' : 'pt-4'}>
+                <div className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r ${colors.textGradient} bg-clip-text text-transparent`}>
                     {value}
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                    <p className="text-xs text-muted-foreground">
-                        sur {total} {label}
+                <div className={`flex items-center gap-2 ${isMobile ? 'mt-1' : 'mt-2'}`}>
+                    <TrendingUp className={`${isMobile ? 'h-2.5 w-2.5' : 'h-3 w-3'} text-green-500`} />
+                    <p className="text-xs text-muted-foreground truncate">
+                        {isMobile ? `/${total}` : `sur ${total} ${label}`}
                     </p>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-3">
+                <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full ${isMobile ? 'h-1.5 mt-2' : 'h-2 mt-3'}`}>
                     <div
-                        className={`bg-gradient-to-r ${colors.progressBar} h-2 rounded-full transition-all duration-500 ease-out`}
+                        className={`bg-gradient-to-r ${colors.progressBar} ${isMobile ? 'h-1.5' : 'h-2'} rounded-full transition-all duration-500 ease-out`}
                         style={{ width: `${percentage}%` }}
                     />
                 </div>
-                {value > 0 && (
+                {value > 0 && !isMobile && (
                     <Badge variant="outline" className="mt-3 text-xs">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         {percentage}%
@@ -103,16 +104,3 @@ export default function StatCard({
         </Card>
     );
 }
-
-/**
- * ✅ EXEMPLE D'UTILISATION :
- * 
- * <StatCard
- *     title="Actes de Vente"
- *     value={stats.proprietesAvecAdv}
- *     total={stats.totalProprietes}
- *     icon={FileText}
- *     colorScheme="violet"
- *     label="propriétés"
- * />
- */

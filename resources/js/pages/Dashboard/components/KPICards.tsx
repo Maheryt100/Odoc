@@ -1,9 +1,5 @@
-// Dashboard/components/KPICards.tsx
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Clock, FileText, Activity } from 'lucide-react';
+// Dashboard/components/KPICards.tsx - VERSION CORRIGÉE
 import type { KPI } from '../types';
-import { CompletionCards } from './CompletionCards';
 import { ProprietesCard } from './ProprietesCard';
 import { DemandeursCard } from './DemandeursCard';
 import { DossiersCard } from './DossiersCard';
@@ -62,8 +58,9 @@ export function KPICards({ kpis }: Props) {
     };
 
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* Dossiers - Composant fusionné */}
+        // ✅ CORRECTION : Grid responsive améliorée
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Dossiers - 1 colonne sur mobile, 1 sur tablet, 1 sur desktop */}
             <DossiersCard 
                 ouverts={safeKpis.dossiers_ouverts}
                 fermes={safeKpis.dossiers_fermes}
@@ -72,70 +69,21 @@ export function KPICards({ kpis }: Props) {
                 completion={safeKpis.completion}
                 variation={variations.dossiers}
             />
-            {/* Demandeurs - Composant amélioré avec barre de genre */}
+            
+            {/* Demandeurs - 1 col mobile, 2 cols tablet+, 2 cols desktop */}
             <DemandeursCard 
                 details={safeKpis.demandeurs_details}
                 variation={variations.demandeurs}
             />
 
-            {/* Propriétés - Composant amélioré */}
+            {/* Propriétés - 1 col mobile, 2 cols tablet, 1 col desktop (retour à la ligne) */}
             <ProprietesCard 
                 disponibles={safeKpis.proprietes_disponibles}
                 acquises={safeKpis.proprietes_acquises}
                 superficie={safeKpis.superficie_details}
             />
 
-            {/* Cards de complétion */}
-            {/* <CompletionCards completion={safeKpis.completion} /> */}
-
-            
-
-            {/* Performance Système */}
-            {/* <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Activité Système</CardTitle>
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        {safeKpis.documents_generes_aujourdhui !== undefined && (
-                            <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <FileText className="h-3.5 w-3.5 text-blue-600" />
-                                    <span className="text-xs font-medium text-blue-700">Documents générés</span>
-                                </div>
-                                <Badge variant="secondary" className="font-semibold">
-                                    {safeKpis.documents_generes_aujourdhui}
-                                </Badge>
-                            </div>
-                        )}
-                        {safeKpis.utilisateurs_actifs_24h !== undefined && (
-                            <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <Activity className="h-3.5 w-3.5 text-green-600" />
-                                    <span className="text-xs font-medium text-green-700">Utilisateurs actifs (24h)</span>
-                                </div>
-                                <Badge variant="secondary" className="font-semibold">
-                                    {safeKpis.utilisateurs_actifs_24h}
-                                </Badge>
-                            </div>
-                        )}
-                        {safeKpis.temps_moyen_traitement !== undefined && (
-                            <div className="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <Clock className="h-3.5 w-3.5 text-orange-600" />
-                                    <span className="text-xs font-medium text-orange-700">Temps moyen traitement</span>
-                                </div>
-                                <Badge variant="secondary" className="font-semibold">
-                                    {safeKpis.temps_moyen_traitement}j
-                                </Badge>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card> */}
-
-            {/* ✅ NOUVEAU : Revenus potentiels avec toggle */}
+            {/* Revenus - 1 col mobile, 2 cols tablet+, 2 cols desktop */}
             <RevenueCard 
                 revenus_potentiels={safeKpis.revenus_potentiels}
                 variation={variations.revenus}

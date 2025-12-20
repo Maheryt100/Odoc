@@ -1,9 +1,9 @@
-// Dashboard/components/RevenueCard.tsx
-import { useState, useEffect } from 'react';
+// Dashboard/components/RevenueCard.tsx - VERSION CORRIGÉE
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Eye, EyeOff, TrendingUp, Info } from 'lucide-react';
+import { DollarSign, Eye, EyeOff, Info } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
 
 interface Props {
@@ -15,21 +15,8 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
     const { auth } = usePage().props as any;
     const canViewRevenue = ['super_admin', 'admin_district'].includes(auth.user.role);
     
-    // ✅ NOUVEAU : Stocker la préférence dans localStorage
-    const [showRevenue, setShowRevenue] = useState(() => {
-        if (!canViewRevenue) return false;
-        
-        // Récupérer la préférence de l'utilisateur depuis localStorage
-        const saved = localStorage.getItem('dashboard_show_revenue');
-        return saved ? JSON.parse(saved) : false;
-    });
-
-    // ✅ Sauvegarder la préférence quand elle change
-    useEffect(() => {
-        if (canViewRevenue) {
-            localStorage.setItem('dashboard_show_revenue', JSON.stringify(showRevenue));
-        }
-    }, [showRevenue, canViewRevenue]);
+    // ✅ CORRECTION : Utiliser React state uniquement (sans localStorage)
+    const [showRevenue, setShowRevenue] = useState(false);
 
     const handleToggle = () => {
         setShowRevenue(!showRevenue);
@@ -54,8 +41,8 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
     return (
         <Card className="hover:shadow-lg transition-shadow lg:col-span-2 md:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex items-center gap-2">
-                    <CardTitle className="text-2xl font-bold">Revenus potentiels</CardTitle>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <CardTitle className="text-lg sm:text-2xl font-bold">Revenus potentiels</CardTitle>
                     <Badge variant="outline" className="text-xs">
                         <Info className="h-3 w-3 mr-1" />
                         Actifs uniquement
@@ -84,11 +71,11 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
                 {canViewRevenue ? (
                     <>
                         <div className="flex items-baseline gap-3 mb-3">
-                            <div className="text-2xl font-bold">
+                            <div className="text-xl sm:text-2xl font-bold break-all">
                                 {showRevenue ? (
                                     formatRevenueComplet(revenus_potentiels)
                                 ) : (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <span className="select-none text-muted-foreground">
                                             ••••••••
                                         </span>
@@ -106,29 +93,26 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
                             </p>
                             
                             {showRevenue && (
-                                <>
-                                    
-                                    <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t">
-                                        <div className="p-2 bg-green-50 rounded-lg">
-                                            <p className="text-xs text-green-700 mb-1">Moyenne/dossier</p>
-                                            <p className="text-sm font-bold text-green-700">
-                                                {formatRevenueCourt(revenus_potentiels / 10)}
-                                            </p>
-                                        </div>
-                                        <div className="p-2 bg-blue-50 rounded-lg">
-                                            <p className="text-xs text-blue-700 mb-1">Projection annuelle</p>
-                                            <p className="text-sm font-bold text-blue-700">
-                                                {formatRevenueCourt(revenus_potentiels * 4)}
-                                            </p>
-                                        </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-border">
+                                    <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                                        <p className="text-xs text-green-700 dark:text-green-400 mb-1">Moyenne/dossier</p>
+                                        <p className="text-sm font-bold text-green-700 dark:text-green-300">
+                                            {formatRevenueCourt(revenus_potentiels / 10)}
+                                        </p>
                                     </div>
-                                </>
+                                    <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                                        <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Projection annuelle</p>
+                                        <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                                            {formatRevenueCourt(revenus_potentiels * 4)}
+                                        </p>
+                                    </div>
+                                </div>
                             )}
                             
                             {!showRevenue && (
-                                <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-                                    <Info className="h-3.5 w-3.5 text-blue-600" />
-                                    <span className="text-xs text-blue-600">
+                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                                    <Info className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                    <span className="text-xs text-blue-600 dark:text-blue-400">
                                         Cliquez sur l'œil pour voir les détails
                                     </span>
                                 </div>
@@ -138,7 +122,7 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
                 ) : (
                     <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
                         <EyeOff className="h-10 w-10 mb-3 opacity-50" />
-                        <p className="text-sm font-medium">Accès réservé aux administrateurs</p>
+                        <p className="text-sm font-medium text-center">Accès réservé aux administrateurs</p>
                         <p className="text-xs mt-1 text-center max-w-xs">
                             Les informations financières ne sont visibles que par les administrateurs de district et super administrateurs
                         </p>

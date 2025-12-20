@@ -1,13 +1,13 @@
-// pages/demandeurs/components/DemandeurTable.tsx - VERSION COMPACTE
+// pages/demandeurs/components/DemandeurTable.tsx - ✅ PAGINATION CORRIGÉE
 
-import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Users } from 'lucide-react';
 import type { DemandeurWithProperty, DemandeursIndexProps } from '../types';
-import type { Propriete } from '@/types';
 import { getDemandeurStatusBadge, getRowClassName, formatNomComplet } from '../helpers';
+import { useIsMobile } from '@/hooks/useResponsive';
+import { DemandeurMobileCard } from './DemandeurMobileCard';
 
 interface DemandeurTableProps extends Omit<DemandeursIndexProps, 'demandeurs'> {
     demandeurs: DemandeurWithProperty[];
@@ -31,11 +31,64 @@ export default function DemandeurTable({
     onPageChange
 }: DemandeurTableProps) {
     
+    const isMobile = useIsMobile();
+
     // Pagination
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedDemandeurs = demandeurs.slice(startIndex, endIndex);
     const totalPages = Math.ceil(demandeurs.length / itemsPerPage);
+
+    // ✅ CORRECTION: Fonction pagination déclarée AVANT utilisation
+    function renderPagination() {
+        if (totalPages <= 1) return null;
+        
+        return (
+            <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-8"
+                >
+                    Précédent
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let page;
+                    if (totalPages <= 5) {
+                        page = i + 1;
+                    } else if (currentPage <= 3) {
+                        page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                        page = totalPages - 4 + i;
+                    } else {
+                        page = currentPage - 2 + i;
+                    }
+                    return (
+                        <Button
+                            key={page}
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => onPageChange(page)}
+                            className="h-8 min-w-8"
+                        >
+                            {page}
+                        </Button>
+                    );
+                })}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-8"
+                >
+                    Suivant
+                </Button>
+            </div>
+        );
+    }
 
     if (demandeurs.length === 0) {
         return (
@@ -49,6 +102,30 @@ export default function DemandeurTable({
         );
     }
 
+    // 📱 VERSION MOBILE
+    if (isMobile) {
+        return (
+            <>
+                <div className="space-y-3">
+                    {paginatedDemandeurs.map((demandeur) => (
+                        <DemandeurMobileCard
+                            key={demandeur.id}
+                            demandeur={demandeur}
+                            isIncomplete={isDemandeurIncomplete(demandeur)}
+                            dossierClosed={dossier.is_closed}
+                            onView={() => onSelectDemandeur?.(demandeur)}
+                            onEdit={() => onEditDemandeur?.(demandeur)}
+                            onLink={() => onLinkPropriete?.(demandeur)}
+                            onDelete={() => onDeleteDemandeur(demandeur.id)}
+                        />
+                    ))}
+                </div>
+                {renderPagination()}
+            </>
+        );
+    }
+
+    // 💻 VERSION DESKTOP
     return (
         <>
             <div className="overflow-x-auto">
@@ -165,40 +242,7 @@ export default function DemandeurTable({
                 </table>
             </div>
 
-            {/* Pagination compacte */}
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-4">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onPageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="h-8"
-                    >
-                        Précédent
-                    </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                            key={page}
-                            variant={currentPage === page ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => onPageChange(page)}
-                            className="h-8 min-w-8"
-                        >
-                            {page}
-                        </Button>
-                    ))}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onPageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="h-8"
-                    >
-                        Suivant
-                    </Button>
-                </div>
-            )}
+            {renderPagination()}
         </>
     );
 }

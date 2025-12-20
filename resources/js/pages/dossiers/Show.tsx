@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/Show.tsx - ✅ MODE LECTURE SEULE COMPLET
+// resources/js/pages/dossiers/Show.tsx - ✅ VERSION RESPONSIVE COMPLÈTE
 
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
@@ -7,24 +7,33 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ArrowLeft, FileOutput, FileText, Info, Sparkles, Eye } from 'lucide-react';
+import { ArrowLeft, FileOutput, FileText, Info, Sparkles, Eye, Menu } from 'lucide-react';
 import type { BreadcrumbItem, Demandeur, Propriete, SharedData } from '@/types';
 import type { BaseDemandeur, BasePropriete } from '@/pages/PiecesJointes/pieces-jointes';
 import type { Dossier, DossierPermissions } from './types';
 import type { DemandeurWithProperty } from '@/pages/demandeurs/types';
 
+// Hooks
+import { useIsMobile } from '@/hooks/useResponsive';
+
+// Composants
 import { CloseDossierDialog } from './components/CloseDossierDialog';
 import { LinkDemandeurDialog } from '../DemandeursProprietes/associations/LinkDemandeurDialog';
 import { LinkProprieteDialog } from '../DemandeursProprietes/associations/LinkProprieteDialog';
 import { DissociateDialog } from '../DemandeursProprietes/associations/DissociateDialog';
 import SmartDeleteProprieteDialog from '@/pages/proprietes/components/SmartDeleteProprieteDialog';
 import SmartDeleteDemandeurDialog from '@/pages/demandeurs/components/SmartDeleteDemandeurDialog';
-
 import DossierInfoSection from './components/DossierInfoSection';
 import DemandeursIndex from '@/pages/demandeurs/index';
 import ProprietesIndex from '@/pages/proprietes/index';
 import PiecesJointesIndex from '@/pages/PiecesJointes/Index';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getDisabledDocumentButtonTooltip } from './helpers';
 
 interface PageProps {
@@ -47,10 +56,11 @@ interface PageProps {
 export default function Show() {
     const { dossier, permissions, auth } = usePage<PageProps>().props;
     const { flash } = usePage<SharedData>().props;
+    const isMobile = useIsMobile();
 
     const proprietes = dossier.proprietes || [];
 
-    // ✅ NOUVEAU : Déterminer si l'utilisateur est en lecture seule
+    // ✅ Déterminer si l'utilisateur est en lecture seule
     const isReadOnly = useMemo(() => {
         return auth.user.role === 'super_admin' || auth.user.role === 'central_user';
     }, [auth.user.role]);
@@ -112,7 +122,7 @@ export default function Show() {
         }, 300);
     }, []);
 
-    // ✅ BLOQUAGE : Empêcher les actions si lecture seule
+    // ✅ Gestionnaires avec blocage lecture seule
     const handleLinkDemandeur = useCallback((propriete: Propriete) => {
         if (isReadOnly) {
             toast.error('Action non autorisée', {
@@ -384,95 +394,129 @@ export default function Show() {
             <Head title={`Dossier ${dossier.nom_dossier}`} />
             <Toaster position="top-right" richColors />
 
-            <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
+            <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1600px] space-y-4 sm:space-y-6">
                 
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                                Informations du dossier
-                            </h1>
-                            <div className="flex items-center gap-3 mt-2 text-muted-foreground">
-                                <span className="font-medium">{dossier.nom_dossier}</span>
-                                <span className="text-gray-400">•</span>
-                                <span>{dossier.commune}</span>
-                                {/* ✅ Badge lecture seule */}
-                                {isReadOnly && (
-                                    <>
-                                        <span className="text-gray-400">•</span>
-                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 rounded-full flex items-center gap-1">
-                                            <Eye className="h-3 w-3" />
-                                            Mode consultation
-                                        </span>
-                                    </>
-                                )}
-                            </div>
+                {/* ✅ Header Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    {/* Titre et infos */}
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent truncate">
+                            Informations du dossier
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 text-sm sm:text-base text-muted-foreground">
+                            <span className="font-medium truncate max-w-[200px] sm:max-w-none">{dossier.nom_dossier}</span>
+                            <span className="text-gray-400 hidden sm:inline">•</span>
+                            <span className="truncate">{dossier.commune}</span>
+                            {isReadOnly && (
+                                <>
+                                    <span className="text-gray-400 hidden sm:inline">•</span>
+                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 rounded-full flex items-center gap-1 shrink-0">
+                                        <Eye className="h-3 w-3" />
+                                        <span className="hidden sm:inline">Mode consultation</span>
+                                        <span className="sm:hidden">Lecture</span>
+                                    </span>
+                                </>
+                            )}
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={route('dossiers')}>
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Retour
-                            </Link>
-                        </Button>
-              
-                        <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
-                            <Link href={route('demandes.resume', dossier.id)}>
-                                <FileText className="h-4 w-4 mr-2" />
-                                Liste des demandes
-                            </Link>
-                        </Button>
-                        
-                        {/* ✅ Bouton Documents - Visible mais tooltip informatif pour lecture seule */}
-                        {permissions.canGenerateDocuments ? (
-                            <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
-                                <Link href={route('documents.generate', dossier.id)}>
-                                    <FileOutput className="h-4 w-4 mr-2" />
-                                    Documents
+
+                    {/* Actions - Mobile: Menu dropdown, Desktop: Boutons */}
+                    {isMobile ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    <Menu className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem asChild>
+                                    <Link href={route('dossiers')} className="flex items-center">
+                                        <ArrowLeft className="h-4 w-4 mr-2" />
+                                        Retour
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={route('demandes.resume', dossier.id)} className="flex items-center">
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        Liste des demandes
+                                    </Link>
+                                </DropdownMenuItem>
+                                {permissions.canGenerateDocuments && (
+                                    <DropdownMenuItem asChild>
+                                        <Link href={route('documents.generate', dossier.id)} className="flex items-center">
+                                            <FileOutput className="h-4 w-4 mr-2" />
+                                            Documents
+                                        </Link>
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : (
+                        <div className="flex items-center gap-3 shrink-0">
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={route('dossiers')}>
+                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                    Retour
                                 </Link>
                             </Button>
-                        ) : (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span>
-                                            <Button 
-                                                size="sm"
-                                                disabled
-                                                className="gap-2"
-                                            >
-                                                <FileOutput className="h-4 w-4" />
-                                                Documents
-                                            </Button>
-                                        </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-xs">
-                                        <p>{documentButtonTooltip || (isReadOnly 
-                                            ? 'Mode consultation uniquement - Contactez un administrateur pour générer des documents'
-                                            : 'Génération non disponible')}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                    </div>
+                  
+                            <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
+                                <Link href={route('demandes.resume', dossier.id)}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    <span className="hidden lg:inline">Liste des demandes</span>
+                                    <span className="lg:hidden">Demandes</span>
+                                </Link>
+                            </Button>
+                            
+                            {permissions.canGenerateDocuments ? (
+                                <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
+                                    <Link href={route('documents.generate', dossier.id)}>
+                                        <FileOutput className="h-4 w-4 mr-2" />
+                                        Documents
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span>
+                                                <Button 
+                                                    size="sm"
+                                                    disabled
+                                                    className="gap-2"
+                                                >
+                                                    <FileOutput className="h-4 w-4" />
+                                                    Documents
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs">
+                                            <p>{documentButtonTooltip || (isReadOnly 
+                                                ? 'Mode consultation uniquement - Contactez un administrateur'
+                                                : 'Génération non disponible')}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* ✅ Alerte globale mode lecture seule */}
+                {/* ✅ Alertes - Responsive */}
                 {isReadOnly && (
                     <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-2 sm:gap-3">
                             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
                                 <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <AlertDescription className="text-sm text-blue-900 dark:text-blue-100">
+                            <AlertDescription className="text-xs sm:text-sm text-blue-900 dark:text-blue-100">
                                 <span className="font-semibold flex items-center gap-2">
                                     <Sparkles className="h-3 w-3" />
                                     Mode consultation uniquement
                                 </span>
                                 <span className="text-blue-700 dark:text-blue-300 block mt-1">
-                                    Vous pouvez consulter toutes les informations de ce dossier mais ne pouvez pas effectuer de modifications. 
-                                    Pour toute demande de modification, veuillez contacter l'administrateur du district {dossier.district?.nom_district}.
+                                    Vous pouvez consulter ce dossier mais ne pouvez pas le modifier. 
+                                    {!isMobile && ` Contactez l'administrateur du district ${dossier.district?.nom_district}.`}
                                 </span>
                             </AlertDescription>
                         </div>
@@ -481,24 +525,24 @@ export default function Show() {
 
                 {!isReadOnly && (
                     <Alert className="border-0 shadow-md bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-2 sm:gap-3">
                             <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg shrink-0">
                                 <Info className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
-                            <AlertDescription className="text-sm text-emerald-900 dark:text-emerald-100">
+                            <AlertDescription className="text-xs sm:text-sm text-emerald-900 dark:text-emerald-100">
                                 <span className="font-semibold flex items-center gap-2">
                                     <Sparkles className="h-3 w-3" />
                                     Gestion complète du dossier
                                 </span>
-                                <span className="text-emerald-700 dark:text-emerald-300">
-                                    — Gérez les demandeurs, propriétés et documents associés en un seul endroit
+                                <span className="text-emerald-700 dark:text-emerald-300 hidden sm:inline">
+                                    — Gérez les demandeurs, propriétés et documents en un seul endroit
                                 </span>
                             </AlertDescription>
                         </div>
                     </Alert>
                 )}
 
-                {/* Section Info - ✅ Passer le rôle utilisateur */}
+                {/* Sections principales */}
                 <DossierInfoSection
                     dossier={dossier}
                     demandeursCount={allDemandeurs.length}
@@ -516,7 +560,6 @@ export default function Show() {
                     userRole={auth.user.role}
                 />
             
-                {/* ✅ Passer isReadOnly aux composants enfants */}
                 <DemandeursIndex
                     demandeurs={allDemandeurs}
                     dossier={{ ...dossier, is_closed: dossier.is_closed || isReadOnly }}
@@ -540,7 +583,6 @@ export default function Show() {
                     isPropertyIncomplete={isPropertyIncomplete}
                 />
                 
-                {/* ✅ Pièces jointes en lecture seule */}
                 <PiecesJointesIndex
                     attachableType="Dossier"
                     attachableId={dossier.id}
@@ -555,7 +597,7 @@ export default function Show() {
                 />
             </div>
 
-            {/* ✅ Dialogues - Bloqués si lecture seule */}
+            {/* Dialogues */}
             {!isReadOnly && (
                 <>
                     {selectedProprieteForLink && (
@@ -591,16 +633,19 @@ export default function Show() {
                         onConfirm={confirmDissociate}
                     />
 
-                    <SmartDeleteProprieteDialog
-                        propriete={selectedProprieteToDelete}
-                        open={deleteProprieteOpen}
-                        onOpenChange={(open: boolean | ((prevState: boolean) => boolean)) => {
-                            setDeleteProprieteOpen(open);
-                            if (!open) {
-                                setTimeout(() => setSelectedProprieteToDelete(null), 300);
-                            }
-                        }}
-                    />
+                    {selectedProprieteToDelete && (
+                        <SmartDeleteProprieteDialog
+                            propriete={selectedProprieteToDelete}
+                            open={deleteProprieteOpen}
+                            onOpenChange={(open: boolean | ((prevState: boolean) => boolean)) => {
+                                setDeleteProprieteOpen(open);
+                                if (!open) {
+                                    setTimeout(() => setSelectedProprieteToDelete(null), 300);
+                                }
+                            } } attachableType={'Dossier'} attachableId={0} onSuccess={function (): void {
+                                throw new Error('Function not implemented.');
+                            } }                        />
+                    )}
 
                     <SmartDeleteDemandeurDialog
                         demandeur={selectedDemandeurToDelete}

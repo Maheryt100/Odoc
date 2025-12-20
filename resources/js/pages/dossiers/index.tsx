@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/index.tsx - ✅ VERSION CORRIGÉE
+// resources/js/pages/dossiers/index.tsx - ✅ VERSION MOBILE OPTIMISÉE 320px+
 import { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
-import { FolderPlus, Folder, Info, Sparkles } from 'lucide-react';
+import { FolderPlus, Folder, Info, Sparkles, Eye } from 'lucide-react';
 import type { BreadcrumbItem, Dossier, District, SharedData } from '@/types';
 import { hasIssues } from './helpers/statusHelpers';
 import SmartDeleteDossierDialog from './components/SmartDeleteDossierDialog';
@@ -34,7 +34,6 @@ export default function Index() {
     const { dossiers = [], districts = [], auth } = usePage<PageProps>().props;
     const { flash } = usePage<SharedData>().props;
 
-    // ✅ CORRECTION : Extraire user depuis auth
     const user = auth?.user;
 
     // États principaux
@@ -54,9 +53,10 @@ export default function Index() {
 
     const itemsPerPage = 10;
 
-    // ✅ Permissions
+    // Permissions
     const canCreateDossier = user?.role === 'admin_district' || user?.role === 'user_district';
     const canShowAllDistricts = user?.role === 'super_admin' || user?.role === 'central_user';
+    const isReadOnly = user?.role === 'super_admin' || user?.role === 'central_user';
 
     // Toasts
     useEffect(() => {
@@ -65,11 +65,10 @@ export default function Index() {
         if (flash?.error) toast.error(flash.error);
     }, [flash]);
 
-    // Filtrage avec dates complètes
+    // Filtrage
     const filteredDossiers = useMemo(() => {
         let filtered = [...dossiers];
 
-        // Filtre par statut
         if (filtreStatut === 'ouverts') {
             filtered = filtered.filter(d => !d.is_closed);
         } else if (filtreStatut === 'fermes') {
@@ -80,7 +79,6 @@ export default function Index() {
             filtered = filtered.filter(d => hasIssues(d));
         }
 
-        // Recherche
         if (recherche) {
             const searchLower = recherche.toLowerCase();
             filtered = filtered.filter(d => {
@@ -94,16 +92,13 @@ export default function Index() {
             });
         }
 
-        // District
         if (districtFilter !== 'all') {
             filtered = filtered.filter(d => d.id_district === parseInt(districtFilter));
         }
 
-        // Filtrage par dates
         if (dateStart) {
             const startDate = new Date(dateStart);
             startDate.setHours(0, 0, 0, 0);
-            
             filtered = filtered.filter(d => {
                 const dossierDate = new Date(d.date_ouverture);
                 dossierDate.setHours(0, 0, 0, 0);
@@ -114,7 +109,6 @@ export default function Index() {
         if (dateEnd) {
             const endDate = new Date(dateEnd);
             endDate.setHours(23, 59, 59, 999);
-            
             filtered = filtered.filter(d => {
                 const dossierDate = new Date(d.date_ouverture);
                 dossierDate.setHours(0, 0, 0, 0);
@@ -211,86 +205,114 @@ export default function Index() {
             <Head title="Dossiers" />
             <Toaster position="top-right" richColors />
 
-            <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
-                            <Folder className="h-8 w-8 text-blue-600" />
-                            Liste des dossiers
+            {/* ✅ Container responsive avec padding adaptatif */}
+            <div className="container mx-auto p-3 sm:p-4 lg:p-6 max-w-[1800px] space-y-4 sm:space-y-6">
+                
+                {/* ✅ Header responsive - Stack sur mobile */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                        {/* Titre responsive */}
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2 sm:gap-3">
+                            <Folder className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 shrink-0" />
+                            <span className="truncate">Liste des dossiers</span>
                         </h1>
-                        <p className="text-muted-foreground mt-1">
-                            {sortedDossiers.length} dossier{sortedDossiers.length > 1 ? 's' : ''}
-                            {sortedDossiers.length !== dossiers.length && ` (filtré${sortedDossiers.length > 1 ? 's' : ''} sur ${dossiers.length})`}
-                        </p>
+                        
+                        {/* Stats responsive */}
+                        <div className="text-muted-foreground mt-1 text-sm sm:text-base">
+                            <span className="font-medium">{sortedDossiers.length}</span>
+                            <span className="hidden xs:inline"> dossier{sortedDossiers.length > 1 ? 's' : ''}</span>
+                            {sortedDossiers.length !== dossiers.length && (
+                                <>
+                                    <span className="hidden xs:inline"> (filtré{sortedDossiers.length > 1 ? 's' : ''} sur </span>
+                                    <span className="xs:hidden"> / </span>
+                                    <span className="font-medium">{dossiers.length}</span>
+                                    <span className="hidden xs:inline">)</span>
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    {/* ✅ Bouton Créer (conditionnel) */}
+                    {/* ✅ Bouton Créer - Full width sur mobile */}
                     {canCreateDossier && (
-                        <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+                        <Button 
+                            size="default"
+                            asChild 
+                            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg h-10 sm:h-11"
+                        >
                             <Link href={route('dossiers.create')}>
-                                <FolderPlus className="h-5 w-5 mr-2" />
-                                Créer un dossier
+                                <FolderPlus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                                <span className="text-sm sm:text-base">Créer un dossier</span>
                             </Link>
                         </Button>
                     )}
                 </div>
 
-                {/* ✅ Message read-only pour super_admin et central_user */}
+                {/* ✅ Alerte mode consultation - Padding adaptatif */}
                 {!canCreateDossier && (
                     <Alert className="border-0 shadow-md bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
-                                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <div className="flex items-start gap-2 sm:gap-3">
+                            <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
+                                <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
                             </div>
-                            <AlertDescription className="text-sm text-amber-900 dark:text-amber-100">
-                                <span className="font-semibold">Mode consultation uniquement</span>
-                                <span className="text-amber-700 dark:text-amber-300 block mt-1">
-                                    Vous pouvez consulter tous les dossiers mais pas les créer ou les modifier.
+                            <AlertDescription className="text-xs sm:text-sm text-amber-900 dark:text-amber-100">
+                                <span className="font-semibold block sm:inline">Mode consultation uniquement</span>
+                                <span className="text-amber-700 dark:text-amber-300 block sm:inline sm:ml-1 mt-1 sm:mt-0">
+                                    Vous pouvez consulter tous les dossiers mais pas les créer ou modifier.
                                 </span>
                             </AlertDescription>
                         </div>
                     </Alert>
                 )}
 
-                {/* Alerte info */}
+                {/* ✅ Alerte info - Responsive */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                            <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <AlertDescription className="text-sm text-blue-900 dark:text-blue-100">
-                            <span className="font-semibold flex items-center gap-2">
-                                <Sparkles className="h-3 w-3" />
-                                Gérez vos dossiers facilement
+                        <AlertDescription className="text-xs sm:text-sm text-blue-900 dark:text-blue-100">
+                            <span className="font-semibold flex items-center gap-1.5 sm:gap-2">
+                                <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                <span>Gérez vos dossiers facilement</span>
                             </span>
-                            <span className="text-blue-700 dark:text-blue-300">
-                                — Consultez, modifiez et générez des documents 
+                            <span className="text-blue-700 dark:text-blue-300 block mt-1">
+                                Consultez, modifiez et générez des documents
                             </span>
                         </AlertDescription>
                     </div>
                 </Alert>
 
-                {/* Card principale */}
+                {/* ✅ Card principale - Padding responsive */}
                 <Card className="border-0 shadow-lg">
-                    {/* Header compact */}
-                    <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-6 py-3 border-b">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
-                                    <Folder className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    {/* Header compact mobile */}
+                    <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 border-b">
+                        <div className="flex items-center justify-between gap-3 sm:gap-4">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="p-1 sm:p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                                    <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <div className="min-w-0">
-                                    <h2 className="text-lg font-bold leading-tight">Tous les dossiers</h2>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-base sm:text-lg font-bold leading-tight truncate">
+                                        Tous les dossiers
+                                    </h2>
                                     <p className="text-xs text-muted-foreground truncate">
                                         {sortedDossiers.length} / {dossiers.length}
                                     </p>
                                 </div>
                             </div>
+                            
+                            {/* Badge mode consultation mobile */}
+                            {isReadOnly && (
+                                <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 rounded-full shrink-0">
+                                    <Eye className="h-3 w-3" />
+                                    <span className="text-xs font-medium hidden xs:inline">Consultation</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <CardContent className="p-4">
+                    {/* ✅ Content avec padding adaptatif */}
+                    <CardContent className="p-3 sm:p-4 space-y-4">
                         {/* Filtres */}
                         <DossierFilters
                             filtreStatut={filtreStatut}

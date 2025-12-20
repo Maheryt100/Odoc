@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
-
 class StatisticsCalculator
 {
     use QueryFilterTrait;
@@ -19,30 +18,28 @@ class StatisticsCalculator
         private PeriodService $periodService
     ) {}
     
-    // Champs utilisés pour calcul de complétion
+    // Champs pour calcul de complétion
     private const DEMANDEUR_STRING_FIELDS = [
         'titre_demandeur', 'nom_demandeur', 'prenom_demandeur', 'cin',
         'domiciliation', 'sexe', 'lieu_naissance', 'occupation',
         'situation_familiale', 'regime_matrimoniale', 'nationalite',
-        'nom_pere', 'nom_mere', 'marie_a', 'telephone',
-        'lieu_delivrance', 'lieu_delivrance_duplicata', 'lieu_mariage',
+        'nom_pere', 'nom_mere', 'telephone',
+        'lieu_delivrance',
     ];
     
     private const DEMANDEUR_DATE_FIELDS = [
-        'date_naissance', 'date_delivrance', 'date_delivrance_duplicata', 'date_mariage',
+        'date_naissance', 'date_delivrance',
     ];
     
     private const PROPRIETE_STRING_FIELDS = [
-        'lot', 'titre', 'titre_mere', 'proprietaire', 'nature', 'vocation',
-        'situation', 'type_operation', 'charge', 'numero_FN', 'numero_requisition',
-        'dep_vol', 'numero_dep_vol', 'propriete_mere',
+        'lot', 'titre', 'proprietaire', 'nature', 'vocation',
+        'situation', 'type_operation', 'numero_FN',
     ];
     
     private const PROPRIETE_NUMERIC_FIELDS = ['contenance'];
-    // private const PROPRIETE_DATE_FIELDS = ['date_requisition', 'date_inscription'];
     
     /**
-     *  Extraire filtres géographiques depuis $dates
+     * Extraire filtres géographiques
      */
     private function getGeoFilters(array $dates): array
     {
@@ -52,10 +49,6 @@ class StatisticsCalculator
             'district_id' => $dates['district_id'] ?? null,
         ];
     }
-    
-    // ========================================
-    // MÉTHODES PRINCIPALES
-    // ========================================
     
     public function getOverviewStats(array $dates): array
     {
@@ -117,7 +110,6 @@ class StatisticsCalculator
         $geoFilters = $this->getGeoFilters($dates);
         $districtIds = $this->getFilteredDistrictIds($geoFilters);
         
-        // Requête de base avec filtrage géographique via les dossiers
         $baseQuery = Propriete::query()
             ->whereHas('dossier', function($q) use ($districtIds, $dates) {
                 $q->whereIn('id_district', $districtIds)
@@ -126,7 +118,7 @@ class StatisticsCalculator
         
         $proprietes = (clone $baseQuery)->get();
         
-        // Propriétés disponibles (demandes actives)
+        // Disponibles (demandes actives)
         $disponiblesQuery = Propriete::query()
             ->whereHas('dossier', function($q) use ($districtIds, $dates) {
                 $q->whereIn('id_district', $districtIds)
@@ -137,7 +129,7 @@ class StatisticsCalculator
         $disponiblesCount = (clone $disponiblesQuery)->count();
         $disponiblesSuperficie = (clone $disponiblesQuery)->sum('contenance') ?? 0;
         
-        // Propriétés acquises (demandes archivées uniquement)
+        // Acquises (demandes archivées uniquement)
         $acquisesQuery = Propriete::query()
             ->whereHas('dossier', function($q) use ($districtIds, $dates) {
                 $q->whereIn('id_district', $districtIds)
@@ -184,16 +176,13 @@ class StatisticsCalculator
         $demandeurs = (clone $query)->get();
         $total = $demandeurs->count();
         
-        $avecPropriete = $demandeurs->filter(fn($d) => $d->proprietes()->exists())->count();
+        // FIX: Utiliser la relation demandes au lieu de proprietes
+        $avecPropriete = (clone $query)
+            ->whereHas('demandes')
+            ->count();
         
-        $actifs = Demandeur::query()
-            ->whereHas('dossiers', function($q) use ($districtIds, $dates) {
-                $q->whereIn('id_district', $districtIds)
-                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
-            })
-            ->whereHas('proprietes', function($q) {
-                $q->whereHas('demandes', fn($q2) => $q2->where('status', 'active'));
-            })
+        $actifs = (clone $query)
+            ->whereHas('demandes', fn($q) => $q->where('status', 'active'))
             ->count();
         
         $ageMoyen = $this->calculateAverageAge($dates, $geoFilters);
@@ -232,8 +221,6 @@ class StatisticsCalculator
             'total_femmes' => $totalFemmes,
             'pourcentage_hommes' => $total > 0 ? round(($totalHommes / $total) * 100, 1) : 0,
             'pourcentage_femmes' => $total > 0 ? round(($totalFemmes / $total) * 100, 1) : 0,
-            'hommes_avec_propriete' => (clone $baseQuery)->where('sexe', 'Homme')->whereHas('proprietes')->count(),
-            'femmes_avec_propriete' => (clone $baseQuery)->where('sexe', 'Femme')->whereHas('proprietes')->count(),
             'hommes_actifs' => $statsParGenre['Homme']['actifs'] ?? 0,
             'femmes_actifs' => $statsParGenre['Femme']['actifs'] ?? 0,
             'hommes_acquis' => $statsParGenre['Homme']['acquis'] ?? 0,
@@ -271,6 +258,9 @@ class StatisticsCalculator
         $totalGeneral = $totalActif + $totalArchive;
         $countTotal = $demandesActives->count() + $demandesArchivees->count();
         
+        $allDemandes = $demandesActives->concat($demandesArchivees);
+        $nonZeroPrices = $allDemandes->where('total_prix', '>', 0);
+        
         return [
             'total_revenus_potentiels' => $totalGeneral,
             'revenus_actifs' => $totalActif,
@@ -278,14 +268,8 @@ class StatisticsCalculator
             'pourcentage_actif' => $totalGeneral > 0 ? round(($totalActif / $totalGeneral) * 100, 1) : 0,
             'pourcentage_archive' => $totalGeneral > 0 ? round(($totalArchive / $totalGeneral) * 100, 1) : 0,
             'revenu_moyen' => $countTotal > 0 ? round($totalGeneral / $countTotal, 2) : 0,
-            'revenu_max' => max(
-                $demandesActives->max('total_prix') ?? 0,
-                $demandesArchivees->max('total_prix') ?? 0
-            ),
-            'revenu_min' => min(
-                $demandesActives->where('total_prix', '>', 0)->min('total_prix') ?? PHP_INT_MAX,
-                $demandesArchivees->where('total_prix', '>', 0)->min('total_prix') ?? PHP_INT_MAX
-            ),
+            'revenu_max' => $nonZeroPrices->max('total_prix') ?? 0,
+            'revenu_min' => $nonZeroPrices->min('total_prix') ?? 0,
             'par_vocation_actif' => $this->getRevenueByVocation('active', $dates, $geoFilters),
             'par_vocation_archive' => $this->getRevenueByVocation('archive', $dates, $geoFilters),
         ];
@@ -351,9 +335,7 @@ class StatisticsCalculator
         ];
     }
     
-    // ========================================
-    // MÉTHODES PRIVÉES
-    // ========================================
+    // Méthodes privées helpers
     
     private function calculateAverageAge(array $dates, array $geoFilters): float
     {
@@ -368,8 +350,6 @@ class StatisticsCalculator
                     ->whereBetween('dossiers.date_ouverture', [$dates['from'], $dates['to']]);
             })
             ->whereNotNull('date_naissance')
-            ->whereNotNull('sexe')
-            ->where('sexe', '!=', '')
             ->whereIn('sexe', ['Homme', 'Femme'])
             ->selectRaw('AVG(DATE_PART(\'year\', AGE(CURRENT_DATE, date_naissance))) as age_moyen')
             ->first();
@@ -537,7 +517,7 @@ class StatisticsCalculator
             ->count();
         
         $dossiersIncomplets += $dossiersVides;
-        $dossiersComplets = $totalDossiers - $dossiersIncomplets;
+        $dossiersComplets = max(0, $totalDossiers - $dossiersIncomplets);
         
         $taux = $totalDossiers > 0 
             ? round(($dossiersComplets / $totalDossiers) * 100, 1) 
@@ -545,14 +525,14 @@ class StatisticsCalculator
         
         return [
             'taux' => $taux,
-            'complets' => max(0, $dossiersComplets),
+            'complets' => $dossiersComplets,
             'incomplets' => $dossiersIncomplets,
             'proprietes_incompletes' => $proprietesIncompletes,
             'demandeurs_incomplets' => $demandeursIncomplets,
             'details' => [
                 'dossiers_vides' => $dossiersVides,
-                'dossiers_avec_demandeurs_incomplets' => 0,
-                'dossiers_avec_proprietes_incompletes' => 0, 
+                'dossiers_avec_demandeurs_incomplets' => $demandeursIncomplets,
+                'dossiers_avec_proprietes_incompletes' => $proprietesIncompletes, 
             ]
         ];
     }
@@ -570,9 +550,6 @@ class StatisticsCalculator
             foreach (self::PROPRIETE_STRING_FIELDS as $field) {
                 $query->orWhereNull($field)->orWhere($field, '=', '');
             }
-            // foreach (self::PROPRIETE_DATE_FIELDS as $field) {
-            //     $query->orWhereNull($field);
-            // }
             foreach (self::PROPRIETE_NUMERIC_FIELDS as $field) {
                 $query->orWhereNull($field)->orWhere($field, '<=', 0);
             }
@@ -608,5 +585,101 @@ class StatisticsCalculator
             })
             ->count();
     }
+
+    /**
+     * ✅ CORRECTION : Méthode avec 2 paramètres
+     * 
+     * @param int $current Valeur actuelle
+     * @param int $previous Valeur précédente
+     * @return float Taux de croissance en pourcentage
+     */
+    public function calculateGrowthRate(int $current, int $previous): float
+    {
+        // Éviter division par zéro
+        if ($previous === 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        // Calculer le taux de croissance : ((current - previous) / previous) * 100
+        $growth = (($current - $previous) / $previous) * 100;
         
+        // Arrondir à 2 décimales
+        return round($growth, 2);
+    }
+
+    /**
+     * Alternative : Si vous vouliez vraiment 1 seul paramètre (tableau)
+     * 
+     * @param array{current: int, previous: int} $data
+     * @return float
+     */
+    public function calculateGrowthRateFromArray(array $data): float
+    {
+        $current = $data['current'] ?? 0;
+        $previous = $data['previous'] ?? 0;
+
+        if ($previous === 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        $growth = (($current - $previous) / $previous) * 100;
+        return round($growth, 2);
+    }
+
+    /**
+     * Calculer la variation absolue
+     */
+    public function calculateAbsoluteDifference(int $current, int $previous): int
+    {
+        return $current - $previous;
+    }
+
+    /**
+     * Calculer la moyenne
+     */
+    public function calculateAverage(array $values): float
+    {
+        if (empty($values)) {
+            return 0.0;
+        }
+
+        $sum = array_sum($values);
+        $count = count($values);
+
+        return round($sum / $count, 2);
+    }
+
+    /**
+     * Calculer le pourcentage
+     */
+    public function calculatePercentage(int $part, int $total): float
+    {
+        if ($total === 0) {
+            return 0.0;
+        }
+
+        return round(($part / $total) * 100, 2);
+    }
+
+    /**
+     * Déterminer la tendance
+     */
+    public function determineTrend(float $growthRate): string
+    {
+        if ($growthRate > 0) {
+            return 'up';
+        } elseif ($growthRate < 0) {
+            return 'down';
+        }
+        return 'stable';
+    }
+
+    /**
+     * Formater le taux de croissance pour affichage
+     */
+    public function formatGrowthRate(float $growthRate): string
+    {
+        $sign = $growthRate >= 0 ? '+' : '';
+        return $sign . number_format($growthRate, 2) . '%';
+    }
 }

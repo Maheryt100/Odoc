@@ -35,16 +35,21 @@ class UserManagementController extends Controller
 
         // ✅ CORRECTION: Admin district ne voit QUE les users de son district
         if ($user->isAdminDistrict()) {
-            $query->where('id_district', $user->id_district);
+            $query->where('id_district', $user->id_district)
+                  ->where('role', User::ROLE_USER_DISTRICT); // Voir uniquement les user_district
         }
 
         // FILTRES
         if ($request->filled('role')) {
+            // ✅ Admin district ne peut filtrer que par user_district
+            if ($user->isAdminDistrict() && $request->role !== User::ROLE_USER_DISTRICT) {
+                return back()->withErrors(['role' => 'Vous ne pouvez voir que les utilisateurs district']);
+            }
             $query->where('role', $request->role);
         }
 
         if ($request->filled('district')) {
-            // ✅ CORRECTION: Admin district ne peut pas filtrer par d'autres districts
+            // ✅ Admin district ne peut filtrer que par son district
             if ($user->isAdminDistrict() && $request->district != $user->id_district) {
                 return back()->withErrors(['district' => 'Vous ne pouvez voir que votre district']);
             }
@@ -85,25 +90,26 @@ class UserManagementController extends Controller
                 ] : null,
                 'location' => $user->location,
                 'created_at' => $user->created_at->format('d/m/Y'),
-                'can_edit' => $connectedUser->canManageUsers() || 
-                            ($connectedUser->isAdminDistrict() && $user->id_district === $connectedUser->id_district),
-                'can_delete' => $connectedUser->isSuperAdmin() && $user->id !== $connectedUser->id,
+                'can_edit' => $connectedUser->canEditUser($user),
+                'can_delete' => $connectedUser->canDeleteUser($user),
             ]);
 
-        // ✅ CORRECTION: Stats filtrées par district pour admin district
+        // ✅ Stats filtrées par district pour admin district
         if ($user->isAdminDistrict()) {
             $stats = [
-                'total' => User::where('id_district', $user->id_district)->count(),
-                'super_admins' => 0, // Admin district ne voit pas les super admins
-                'central_users' => 0, // Admin district ne voit pas les central users
-                'admin_district' => User::where('role', User::ROLE_ADMIN_DISTRICT)
-                    ->where('id_district', $user->id_district)->count(),
+                'total' => User::where('id_district', $user->id_district)
+                    ->where('role', User::ROLE_USER_DISTRICT)->count(),
+                'super_admins' => 0,
+                'central_users' => 0,
+                'admin_district' => 0, // Ne pas compter soi-même
                 'user_district' => User::where('role', User::ROLE_USER_DISTRICT)
                     ->where('id_district', $user->id_district)->count(),
                 'active' => User::where('status', true)
-                    ->where('id_district', $user->id_district)->count(),
+                    ->where('id_district', $user->id_district)
+                    ->where('role', User::ROLE_USER_DISTRICT)->count(),
                 'inactive' => User::where('status', false)
-                    ->where('id_district', $user->id_district)->count(),
+                    ->where('id_district', $user->id_district)
+                    ->where('role', User::ROLE_USER_DISTRICT)->count(),
             ];
         } else {
             $stats = [
@@ -117,7 +123,7 @@ class UserManagementController extends Controller
             ];
         }
 
-        // ✅ CORRECTION: Districts filtrés pour admin district
+        // ✅ Districts filtrés pour admin district
         if ($user->isAdminDistrict()) {
             $districts = District::with('region')
                 ->where('id', $user->id_district)
@@ -127,20 +133,8 @@ class UserManagementController extends Controller
             $districts = District::with('region')->orderBy('nom_district')->get();
         }
 
-        // ✅ CORRECTION: Rôles disponibles selon le type d'admin
-        $roles = [];
-        if ($user->isSuperAdmin()) {
-            $roles = [
-                User::ROLE_SUPER_ADMIN => 'Super Administrateur',
-                User::ROLE_CENTRAL_USER => 'Utilisateur Central',
-                User::ROLE_ADMIN_DISTRICT => 'Administrateur District',
-                User::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        } elseif ($user->isAdminDistrict()) {
-            $roles = [
-                User::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        }
+        // ✅ Rôles disponibles selon le type d'admin
+        $roles = User::getAvailableRoles($user);
 
         return Inertia::render('users/Index', [
             'users' => $users,
@@ -164,9 +158,12 @@ class UserManagementController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // ✅ CORRECTION: Locations filtrées pour admin district
+        if (!$user->canManageUsers()) {
+            abort(403, 'Vous n\'avez pas la permission de créer des utilisateurs');
+        }
+
+        // ✅ Locations filtrées pour admin district
         if ($user->isAdminDistrict()) {
-            // Admin district voit uniquement son district
             $district = District::with(['region.province'])->find($user->id_district);
             
             if (!$district) {
@@ -215,26 +212,14 @@ class UserManagementController extends Controller
                 })->toArray();
         }
 
-        $availableRoles = [];
-        if ($user->isSuperAdmin()) {
-            $availableRoles = [
-                User::ROLE_SUPER_ADMIN => 'Super Administrateur',
-                User::ROLE_CENTRAL_USER => 'Utilisateur Central',
-                User::ROLE_ADMIN_DISTRICT => 'Administrateur District',
-                User::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        } elseif ($user->isAdminDistrict()) {
-            $availableRoles = [
-                User::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        }
+        $availableRoles = User::getAvailableRoles($user);
 
         return Inertia::render('users/Create', [
             'locations' => $locations,
             'roles' => $availableRoles,
             'currentUserDistrict' => $user->id_district,
             'isSuperAdmin' => $user->isSuperAdmin(),
-            'isAdminDistrict' => $user->isAdminDistrict(), // ✅ AJOUT
+            'isAdminDistrict' => $user->isAdminDistrict(),
         ]);
     }
 
@@ -245,6 +230,10 @@ class UserManagementController extends Controller
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+
+        if (!$currentUser->canManageUsers()) {
+            abort(403, 'Vous n\'avez pas la permission de créer des utilisateurs');
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -271,7 +260,14 @@ class UserManagementController extends Controller
         try {
             DB::beginTransaction();
 
-            // ✅ CORRECTION RENFORCÉE: Vérifications de sécurité pour admin district
+            // ✅ Vérifier que l'utilisateur peut créer ce rôle
+            if (!$currentUser->canCreateUserRole($validated['role'])) {
+                return back()->withErrors([
+                    'role' => 'Vous n\'avez pas la permission de créer ce type d\'utilisateur'
+                ]);
+            }
+
+            // ✅ Vérifications de sécurité pour admin district
             if ($currentUser->isAdminDistrict()) {
                 // Ne peut créer que des user_district
                 if ($validated['role'] !== User::ROLE_USER_DISTRICT) {
@@ -281,6 +277,19 @@ class UserManagementController extends Controller
                 // Doit être dans SON district
                 if (!isset($validated['id_district']) || $validated['id_district'] != $currentUser->id_district) {
                     return back()->withErrors(['id_district' => 'Vous ne pouvez créer des utilisateurs que dans votre district']);
+                }
+            }
+
+            // ✅ Vérifications pour super admin
+            if ($currentUser->isSuperAdmin()) {
+                // Ne peut créer que des admin_district
+                if ($validated['role'] !== User::ROLE_ADMIN_DISTRICT) {
+                    return back()->withErrors(['role' => 'Vous ne pouvez créer que des administrateurs district']);
+                }
+                
+                // Admin district doit avoir un district
+                if (empty($validated['id_district'])) {
+                    return back()->withErrors(['id_district' => 'Un district est requis pour un administrateur district']);
                 }
             }
 
@@ -342,16 +351,9 @@ class UserManagementController extends Controller
         $currentUser = Auth::user();
         $user = User::with('district.region.province')->findOrFail($id);
 
-        // ✅ CORRECTION: Vérifier les permissions pour admin district
-        if ($currentUser->isAdminDistrict()) {
-            if ($user->id_district !== $currentUser->id_district) {
-                abort(403, 'Vous ne pouvez modifier que les utilisateurs de votre district');
-            }
-            
-            // ✅ AJOUT: Admin district ne peut pas modifier un autre admin district
-            if ($user->role === User::ROLE_ADMIN_DISTRICT && $user->id !== $currentUser->id) {
-                abort(403, 'Vous ne pouvez pas modifier un autre administrateur district');
-            }
+        // ✅ Vérifier les permissions
+        if (!$currentUser->canEditUser($user)) {
+            abort(403, 'Vous n\'avez pas la permission de modifier cet utilisateur');
         }
 
         if ($user->id === $currentUser->id) {
@@ -359,7 +361,7 @@ class UserManagementController extends Controller
                 ->with('info', 'Utilisez la page de profil pour modifier vos propres informations');
         }
 
-        // ✅ CORRECTION: Locations filtrées pour admin district (même logique que create)
+        // ✅ Locations filtrées
         if ($currentUser->isAdminDistrict()) {
             $district = District::with(['region.province'])->find($currentUser->id_district);
             
@@ -405,19 +407,7 @@ class UserManagementController extends Controller
                 })->toArray();
         }
 
-        $availableRoles = [];
-        if ($currentUser->isSuperAdmin()) {
-            $availableRoles = [
-                User::ROLE_SUPER_ADMIN => 'Super Administrateur',
-                User::ROLE_CENTRAL_USER => 'Utilisateur Central',
-                User::ROLE_ADMIN_DISTRICT => 'Administrateur District',
-                User::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        } elseif ($currentUser->isAdminDistrict()) {
-            $availableRoles = [
-                User::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        }
+        $availableRoles = User::getAvailableRoles($currentUser);
 
         return Inertia::render('users/Create', [
             'user' => [
@@ -439,7 +429,7 @@ class UserManagementController extends Controller
             'locations' => $locations,
             'roles' => $availableRoles,
             'isSuperAdmin' => $currentUser->isSuperAdmin(),
-            'isAdminDistrict' => $currentUser->isAdminDistrict(), // ✅ AJOUT
+            'isAdminDistrict' => $currentUser->isAdminDistrict(),
         ]);
     }
 
@@ -452,20 +442,12 @@ class UserManagementController extends Controller
         $currentUser = Auth::user();
         $user = User::findOrFail($id);
 
-        if ($user->id === $currentUser->id) {
-            return back()->withErrors(['error' => 'Vous ne pouvez pas modifier votre propre compte via cette interface']);
+        if (!$currentUser->canEditUser($user)) {
+            abort(403, 'Vous n\'avez pas la permission de modifier cet utilisateur');
         }
 
-        // ✅ CORRECTION: Vérifications renforcées pour admin district
-        if ($currentUser->isAdminDistrict()) {
-            if ($user->id_district !== $currentUser->id_district) {
-                abort(403, 'Vous ne pouvez modifier que les utilisateurs de votre district');
-            }
-            
-            // Ne peut pas modifier un autre admin district
-            if ($user->role === User::ROLE_ADMIN_DISTRICT && $user->id !== $currentUser->id) {
-                abort(403, 'Vous ne pouvez pas modifier un autre administrateur district');
-            }
+        if ($user->id === $currentUser->id) {
+            return back()->withErrors(['error' => 'Vous ne pouvez pas modifier votre propre compte via cette interface']);
         }
 
         $validated = $request->validate([
@@ -493,14 +475,19 @@ class UserManagementController extends Controller
                 'status' => $user->status,
             ];
 
-            // ✅ CORRECTION: Vérifications renforcées pour admin district
+            // ✅ Vérifier que l'utilisateur peut modifier ce rôle
+            if (!$currentUser->canCreateUserRole($validated['role'])) {
+                return back()->withErrors([
+                    'role' => 'Vous n\'avez pas la permission de modifier vers ce rôle'
+                ]);
+            }
+
+            // ✅ Vérifications pour admin district
             if ($currentUser->isAdminDistrict()) {
-                // Ne peut gérer que des user_district
                 if ($validated['role'] !== User::ROLE_USER_DISTRICT) {
                     return back()->withErrors(['role' => 'Vous ne pouvez gérer que des utilisateurs district']);
                 }
                 
-                // Doit rester dans SON district
                 if (!isset($validated['id_district']) || $validated['id_district'] != $currentUser->id_district) {
                     return back()->withErrors(['id_district' => 'Vous ne pouvez assigner que votre district']);
                 }
@@ -577,20 +564,12 @@ class UserManagementController extends Controller
         $currentUser = Auth::user();
         $user = User::findOrFail($id);
 
-        if ($user->id === $currentUser->id) {
-            return back()->withErrors(['error' => 'Vous ne pouvez pas modifier votre propre statut']);
+        if (!$currentUser->canEditUser($user)) {
+            abort(403, 'Vous n\'avez pas la permission de modifier cet utilisateur');
         }
 
-        // ✅ CORRECTION: Vérification pour admin district
-        if ($currentUser->isAdminDistrict()) {
-            if ($user->id_district !== $currentUser->id_district) {
-                abort(403, 'Vous ne pouvez modifier que les utilisateurs de votre district');
-            }
-            
-            // Ne peut pas désactiver un autre admin district
-            if ($user->role === User::ROLE_ADMIN_DISTRICT) {
-                abort(403, 'Vous ne pouvez pas modifier le statut d\'un autre administrateur district');
-            }
+        if ($user->id === $currentUser->id) {
+            return back()->withErrors(['error' => 'Vous ne pouvez pas modifier votre propre statut']);
         }
 
         try {
@@ -624,13 +603,11 @@ class UserManagementController extends Controller
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
-
-        // ✅ CORRECTION: Seul super admin peut supprimer
-        if (!$currentUser->isSuperAdmin()) {
-            abort(403, 'Seul un super administrateur peut supprimer des utilisateurs');
-        }
-
         $user = User::findOrFail($id);
+
+        if (!$currentUser->canDeleteUser($user)) {
+            abort(403, 'Vous n\'avez pas la permission de supprimer cet utilisateur');
+        }
 
         if ($user->id === $currentUser->id) {
             return back()->withErrors(['error' => 'Vous ne pouvez pas supprimer votre propre compte']);
@@ -682,49 +659,6 @@ class UserManagementController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
-        }
-    }
-
-    public function resetPassword(Request $request, $id)
-    {
-        /** @var User $currentUser */
-        $currentUser = Auth::user();
-        $user = User::findOrFail($id);
-
-        // ✅ CORRECTION: Vérification pour admin district
-        if (!$currentUser->isSuperAdmin() && 
-            !($currentUser->isAdminDistrict() && $user->id_district === $currentUser->id_district)) {
-            abort(403, 'Vous n\'avez pas la permission de réinitialiser ce mot de passe');
-        }
-
-        // ✅ AJOUT: Admin district ne peut pas reset le MDP d'un autre admin district
-        if ($currentUser->isAdminDistrict() && $user->role === User::ROLE_ADMIN_DISTRICT) {
-            abort(403, 'Vous ne pouvez pas réinitialiser le mot de passe d\'un autre administrateur district');
-        }
-
-        $validated = $request->validate([
-            'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
-
-        try {
-            $user->update(['password' => Hash::make($validated['password'])]);
-
-            ActivityLogger::logUpdate(
-                ActivityLog::ENTITY_USER,
-                $user->id,
-                [
-                    'action_type' => 'reset_password',
-                    'user_name' => $user->name,
-                    'reset_by' => $currentUser->id,
-                    'reset_by_name' => $currentUser->name,
-                    'id_district' => $user->id_district,
-                ]
-            );
-
-            return back()->with('success', 'Mot de passe réinitialisé avec succès');
-
-        } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }

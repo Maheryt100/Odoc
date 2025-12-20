@@ -1,4 +1,4 @@
-// pages/demandes/types.ts - ✅ AVEC DATE_DEMANDE
+// pages/demandes/types.ts - ✅ VERSION CORRIGÉE
 
 import type { Demandeur, Propriete, Dossier } from '@/types';
 
@@ -7,7 +7,7 @@ export interface DemandeBase {
     id: number;
     id_demandeur: number;
     id_propriete: number;
-    date_demande: string; // ✅ NOUVEAU (format YYYY-MM-DD)
+    date_demande: string; // Format YYYY-MM-DD
     total_prix: number;
     ordre: number;
     created_at: string;
@@ -23,28 +23,28 @@ export interface DemandeWithStatus extends DemandeBase {
 export interface DemandeWithRelations extends DemandeWithStatus {
     demandeur?: Demandeur;
     propriete?: Propriete;
-    date_demande_formatted?: string; // ✅ Ex: "15 janvier 2025"
-    date_demande_short?: string; // ✅ Ex: "15/01/2025"
+    date_demande_formatted?: string;
+    date_demande_short?: string;
 }
 
 export type Demande = DemandeWithRelations;
 
-// Type pour un document de demande (utilisé dans ResumeDossier)
+// ✅ FIX: DocumentDemande hérite maintenant des propriétés requises
 export interface DocumentDemande {
     id: number;
     id_propriete: number;
-    date_demande?: string; // ✅ NOUVEAU
+    date_demande?: string;
     propriete: {
         id: number;
         lot: string;
-        titre?: string;
-        contenance?: number;
+        titre?: string | null; // ✅ Accepte null ET undefined
+        contenance?: number | null;
         nature?: string;
         vocation?: string;
-        proprietaire?: string;
-        situation?: string;
+        proprietaire?: string | null;
+        situation?: string | null;
         is_archived?: boolean;
-        date_requisition?: string; // ✅ Pour validation cohérence
+        date_requisition?: string;
     };
     demandeurs: Array<{
         id: number;
@@ -66,14 +66,14 @@ export interface DocumentDemande {
         };
     }>;
     total_prix: number;
-    status: 'active' | 'archive';
+    status: 'active' | 'archive'; // ✅ Type strict
     status_consort: boolean;
     nombre_demandeurs: number;
     created_at?: string;
     updated_at?: string;
 }
 
-// Type avec propriétés computed
+// ✅ FIX: DemandeWithDetails étend DocumentDemande et ajoute _computed
 export interface DemandeWithDetails extends DocumentDemande {
     _computed: {
         isIncomplete: boolean;
@@ -82,7 +82,7 @@ export interface DemandeWithDetails extends DocumentDemande {
     };
 }
 
-// Props pour le composant principal
+// ✅ FIX: Les handlers utilisent maintenant DemandeWithDetails
 export interface DemandesIndexProps {
     documents: {
         data: DocumentDemande[];
@@ -93,37 +93,33 @@ export interface DemandesIndexProps {
     dossier: Dossier & {
         proprietes?: Propriete[];
     };
-    onArchive: (doc: DocumentDemande) => void;
-    onUnarchive: (doc: DocumentDemande) => void;
+    onArchive: (doc: DemandeWithDetails) => void; // ✅ Changé
+    onUnarchive: (doc: DemandeWithDetails) => void; // ✅ Changé
 }
 
-// ✅ MISE À JOUR : Types pour les filtres (avec date_demande)
+// Types pour les filtres
 export type FiltreStatutDemandeType = 'tous' | 'actives' | 'archivees' | 'incompletes';
 export type TriDemandeType = 'date' | 'date_demande' | 'lot' | 'demandeur' | 'prix' | 'statut';
 
-// Type pour les données de formulaire
 export interface DemandeFormData {
     id_demandeur: number;
     id_propriete: number;
-    date_demande: string; // ✅ NOUVEAU
+    date_demande: string;
     total_prix: number;
     status_consort: boolean;
 }
 
-// Type pour les filtres de recherche
 export interface DemandeFilters {
     status?: 'active' | 'archive' | 'all';
     propriete_id?: number;
     demandeur_id?: number;
-    date_debut?: string; // ✅ NOUVEAU
-    date_fin?: string; // ✅ NOUVEAU
+    date_debut?: string;
+    date_fin?: string;
 }
 
-// ✅ NOUVEAU : Type pour les filtres de période
 export interface DateRangeFilter {
     dateDebut: string | null;
     dateFin: string | null;
 }
 
-// Legacy support
 export type Demander = Demande;

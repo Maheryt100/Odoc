@@ -67,37 +67,27 @@ export const filterProprietesByStatus = (
  * ✅ RECHERCHE COMPLÈTE - Incluant propriétaire et dep/vol
  */
 export const matchesSearch = (prop: Propriete, search: string): boolean => {
-    const searchLower = search.toLowerCase();
+    if (!search) return true;
     
-    // On crée un raccourci pour éviter les répétitions et gérer le typage dynamique
-    const p = prop as any; 
-
+    const searchLower = search.toLowerCase();
+    const includes = (val: any) => val?.toString().toLowerCase().includes(searchLower) || false;
+    
     return (
-        // Recherche de base
-        prop.lot?.toLowerCase().includes(searchLower) ||
-        prop.titre?.toLowerCase().includes(searchLower) ||
-        prop.titre_complet?.toLowerCase().includes(searchLower) ||
-        prop.nature?.toLowerCase().includes(searchLower) ||
-        prop.situation?.toLowerCase().includes(searchLower) ||
-        
-        // ✅ Recherche dans propriétaire
-        prop.proprietaire?.toLowerCase().includes(searchLower) ||
-        
-        // Recherche dans Dep/Vol Inscription
-        prop.dep_vol_inscription?.toLowerCase().includes(searchLower) ||
-        prop.numero_dep_vol_inscription?.toLowerCase().includes(searchLower) ||
-        prop.dep_vol_inscription_complet?.toLowerCase().includes(searchLower) ||
-        
-        // Recherche dans Dep/Vol Réquisition
-        prop.dep_vol_requisition?.toLowerCase().includes(searchLower) ||
-        prop.numero_dep_vol_requisition?.toLowerCase().includes(searchLower) ||
-        prop.dep_vol_requisition_complet?.toLowerCase().includes(searchLower) ||
-        
-        // ⚠️ Recherche dans anciens champs (Cast en any pour éviter l'erreur TS)
-        (p.dep_vol?.toLowerCase().includes(searchLower) || false) ||
-        (p.numero_dep_vol?.toLowerCase().includes(searchLower) || false) ||
-        (p.dep_vol_complet?.toLowerCase().includes(searchLower) || false)
-    ); // ✅ Le dernier "||" a été supprimé ici
+        includes(prop.lot) ||
+        includes(prop.titre) ||
+        includes(prop.titre_complet) ||
+        includes(prop.nature) ||
+        includes(prop.situation) ||
+        includes(prop.proprietaire) ||
+        // Dépôt 1
+        includes(prop.dep_vol_inscription) ||
+        includes(prop.numero_dep_vol_inscription) ||
+        includes(prop.dep_vol_inscription_complet) ||
+        // Dépôt 2
+        includes(prop.dep_vol_requisition) ||
+        includes(prop.numero_dep_vol_requisition) ||
+        includes(prop.dep_vol_requisition_complet)
+    );
 };
 
 /**

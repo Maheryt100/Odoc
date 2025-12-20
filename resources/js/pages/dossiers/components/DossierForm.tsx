@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/components/DossierForm.tsx
+// DossierForm.tsx - ✅ VERSION CORRIGÉE
 import { useForm } from '@inertiajs/react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Save, Calendar, Hash, MapPin, AlertCircle } from 'lucide-react';
+import { Save, Calendar, Hash, MapPin, AlertCircle, Info } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import type { District, Dossier } from '@/types';
 import { useState, useMemo, useEffect } from 'react';
 
-// Import des fichiers JSON
 import communesData from '@/data/liste_commune_par_district.json';
 import districtsData from '@/data/liste_district_par_region.json';
 
@@ -50,14 +49,23 @@ export default function DossierForm({
     const [openCommune, setOpenCommune] = useState(false);
     const [numeroWarning, setNumeroWarning] = useState<string | null>(null);
 
-    // ✅ Convertir l'ancien string en number si nécessaire
-    const initialNumero = mode === 'create' 
-        ? (suggested_numero || 1)
-        : (typeof dossier?.numero_ouverture === 'number' 
-            ? dossier.numero_ouverture 
-            : parseInt(dossier?.numero_ouverture as unknown as string) || 0);
+    // ✅ Initialisation sécurisée du numéro
+    const initialNumero = useMemo(() => {
+        if (mode === 'create') {
+            return suggested_numero || 1;
+        }
+        
+        if (dossier?.numero_ouverture) {
+            if (typeof dossier.numero_ouverture === 'number') {
+                return dossier.numero_ouverture;
+            }
+            const parsed = parseInt(String(dossier.numero_ouverture));
+            return isNaN(parsed) ? 1 : parsed;
+        }
+        
+        return 1;
+    }, [mode, dossier, suggested_numero]);
 
-    // ✅ Initialisation avec le type number
     const { data, setData, post, put, processing, errors } = useForm({
         nom_dossier: dossier?.nom_dossier || '',
         numero_ouverture: initialNumero,
@@ -71,20 +79,21 @@ export default function DossierForm({
         id_district: dossier?.id_district || 0,
     });
 
-    // ✅ Validation du numéro d'ouverture avec messages améliorés
+    // ✅ Validation du numéro avec messages détaillés
     useEffect(() => {
         if (mode === 'create' && data.numero_ouverture) {
             const num = data.numero_ouverture;
             
             if (num < 1) {
-                setNumeroWarning('Le numéro doit être supérieur à 0');
+                setNumeroWarning('⚠️ Le numéro doit être supérieur à 0');
             } else if (suggested_numero && num < suggested_numero) {
+                const diff = suggested_numero - num;
                 const lastInfo = last_numero ? ` (dernier utilisé : ${last_numero})` : '';
-                setNumeroWarning(`⚠️ Le prochain numéro suggéré est ${suggested_numero}${lastInfo}. Vous pouvez le modifier si nécessaire.`);
+                setNumeroWarning(`⚠️ Attention : vous utilisez un numéro ${diff} ${diff > 1 ? 'positions' : 'position'} plus bas que le prochain suggéré (${suggested_numero})${lastInfo}. Ce numéro sera accepté s'il n'est pas déjà utilisé.`);
             } else if (suggested_numero && num > suggested_numero) {
                 const skipped = num - suggested_numero;
                 const plural = skipped > 1 ? 's' : '';
-                setNumeroWarning(`ℹ️ Vous sautez ${skipped} numéro${plural}. Les numéros ${suggested_numero} à ${num - 1} seront disponibles.`);
+                setNumeroWarning(`ℹ️ Information : vous sautez ${skipped} numéro${plural}. Les numéros ${suggested_numero} à ${num - 1} resteront disponibles pour de futurs dossiers.`);
             } else {
                 setNumeroWarning(null);
             }
@@ -145,9 +154,14 @@ export default function DossierForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation
-        if (!data.nom_dossier || !data.commune || !data.fokontany || !data.circonscription) {
-            toast.error('Veuillez remplir tous les champs obligatoires');
+        // ✅ Validation côté client
+        if (!data.nom_dossier?.trim()) {
+            toast.error('Le nom du dossier est obligatoire');
+            return;
+        }
+
+        if (!data.commune?.trim() || !data.fokontany?.trim() || !data.circonscription?.trim()) {
+            toast.error('Veuillez remplir tous les champs de localisation');
             return;
         }
 
@@ -156,17 +170,11 @@ export default function DossierForm({
             return;
         }
 
-        if (!data.date_descente_debut || !data.date_descente_fin) {
-            toast.error('Les dates de descente sont obligatoires');
+        if (!data.date_descente_debut || !data.date_descente_fin || !data.date_ouverture) {
+            toast.error('Toutes les dates sont obligatoires');
             return;
         }
 
-        if (!data.date_ouverture) {
-            toast.error("La date d'ouverture est obligatoire");
-            return;
-        }
-
-        // ✅ Validation du numéro d'ouverture (avec message personnalisé si erreur)
         if (mode === 'create' && (!data.numero_ouverture || data.numero_ouverture < 1)) {
             toast.error("Le numéro d'ouverture doit être supérieur à 0");
             return;
@@ -180,19 +188,17 @@ export default function DossierForm({
             return;
         }
 
-        // ✅ Soumission selon le mode
+        // ✅ Soumission
         if (mode === 'create') {
             post(route('dossiers.store'), {
                 onError: (errors) => {
-                    const messages = Object.values(errors).flat();
-                    
-                    // ✅ Message spécifique amélioré si le numéro existe déjà
                     if (errors.numero_ouverture) {
                         toast.error('Numéro d\'ouverture déjà utilisé', {
                             description: errors.numero_ouverture,
                             duration: 6000,
                         });
                     } else {
+                        const messages = Object.values(errors).flat();
                         toast.error('Erreur de validation', {
                             description: messages.join('\n'),
                         });
@@ -207,14 +213,13 @@ export default function DossierForm({
         } else {
             put(route('dossiers.update', dossier!.id), {
                 onError: (errors) => {
-                    const messages = Object.values(errors).flat();
-                    
                     if (errors.numero_ouverture) {
                         toast.error('Numéro d\'ouverture déjà utilisé', {
                             description: errors.numero_ouverture,
                             duration: 6000,
                         });
                     } else {
+                        const messages = Object.values(errors).flat();
                         toast.error('Erreur de validation', {
                             description: messages.join('\n'),
                         });
@@ -239,12 +244,12 @@ export default function DossierForm({
     return (
         <Card className="border-0 shadow-lg">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
-                <CardTitle className="text-xl">
+                <CardTitle className="text-lg sm:text-xl">
                     {mode === 'create' ? 'Informations du Dossier' : 'Modifier le Dossier'}
                 </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
                     {/* Section Identification */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 pb-3 border-b-2 border-blue-100 dark:border-blue-900">
@@ -252,7 +257,8 @@ export default function DossierForm({
                             <span>Identification</span>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
+                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+                            {/* Nom dossier */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">
                                     Nom du dossier <span className="text-red-500">*</span>
@@ -270,7 +276,7 @@ export default function DossierForm({
                                 )}
                             </div>
 
-                            {/* ✅ MODIFIÉ : Champ numéro d'ouverture avec validation améliorée */}
+                            {/* ✅ Numéro d'ouverture avec validation visuelle */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">
                                     Numéro d'ouverture <span className="text-red-500">*</span>
@@ -279,57 +285,73 @@ export default function DossierForm({
                                     type="number"
                                     min="1"
                                     value={data.numero_ouverture}
-                                    onChange={(e) => setData('numero_ouverture', parseInt(e.target.value) || 1)}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        setData('numero_ouverture', isNaN(val) ? 1 : val);
+                                    }}
                                     placeholder={mode === 'create' ? `Suggéré: ${suggested_numero}` : ''}
                                     required
                                     className={cn(
                                         "h-11",
-                                        errors.numero_ouverture && "border-red-500",
-                                        numeroWarning && "border-yellow-500"
+                                        errors.numero_ouverture && "border-red-500 focus-visible:ring-red-500",
+                                        numeroWarning?.includes('⚠️') && !errors.numero_ouverture && "border-yellow-500",
+                                        numeroWarning?.includes('ℹ️') && !errors.numero_ouverture && "border-blue-500"
                                     )}
                                     disabled={mode === 'edit'}
                                 />
                                 
-                                {mode === 'create' && last_numero !== null && (
+                                {/* Informations contextuelles */}
+                                {mode === 'create' && (last_numero !== null || suggested_numero) && (
                                     <div className="text-xs space-y-1">
-                                        <p className="text-muted-foreground">
-                                            Dernier numéro utilisé : <strong className="text-blue-600">{last_numero}</strong>
-                                        </p>
-                                        <p className="text-emerald-600 font-medium">
-                                            Prochain suggéré : <strong>{suggested_numero}</strong>
-                                            {' '}(vous pouvez le modifier)
-                                        </p>
+                                        {last_numero !== null && (
+                                            <p className="text-muted-foreground flex items-center gap-1">
+                                                <Info className="h-3 w-3" />
+                                                Dernier numéro utilisé : <strong className="text-blue-600">{last_numero}</strong>
+                                            </p>
+                                        )}
+                                        {suggested_numero && (
+                                            <p className="text-emerald-600 font-medium flex items-center gap-1">
+                                                <Check className="h-3 w-3" />
+                                                Prochain suggéré : <strong>{suggested_numero}</strong>
+                                                <span className="text-muted-foreground font-normal">(modifiable)</span>
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                                 
                                 {mode === 'edit' && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Le numéro d'ouverture ne peut pas être modifié après création
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        Le numéro d'ouverture ne peut pas être modifié
                                     </p>
                                 )}
 
-                                {/* ✅ Avertissement dynamique */}
+                                {/* ✅ Avertissements contextuels */}
                                 {numeroWarning && mode === 'create' && (
                                     <Alert 
                                         variant="default" 
                                         className={cn(
                                             "border",
-                                            numeroWarning.includes('⚠️') ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20" : "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                                            numeroWarning.includes('⚠️') && "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20",
+                                            numeroWarning.includes('ℹ️') && "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
                                         )}
                                     >
                                         <AlertCircle className={cn(
                                             "h-4 w-4",
-                                            numeroWarning.includes('⚠️') ? "text-yellow-600 dark:text-yellow-400" : "text-blue-600 dark:text-blue-400"
+                                            numeroWarning.includes('⚠️') && "text-yellow-600 dark:text-yellow-400",
+                                            numeroWarning.includes('ℹ️') && "text-blue-600 dark:text-blue-400"
                                         )} />
                                         <AlertDescription className={cn(
                                             "text-xs",
-                                            numeroWarning.includes('⚠️') ? "text-yellow-800 dark:text-yellow-200" : "text-blue-800 dark:text-blue-200"
+                                            numeroWarning.includes('⚠️') && "text-yellow-800 dark:text-yellow-200",
+                                            numeroWarning.includes('ℹ️') && "text-blue-800 dark:text-blue-200"
                                         )}>
                                             {numeroWarning}
                                         </AlertDescription>
                                     </Alert>
                                 )}
                                 
+                                {/* Erreur serveur */}
                                 {errors.numero_ouverture && (
                                     <Alert variant="destructive" className="border-red-500">
                                         <AlertCircle className="h-4 w-4" />
@@ -349,257 +371,47 @@ export default function DossierForm({
                             <span>Localisation</span>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
-                            {/* District */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    District <span className="text-red-500">*</span>
-                                </Label>
-                                <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openDistrict}
-                                            className="w-full justify-between h-11"
-                                        >
-                                            {selectedDistrict
-                                                ? selectedDistrict.nom_district
-                                                : "Sélectionner un district..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher un district..." />
-                                            <CommandEmpty>Aucun district trouvé.</CommandEmpty>
-                                            <CommandList>
-                                                <CommandGroup className="max-h-64 overflow-auto">
-                                                    {districts
-                                                        .slice()
-                                                        .sort((a, b) => a.nom_district.localeCompare(b.nom_district, 'fr'))
-                                                        .map((district) => (
-                                                            <CommandItem
-                                                                key={district.id}
-                                                                value={district.nom_district}
-                                                                onSelect={() => {
-                                                                    setData('id_district', district.id);
-                                                                    setOpenDistrict(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        data.id_district === district.id ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {district.nom_district}
-                                                            </CommandItem>
-                                                        ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <p className="text-xs text-muted-foreground">
-                                    Pour les permissions et données du système
-                                </p>
-                                {errors.id_district && (
-                                    <p className="text-sm text-red-500">{errors.id_district}</p>
-                                )}
-                            </div>
+                        {/* District + Circonscription */}
+                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+                            <DistrictSelector 
+                                districts={districts}
+                                selectedId={data.id_district}
+                                onSelect={(id: number) => setData('id_district', id)}
+                                open={openDistrict}
+                                onOpenChange={setOpenDistrict}
+                                error={errors.id_district}
+                            />
 
-                            {/* Circonscription */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Circonscription <span className="text-red-500">*</span>
-                                </Label>
-                                <Popover open={openCirconscription} onOpenChange={setOpenCirconscription}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openCirconscription}
-                                            className="w-full justify-between h-11 font-normal"
-                                        >
-                                            {data.circonscription || "Saisir une circonscription..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command shouldFilter={false}>
-                                            <CommandInput
-                                                placeholder="Taper pour rechercher..."
-                                                value={data.circonscription}
-                                                onValueChange={(value) => setData('circonscription', value)}
-                                            />
-                                            <CommandList>
-                                                {filteredCirconscriptionSuggestions.length === 0 && data.circonscription ? (
-                                                    <CommandEmpty>
-                                                        <div className="p-4 text-center">
-                                                            <p className="text-sm text-muted-foreground mb-3">
-                                                                Aucune suggestion trouvée
-                                                            </p>
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                className="w-full"
-                                                                onClick={() => {
-                                                                    setOpenCirconscription(false);
-                                                                    toast.info(`"${data.circonscription}" sera enregistré`);
-                                                                }}
-                                                            >
-                                                                ✓ Utiliser "{data.circonscription}"
-                                                            </Button>
-                                                        </div>
-                                                    </CommandEmpty>
-                                                ) : (
-                                                    <CommandGroup heading="Suggestions" className="max-h-64 overflow-auto">
-                                                        {filteredCirconscriptionSuggestions.map((circ) => (
-                                                            <CommandItem
-                                                                key={circ}
-                                                                value={circ}
-                                                                onSelect={(value) => {
-                                                                    setData('circonscription', value);
-                                                                    setOpenCirconscription(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        data.circonscription === circ ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {circ}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                )}
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <p className="text-xs text-muted-foreground">
-                                    Pour les documents officiels (saisie libre)
-                                </p>
-                                {errors.circonscription && (
-                                    <p className="text-sm text-red-500">{errors.circonscription}</p>
-                                )}
-                            </div>
+                            <CirconscriptionSelector
+                                value={data.circonscription}
+                                onChange={(val: string) => setData('circonscription', val)}
+                                suggestions={filteredCirconscriptionSuggestions}
+                                open={openCirconscription}
+                                onOpenChange={setOpenCirconscription}
+                                error={errors.circonscription}
+                            />
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Type de commune <span className="text-red-500">*</span>
-                                </Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        type="button"
-                                        variant={data.type_commune === 'Commune Urbaine' ? 'default' : 'outline'}
-                                        className="h-11"
-                                        onClick={() => setData('type_commune', 'Commune Urbaine')}
-                                    >
-                                        Urbaine
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={data.type_commune === 'Commune Rurale' ? 'default' : 'outline'}
-                                        className="h-11"
-                                        onClick={() => setData('type_commune', 'Commune Rurale')}
-                                    >
-                                        Rurale
-                                    </Button>
-                                </div>
-                                {errors.type_commune && (
-                                    <p className="text-sm text-red-500">{errors.type_commune}</p>
-                                )}
-                            </div>
+                        {/* Type commune + Commune */}
+                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+                            <TypeCommuneSelector
+                                value={data.type_commune}
+                                onChange={(val: string) => setData('type_commune', val)}
+                                error={errors.type_commune}
+                            />
 
-                            {/* Commune */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Commune <span className="text-red-500">*</span>
-                                </Label>
-                                <Popover open={openCommune} onOpenChange={setOpenCommune}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={openCommune}
-                                            className="w-full justify-between h-11 font-normal"
-                                        >
-                                            {data.commune || "Saisir une commune..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command shouldFilter={false}>
-                                            <CommandInput
-                                                placeholder="Taper pour rechercher..."
-                                                value={data.commune}
-                                                onValueChange={(value) => setData('commune', value)}
-                                            />
-                                            <CommandList>
-                                                {filteredCommunes.length === 0 && data.commune ? (
-                                                    <CommandEmpty>
-                                                        <div className="p-4 text-center">
-                                                            <p className="text-sm text-muted-foreground mb-3">
-                                                                Commune non trouvée
-                                                            </p>
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                className="w-full"
-                                                                onClick={() => {
-                                                                    setOpenCommune(false);
-                                                                    toast.info(`"${data.commune}" sera enregistrée`);
-                                                                }}
-                                                            >
-                                                                ✓ Utiliser "{data.commune}"
-                                                            </Button>
-                                                        </div>
-                                                    </CommandEmpty>
-                                                ) : (
-                                                    <CommandGroup 
-                                                        heading={availableCommunes.length > 0 ? `${availableCommunes.length} suggestions` : "Saisissez une circonscription"} 
-                                                        className="max-h-64 overflow-auto"
-                                                    >
-                                                        {filteredCommunes.map((commune) => (
-                                                            <CommandItem
-                                                                key={commune}
-                                                                value={commune}
-                                                                onSelect={(value) => {
-                                                                    setData('commune', value);
-                                                                    setOpenCommune(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        data.commune === commune ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {commune}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                )}
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <p className="text-xs text-muted-foreground">
-                                    {availableCommunes.length > 0 
-                                        ? `${availableCommunes.length} commune(s) disponible(s)`
-                                        : "Saisissez une circonscription pour voir les suggestions"}
-                                </p>
-                                {errors.commune && (
-                                    <p className="text-sm text-red-500">{errors.commune}</p>
-                                )}
-                            </div>
+                            <CommuneSelector
+                                value={data.commune}
+                                onChange={(val) => setData('commune', val)}
+                                availableCommunes={availableCommunes}
+                                filteredCommunes={filteredCommunes}
+                                open={openCommune}
+                                onOpenChange={setOpenCommune}
+                                error={errors.commune}
+                            />
                         </div>
 
+                        {/* Fokontany */}
                         <div className="space-y-2">
                             <Label className="text-sm font-medium">
                                 Fokontany <span className="text-red-500">*</span>
@@ -625,93 +437,379 @@ export default function DossierForm({
                             <span>Dates</span>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-3">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Date début descente <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={data.date_descente_debut}
-                                    onChange={(e) => handleDateDebutChange(e.target.value)}
-                                    required
-                                    className="h-11"
-                                />
-                                {errors.date_descente_debut && (
-                                    <p className="text-sm text-red-500">{errors.date_descente_debut}</p>
-                                )}
-                            </div>
+                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
+                            <DateField
+                                label="Date début descente"
+                                value={data.date_descente_debut}
+                                onChange={handleDateDebutChange}
+                                error={errors.date_descente_debut}
+                            />
 
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Date fin descente <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={data.date_descente_fin}
-                                    onChange={(e) => setData('date_descente_fin', e.target.value)}
-                                    min={data.date_descente_debut || undefined}
-                                    required
-                                    className="h-11"
-                                />
-                                {errors.date_descente_fin && (
-                                    <p className="text-sm text-red-500">{errors.date_descente_fin}</p>
-                                )}
-                            </div>
+                            <DateField
+                                label="Date fin descente"
+                                value={data.date_descente_fin}
+                                onChange={(val) => setData('date_descente_fin', val)}
+                                min={data.date_descente_debut}
+                                error={errors.date_descente_fin}
+                            />
 
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Date d'ouverture <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={data.date_ouverture}
-                                    onChange={(e) => setData('date_ouverture', e.target.value)}
-                                    required
-                                    className="h-11"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Date officielle d'ouverture du dossier
-                                </p>
-                                {errors.date_ouverture && (
-                                    <p className="text-sm text-red-500">{errors.date_ouverture}</p>
-                                )}
-                            </div>
+                            <DateField
+                                label="Date d'ouverture"
+                                value={data.date_ouverture}
+                                onChange={(val) => setData('date_ouverture', val)}
+                                error={errors.date_ouverture}
+                                helperText="Date officielle d'ouverture du dossier"
+                            />
                         </div>
                     </div>
 
+                    {/* Info pièces jointes */}
                     <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
-                        <p className="text-sm text-blue-700 dark:text-blue-400">
+                        <p className="text-sm text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                            <Info className="h-4 w-4" />
                             Les pièces jointes pourront être ajoutées après la création du dossier
                         </p>
                     </div>
                     
                     {/* Boutons */}
-                    <div className="flex gap-4 justify-end pt-6 border-t">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end pt-6 border-t">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={onCancel || (() => window.history.back())}
-                            className="h-11"
+                            className="h-11 order-2 sm:order-1"
                         >
                             Annuler
                         </Button>
                         <Button
                             type="submit"
                             disabled={processing}
-                            className="h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                            className="h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 order-1 sm:order-2"
                         >
-                            <Save className="mr-2 h-4 w-4" />
-                            {processing 
-                                ? (mode === 'create' ? 'Création...' : 'Modification...') 
-                                : (mode === 'create' ? 'Créer le dossier' : 'Enregistrer les modifications')
-                            }
+                            {processing ? (
+                                <>
+                                    <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                    {mode === 'create' ? 'Création...' : 'Modification...'}
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    {mode === 'create' ? 'Créer le dossier' : 'Enregistrer'}
+                                </>
+                            )}
                         </Button>
                     </div>
-                    
                 </form>
-                
             </CardContent>
         </Card>
+    );
+}
+
+// ✅ Composants helpers pour réduire la complexité
+
+function DistrictSelector({ districts, selectedId, onSelect, open, onOpenChange, error }: any) {
+    const selected = districts.find((d: District) => d.id === selectedId);
+    
+    return (
+        <div className="space-y-2">
+            <Label className="text-sm font-medium">
+                District <span className="text-red-500">*</span>
+            </Label>
+            <Popover open={open} onOpenChange={onOpenChange}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between h-11"
+                    >
+                        {selected ? selected.nom_district : "Sélectionner..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                        <CommandInput placeholder="Rechercher..." />
+                        <CommandEmpty>Aucun district trouvé.</CommandEmpty>
+                        <CommandList>
+                            <CommandGroup className="max-h-64 overflow-auto">
+                                {districts
+                                    .slice()
+                                    .sort((a: District, b: District) => a.nom_district.localeCompare(b.nom_district, 'fr'))
+                                    .map((district: District) => (
+                                        <CommandItem
+                                            key={district.id}
+                                            value={district.nom_district}
+                                            onSelect={() => {
+                                                onSelect(district.id);
+                                                onOpenChange(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    selectedId === district.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {district.nom_district}
+                                        </CommandItem>
+                                    ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+                Pour les permissions système
+            </p>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+    );
+}
+
+function CirconscriptionSelector({ value, onChange, suggestions, open, onOpenChange, error }: any) {
+    return (
+        <div className="space-y-2">
+            <Label className="text-sm font-medium">
+                Circonscription <span className="text-red-500">*</span>
+            </Label>
+            <Popover open={open} onOpenChange={onOpenChange}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between h-11 font-normal"
+                    >
+                        {value || "Saisir..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                    <Command shouldFilter={false}>
+                        <CommandInput
+                            placeholder="Taper pour rechercher..."
+                            value={value}
+                            onValueChange={onChange}
+                        />
+                        <CommandList>
+                            {suggestions.length === 0 && value ? (
+                                <CommandEmpty>
+                                    <div className="p-4 text-center">
+                                        <p className="text-sm text-muted-foreground mb-3">
+                                            Aucune suggestion
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => {
+                                                onOpenChange(false);
+                                                toast.info(`"${value}" sera enregistré`);
+                                            }}
+                                        >
+                                            ✓ Utiliser "{value}"
+                                        </Button>
+                                    </div>
+                                </CommandEmpty>
+                            ) : (
+                                <CommandGroup heading="Suggestions" className="max-h-64 overflow-auto">
+                                    {suggestions.map((circ: string) => (
+                                        <CommandItem
+                                            key={circ}
+                                            value={circ}
+                                            onSelect={(val) => {
+                                                onChange(val);
+                                                onOpenChange(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    value === circ ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {circ}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            )}
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+                Pour les documents officiels (saisie libre)
+            </p>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+    );
+}
+
+function TypeCommuneSelector({ value, onChange, error }: any) {
+    return (
+        <div className="space-y-2">
+            <Label className="text-sm font-medium">
+                Type de commune <span className="text-red-500">*</span>
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+                <Button
+                    type="button"
+                    variant={value === 'Commune Urbaine' ? 'default' : 'outline'}
+                    className="h-11"
+                    onClick={() => onChange('Commune Urbaine')}
+                >
+                    Urbaine
+                </Button>
+                <Button
+                    type="button"
+                    variant={value === 'Commune Rurale' ? 'default' : 'outline'}
+                    className="h-11"
+                    onClick={() => onChange('Commune Rurale')}
+                >
+                    Rurale
+                </Button>
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+    );
+}
+
+function CommuneSelector({
+    value,
+    onChange,
+    availableCommunes,
+    filteredCommunes,
+    open,
+    onOpenChange,
+    error,
+}: {
+    value: string;
+    onChange: (val: string) => void;
+    availableCommunes: string[];
+    filteredCommunes: string[];
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    error?: string;
+}) {
+    const hasSuggestions = filteredCommunes.length > 0;
+
+    return (
+        <div className="space-y-2">
+            <Label className="text-sm font-medium">
+                Commune <span className="text-red-500">*</span>
+            </Label>
+            <Popover open={open} onOpenChange={onOpenChange}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between h-11 font-normal"
+                    >
+                        {value || "Saisir..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                    <Command shouldFilter={false}>
+                        <CommandInput
+                            placeholder="Taper pour rechercher..."
+                            value={value}
+                            onValueChange={onChange}
+                        />
+                        <CommandList>
+                            {!hasSuggestions && value ? (
+                                <CommandEmpty>
+                                    <div className="p-4 text-center">
+                                        <p className="text-sm text-muted-foreground mb-3">
+                                            Aucune commune trouvée
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => {
+                                                onOpenChange(false);
+                                                toast.info(`"${value}" sera enregistré comme commune personnalisée`);
+                                            }}
+                                        >
+                                            ✓ Utiliser &quot;{value}&quot;
+                                        </Button>
+                                        {availableCommunes.length > 0 && (
+                                            <p className="mt-2 text-xs text-muted-foreground">
+                                                Astuce : vérifiez l’orthographe ou essayez un autre mot-clé
+                                            </p>
+                                        )}
+                                    </div>
+                                </CommandEmpty>
+                            ) : (
+                                <CommandGroup heading="Communes suggérées" className="max-h-64 overflow-auto">
+                                    {filteredCommunes.map((commune) => (
+                                        <CommandItem
+                                            key={commune}
+                                            value={commune}
+                                            onSelect={(val) => {
+                                                onChange(val);
+                                                onOpenChange(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    value === commune ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {commune}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            )}
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+                Choisissez une commune suggérée ou saisissez-en une nouvelle
+            </p>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+    );
+}
+function DateField({
+    label,
+    value,
+    onChange,
+    error,
+    min,
+    max,
+    helperText,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    error?: string;
+    min?: string;
+    max?: string;
+    helperText?: string;
+}) {
+    return (
+        <div className="space-y-2">
+            <Label className="text-sm font-medium">
+                {label} <span className="text-red-500">*</span>
+            </Label>
+            <Input
+                type="date"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                min={min}
+                max={max}
+                required
+                className="h-11"
+            />
+            {helperText && (
+                <p className="text-xs text-muted-foreground">
+                    {helperText}
+                </p>
+            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
     );
 }

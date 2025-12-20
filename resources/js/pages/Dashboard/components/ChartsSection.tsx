@@ -1,4 +1,4 @@
-// Dashboard/components/ChartsSection.tsx
+// Dashboard/components/ChartsSection.tsx - VERSION OPTIMISÉE
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,9 +33,7 @@ export function ChartsSection({ charts }: Props) {
         { name: 'Acquises', value: charts.proprietes_status?.acquises || 0, color: '#3b82f6' },
     ].filter(item => item.value > 0);
 
-    // ✅ AMÉLIORATION : Utiliser evolution_complete avec dossiers, propriétés, demandeurs
     const evolutionData = charts.evolution_complete ?? charts.evolution_mensuelle ?? charts.dossiers_timeline ?? [];
-
     const revenuData = charts.revenus_par_vocation ?? [];
     const performanceData = charts.performance_trimestrielle ?? [];
 
@@ -48,20 +46,20 @@ export function ChartsSection({ charts }: Props) {
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                    <p className="font-semibold text-sm mb-2">{label}</p>
+                <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                    <p className="font-semibold text-sm mb-2 text-gray-900 dark:text-gray-100">{label}</p>
                     {payload.map((entry: any, index: number) => (
                         <div key={index} className="flex items-center gap-2 text-xs">
                             <div 
                                 className="w-3 h-3 rounded" 
                                 style={{ backgroundColor: entry.color }}
                             />
-                            <span>{entry.name}: </span>
-                            <span className="font-semibold">{entry.value}</span>
+                            <span className="text-gray-700 dark:text-gray-300">{entry.name}: </span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">{entry.value}</span>
                         </div>
                     ))}
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-xs font-semibold">
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                             Total: {payload.reduce((sum: number, p: any) => sum + p.value, 0)}
                         </p>
                     </div>
@@ -72,32 +70,35 @@ export function ChartsSection({ charts }: Props) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             <Tabs defaultValue="evolution" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="evolution" className="gap-2">
-                        <LineChart className="h-4 w-4" />
-                        Évolution
-                    </TabsTrigger>
-                    <TabsTrigger value="repartition" className="gap-2">
-                        <PieChart className="h-4 w-4" />
-                        Répartition
-                    </TabsTrigger>
-                    <TabsTrigger value="performance" className="gap-2">
-                        <BarChart3 className="h-4 w-4" />
-                        Performance
-                    </TabsTrigger>
-                </TabsList>
+                {/* ✅ OPTIMISATION 320px : TabsList scrollable horizontalement */}
+                <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <TabsList className="grid w-full min-w-[300px] grid-cols-3 mb-4">
+                        <TabsTrigger value="evolution" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                            <LineChart className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden xs:inline">Évolution</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="repartition" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                            <PieChart className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden xs:inline">Répartition</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="performance" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden xs:inline">Performance</span>
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
 
-                {/* ✅ AMÉLIORATION : Onglet Évolution avec 3 lignes */}
-                <TabsContent value="evolution" className="space-y-6">
+                {/* Onglet Évolution */}
+                <TabsContent value="evolution" className="space-y-4 sm:space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <TrendingUp className="h-5 w-5" />
+                            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
                                 Évolution mensuelle complète
                             </CardTitle>
-                            <CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">
                                 Dossiers, propriétés et demandeurs sur les 12 derniers mois
                             </CardDescription>
                         </CardHeader>
@@ -108,25 +109,29 @@ export function ChartsSection({ charts }: Props) {
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                         <XAxis 
                                             dataKey="month" 
-                                            tick={{ fontSize: 12 }}
+                                            tick={{ fontSize: 10 }}
+                                            angle={-45}
+                                            textAnchor="end"
+                                            height={60}
                                         />
-                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <YAxis tick={{ fontSize: 10 }} />
                                         <Tooltip 
                                             contentStyle={{ 
-                                                backgroundColor: 'white',
-                                                border: '1px solid #e5e7eb',
+                                                fontSize: '12px',
+                                                backgroundColor: 'var(--background)',
+                                                border: '1px solid var(--border)',
                                                 borderRadius: '6px'
                                             }}
                                         />
-                                        <Legend />
+                                        <Legend wrapperStyle={{ fontSize: '11px' }} />
                                         <Line 
                                             type="monotone" 
                                             dataKey="dossiers" 
                                             stroke="#3b82f6" 
                                             strokeWidth={2}
                                             name="Dossiers"
-                                            dot={{ fill: '#3b82f6', r: 4 }}
-                                            activeDot={{ r: 6 }}
+                                            dot={{ fill: '#3b82f6', r: 3 }}
+                                            activeDot={{ r: 5 }}
                                         />
                                         <Line 
                                             type="monotone" 
@@ -134,8 +139,8 @@ export function ChartsSection({ charts }: Props) {
                                             stroke="#10b981" 
                                             strokeWidth={2}
                                             name="Propriétés"
-                                            dot={{ fill: '#10b981', r: 4 }}
-                                            activeDot={{ r: 6 }}
+                                            dot={{ fill: '#10b981', r: 3 }}
+                                            activeDot={{ r: 5 }}
                                         />
                                         <Line 
                                             type="monotone" 
@@ -143,13 +148,13 @@ export function ChartsSection({ charts }: Props) {
                                             stroke="#8b5cf6" 
                                             strokeWidth={2}
                                             name="Demandeurs"
-                                            dot={{ fill: '#8b5cf6', r: 4 }}
-                                            activeDot={{ r: 6 }}
+                                            dot={{ fill: '#8b5cf6', r: 3 }}
+                                            activeDot={{ r: 5 }}
                                         />
                                     </RechartsLine>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-xs sm:text-sm">
                                     Aucune donnée disponible
                                 </div>
                             )}
@@ -158,13 +163,14 @@ export function ChartsSection({ charts }: Props) {
                 </TabsContent>
 
                 {/* Onglet Répartition */}
-                <TabsContent value="repartition" className="space-y-6">
-                    <div className="grid gap-6 lg:grid-cols-2">
+                <TabsContent value="repartition" className="space-y-4 sm:space-y-6">
+                    {/* ✅ OPTIMISATION 320px : Grid 1 colonne sur mobile */}
+                    <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                         {/* Statut des propriétés */}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Statut des propriétés</CardTitle>
-                                <CardDescription>
+                                <CardTitle className="text-base sm:text-lg">Statut des propriétés</CardTitle>
+                                <CardDescription className="text-xs sm:text-sm">
                                     Répartition disponibles vs acquises
                                 </CardDescription>
                             </CardHeader>
@@ -189,17 +195,17 @@ export function ChartsSection({ charts }: Props) {
                                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip />
+                                                <Tooltip contentStyle={{ fontSize: '12px' }} />
                                             </RechartsPie>
                                         </ResponsiveContainer>
-                                        <div className="flex justify-center gap-4 mt-4">
+                                        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mt-4">
                                             {proprietesData.map((item, index) => (
                                                 <div key={index} className="flex items-center gap-2">
                                                     <div 
                                                         className="w-3 h-3 rounded-full" 
                                                         style={{ backgroundColor: item.color }}
                                                     />
-                                                    <span className="text-sm">
+                                                    <span className="text-xs sm:text-sm">
                                                         {item.name}: <strong>{item.value}</strong>
                                                     </span>
                                                 </div>
@@ -207,7 +213,7 @@ export function ChartsSection({ charts }: Props) {
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                                    <div className="h-[250px] flex items-center justify-center text-muted-foreground text-xs sm:text-sm">
                                         Aucune donnée disponible
                                     </div>
                                 )}
@@ -218,8 +224,8 @@ export function ChartsSection({ charts }: Props) {
                         {revenuData.length > 0 && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Revenus par vocation</CardTitle>
-                                    <CardDescription>
+                                    <CardTitle className="text-base sm:text-lg">Revenus par vocation</CardTitle>
+                                    <CardDescription className="text-xs sm:text-sm">
                                         Distribution des revenus potentiels (demandes actives)
                                     </CardDescription>
                                 </CardHeader>
@@ -229,19 +235,20 @@ export function ChartsSection({ charts }: Props) {
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis 
                                                 dataKey="vocation" 
-                                                tick={{ fontSize: 11 }}
+                                                tick={{ fontSize: 9 }}
                                                 angle={-15}
                                                 textAnchor="end"
                                                 height={60}
                                             />
                                             <YAxis 
+                                                tick={{ fontSize: 9 }}
                                                 tickFormatter={(value) => 
                                                     `${(value / 1000000).toFixed(1)}M`
                                                 }
                                             />
                                             <Tooltip 
                                                 formatter={(value: number) => formatMontant(value)}
-                                                contentStyle={{ fontSize: 12 }}
+                                                contentStyle={{ fontSize: 11 }}
                                             />
                                             <Bar 
                                                 dataKey="montant" 
@@ -257,23 +264,23 @@ export function ChartsSection({ charts }: Props) {
                 </TabsContent>
 
                 {/* Onglet Performance */}
-                <TabsContent value="performance" className="space-y-6">
+                <TabsContent value="performance" className="space-y-4 sm:space-y-6">
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="space-y-3">
                                 <div>
-                                    <CardTitle>Statut des dossiers</CardTitle>
-                                    <CardDescription>
+                                    <CardTitle className="text-base sm:text-lg">Statut des dossiers</CardTitle>
+                                    <CardDescription className="text-xs sm:text-sm">
                                         Évolution trimestrielle (4 derniers trimestres)
                                     </CardDescription>
                                 </div>
-                                <div className="flex gap-4">
+                                <div className="flex flex-wrap gap-3 sm:gap-4">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded bg-blue-500" />
+                                        <div className="w-3 h-3 rounded bg-blue-500 dark:bg-blue-400" />
                                         <span className="text-xs">Ouverts</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded bg-green-500" />
+                                        <div className="w-3 h-3 rounded bg-green-500 dark:bg-green-400" />
                                         <span className="text-xs">Fermés</span>
                                     </div>
                                 </div>
@@ -285,18 +292,16 @@ export function ChartsSection({ charts }: Props) {
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart 
                                             data={performanceData}
-                                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                            margin={{ top: 20, right: 10, left: 0, bottom: 5 }}
                                         >
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis 
                                                 dataKey="quarter" 
-                                                tick={{ fontSize: 12 }}
+                                                tick={{ fontSize: 10 }}
                                             />
-                                            <YAxis />
+                                            <YAxis tick={{ fontSize: 10 }} />
                                             <Tooltip content={<CustomTooltip />} />
-                                            <Legend 
-                                                wrapperStyle={{ fontSize: '12px' }}
-                                            />
+                                            <Legend wrapperStyle={{ fontSize: '11px' }} />
                                             <Bar 
                                                 dataKey="ouverts" 
                                                 stackId="a" 
@@ -314,26 +319,26 @@ export function ChartsSection({ charts }: Props) {
                                         </BarChart>
                                     </ResponsiveContainer>
                                     
-                                    {/* Statistiques résumées */}
-                                    <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t">
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-blue-600">
+                                    {/* ✅ OPTIMISATION 320px : Grid responsive pour stats */}
+                                    <div className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border">
+                                        <div className="text-center p-2">
+                                            <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                                                 {performanceData.reduce((sum, q) => sum + q.ouverts, 0)}
                                             </p>
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Total dossiers ouverts
                                             </p>
                                         </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-green-600">
+                                        <div className="text-center p-2">
+                                            <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
                                                 {performanceData.reduce((sum, q) => sum + q.fermes, 0)}
                                             </p>
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Total dossiers fermés
                                             </p>
                                         </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-gray-900">
+                                        <div className="text-center p-2">
+                                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                                 {performanceData.reduce((sum, q) => sum + q.total, 0)}
                                             </p>
                                             <p className="text-xs text-muted-foreground mt-1">
@@ -344,9 +349,9 @@ export function ChartsSection({ charts }: Props) {
                                 </>
                             ) : (
                                 <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground">
-                                    <BarChart3 className="h-12 w-12 mb-4 opacity-20" />
-                                    <p className="text-sm">Aucune donnée de performance disponible</p>
-                                    <p className="text-xs mt-2">Les données s'afficheront dès qu'il y aura des dossiers</p>
+                                    <BarChart3 className="h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 opacity-20" />
+                                    <p className="text-xs sm:text-sm">Aucune donnée de performance disponible</p>
+                                    <p className="text-xs mt-2 text-center px-4">Les données s'afficheront dès qu'il y aura des dossiers</p>
                                 </div>
                             )}
                         </CardContent>

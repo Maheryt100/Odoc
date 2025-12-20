@@ -1,15 +1,17 @@
 // Statistics/components/StatisticsFilters.tsx
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Filter, Calendar, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Filter, Calendar, MapPin, X, ChevronDown } from 'lucide-react';
 import type { StatisticsFilters as Filters, Province, Region, District } from '../types';
 import { useDebounce } from '@/hooks/use-debounce';
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Props {
     filters: Filters;
@@ -17,7 +19,7 @@ interface Props {
     regions: Region[];
     districts: District[];
     canFilterGeography: boolean;
-    userDistrict?: District;    
+    userDistrict?: District | null;    
 }
 
 export function StatisticsFilters({ 
@@ -28,92 +30,57 @@ export function StatisticsFilters({
     canFilterGeography,
     userDistrict
 }: Props) {
-    // ✅ DEBUG : Vérifier les props reçues
-    React.useEffect(() => {
-        console.log('🔍 StatisticsFilters Props:', {
-            canFilterGeography,
-            userDistrict,
-            hasDistrict: !!userDistrict,
-            districtName: userDistrict?.nom_district
-        });
-    }, [canFilterGeography, userDistrict]);
+    const [isOpen, setIsOpen] = useState(true);
+    const [period, setPeriod] = useState(filters.period || 'all');
+    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+    const [dateTo, setDateTo] = useState(filters.date_to || '');
+    const [provinceId, setProvinceId] = useState(filters.province_id?.toString() || 'all');
+    const [regionId, setRegionId] = useState(filters.region_id?.toString() || 'all');
+    const [districtId, setDistrictId] = useState(filters.district_id?.toString() || 'all');
 
-    // ========== ÉTATS ==========
-    const [period, setPeriod] = React.useState(filters.period || 'all');
-    const [dateFrom, setDateFrom] = React.useState(filters.date_from || '');
-    const [dateTo, setDateTo] = React.useState(filters.date_to || '');
-    const [provinceId, setProvinceId] = React.useState(
-        filters.province_id?.toString() || 'all'
-    );
-    const [regionId, setRegionId] = React.useState(
-        filters.region_id?.toString() || 'all'
-    );
-    const [districtId, setDistrictId] = React.useState(
-        filters.district_id?.toString() || 'all'
-    );
-
-    // ========== FILTRAGE EN CASCADE ==========
-    
-    // Régions filtrées par province sélectionnée
+    // Régions filtrées
     const filteredRegions = useMemo(() => {
         if (provinceId === 'all') return regions;
         return regions.filter(r => r.id_province.toString() === provinceId);
     }, [regions, provinceId]);
 
-    // Districts filtrés par région sélectionnée
+    // Districts filtrés
     const filteredDistricts = useMemo(() => {
         if (regionId === 'all') return districts;
         return districts.filter(d => d.id_region.toString() === regionId);
     }, [districts, regionId]);
 
-    // ========== GESTION DES CHANGEMENTS ==========
-    
-    // Quand province change → reset région et district
     const handleProvinceChange = (value: string) => {
         setProvinceId(value);
         setRegionId('all');
         setDistrictId('all');
     };
 
-    // Quand région change → reset district
     const handleRegionChange = (value: string) => {
         setRegionId(value);
         setDistrictId('all');
     };
 
-    // Debounce pour les dates
     const debouncedDateFrom = useDebounce(dateFrom, 500);
     const debouncedDateTo = useDebounce(dateTo, 500);
 
-    // ========== AUTO-APPLY AVEC LOGIQUE HIÉRARCHIQUE ==========
     useEffect(() => {
-        const params: any = {
-            period,
-        };
+        const params: any = { period };
 
-        // Dates personnalisées
         if (period === 'custom') {
             params.date_from = debouncedDateFrom || null;
             params.date_to = debouncedDateTo || null;
         }
 
-        //  LOGIQUE GÉOGRAPHIQUE HIÉRARCHIQUE
         if (canFilterGeography) {
-            // Si district sélectionné → on envoie uniquement district_id
             if (districtId !== 'all') {
                 params.district_id = districtId;
-            }
-            // Sinon si région sélectionnée → on envoie region_id
-            else if (regionId !== 'all') {
+            } else if (regionId !== 'all') {
                 params.region_id = regionId;
-            }
-            // Sinon si province sélectionnée → on envoie province_id
-            else if (provinceId !== 'all') {
+            } else if (provinceId !== 'all') {
                 params.province_id = provinceId;
             }
-            // Sinon → "all" (pas de filtre géographique)
         }
-        // Si utilisateur district → pas de params géographiques (forcé côté serveur)
 
         router.get(route('statistiques.index'), params, {
             preserveState: true,
@@ -131,16 +98,14 @@ export function StatisticsFilters({
         canFilterGeography
     ]);
 
-    // ========== LABELS DYNAMIQUES ==========
-    
     const getPeriodLabel = () => {
         switch(period) {
             case 'today': return "Aujourd'hui";
             case 'week': return 'Cette semaine';
             case 'month': return 'Ce mois';
             case 'year': return 'Cette année';
-            case 'all': return 'Toutes les données';
-            case 'custom': return 'Période personnalisée';
+            case 'all': return 'Toutes périodes';
+            case 'custom': return 'Personnalisé';
             default: return 'Période';
         }
     };
@@ -162,178 +127,221 @@ export function StatisticsFilters({
             const province = provinces.find(p => p.id.toString() === provinceId);
             return province?.nom_province || 'Province';
         }
-        return 'Toutes les provinces';
+        return 'Toutes zones';
+    };
+
+    const hasActiveFilters = period !== 'all' || 
+        (canFilterGeography && (provinceId !== 'all' || regionId !== 'all' || districtId !== 'all'));
+
+    const clearFilters = () => {
+        setPeriod('all');
+        setDateFrom('');
+        setDateTo('');
+        setProvinceId('all');
+        setRegionId('all');
+        setDistrictId('all');
     };
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                        <Filter className="h-5 w-5" />
-                        Filtres de recherche
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="hidden sm:inline">Filtres de recherche</span>
+                        <span className="sm:hidden">Filtres</span>
                     </CardTitle>
-                    <div className="flex gap-2">
-                        <Badge variant="outline" className="text-sm">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {getPeriodLabel()}
-                        </Badge>
-                        <Badge variant="outline" className="text-sm">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {getGeographicLabel()}
-                        </Badge>
+                    <div className="flex items-center gap-2">
+                        {/* Badges visibles sur desktop */}
+                        <div className="hidden lg:flex gap-2">
+                            <Badge variant="outline" className="text-xs">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {getPeriodLabel()}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                {getGeographicLabel()}
+                            </Badge>
+                        </div>
+                        
+                        {/* Toggle button pour mobile */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsOpen(!isOpen)}
+                            className="lg:hidden"
+                        >
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        </Button>
                     </div>
+                </div>
+
+                {/* Badges mobiles */}
+                <div className="flex lg:hidden flex-wrap gap-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {getPeriodLabel()}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {getGeographicLabel()}
+                    </Badge>
                 </div>
             </CardHeader>
-            <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    {/* ========== SÉLECTEUR PÉRIODE ========== */}
-                    <div className="space-y-2">
-                        <Label htmlFor="period">Période</Label>
-                        <Select value={period} onValueChange={setPeriod}>
-                            <SelectTrigger id="period">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="today">Aujourd'hui</SelectItem>
-                                <SelectItem value="week">Cette semaine</SelectItem>
-                                <SelectItem value="month">Ce mois</SelectItem>
-                                <SelectItem value="year">Cette année</SelectItem>
-                                <SelectItem value="all">Tout</SelectItem>
-                                <SelectItem value="custom">Personnalisé</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
 
-                    {/* ========== DATES PERSONNALISÉES ========== */}
-                    {period === 'custom' && (
-                        <>
-                            <div className="space-y-2">
-                                <Label htmlFor="date_from">Date début</Label>
-                                <Input 
-                                    id="date_from"
-                                    type="date" 
-                                    value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="date_to">Date fin</Label>
-                                <Input 
-                                    id="date_to"
-                                    type="date" 
-                                    value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
-                                    min={dateFrom}
-                                />
-                            </div>
-                        </>
-                    )}
+            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                <CollapsibleContent>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {/* Période */}
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="period" className="text-xs sm:text-sm">Période</Label>
+                                    <Select value={period} onValueChange={setPeriod}>
+                                        <SelectTrigger id="period" className="h-9 text-sm">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="today">Aujourd'hui</SelectItem>
+                                            <SelectItem value="week">Cette semaine</SelectItem>
+                                            <SelectItem value="month">Ce mois</SelectItem>
+                                            <SelectItem value="year">Cette année</SelectItem>
+                                            <SelectItem value="all">Tout</SelectItem>
+                                            <SelectItem value="custom">Personnalisé</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                    {/* ========== FILTRES GÉOGRAPHIQUES (Super Admin / Central User) ========== */}
-                    {canFilterGeography ? (
-                        <>
-                            {/* Province */}
-                            <div className="space-y-2">
-                                <Label htmlFor="province">Province</Label>
-                                <Select value={provinceId} onValueChange={handleProvinceChange}>
-                                    <SelectTrigger id="province">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Toutes les provinces</SelectItem>
-                                        {provinces.map((p) => (
-                                            <SelectItem key={p.id} value={p.id.toString()}>
-                                                {p.nom_province}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                {/* Dates personnalisées */}
+                                {period === 'custom' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="date_from" className="text-xs sm:text-sm">Du</Label>
+                                            <Input 
+                                                id="date_from"
+                                                type="date" 
+                                                value={dateFrom}
+                                                onChange={(e) => setDateFrom(e.target.value)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="date_to" className="text-xs sm:text-sm">Au</Label>
+                                            <Input 
+                                                id="date_to"
+                                                type="date" 
+                                                value={dateTo}
+                                                onChange={(e) => setDateTo(e.target.value)}
+                                                min={dateFrom}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
-                            {/* Région (affichée si province sélectionnée ou 'all') */}
-                            <div className="space-y-2">
-                                <Label htmlFor="region">Région</Label>
-                                <Select 
-                                    value={regionId} 
-                                    onValueChange={handleRegionChange}
-                                    disabled={provinceId !== 'all' && filteredRegions.length === 0}
-                                >
-                                    <SelectTrigger id="region">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">
-                                            {provinceId === 'all' 
-                                                ? 'Toutes les régions' 
-                                                : 'Toutes (province sélectionnée)'}
-                                        </SelectItem>
-                                        {filteredRegions.map((r) => (
-                                            <SelectItem key={r.id} value={r.id.toString()}>
-                                                {r.nom_region}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {/* Filtres géographiques */}
+                            {canFilterGeography ? (
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="province" className="text-xs sm:text-sm">Province</Label>
+                                        <Select value={provinceId} onValueChange={handleProvinceChange}>
+                                            <SelectTrigger id="province" className="h-9 text-sm">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Toutes</SelectItem>
+                                                {provinces.map((p) => (
+                                                    <SelectItem key={p.id} value={p.id.toString()}>
+                                                        {p.nom_province}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                            {/* District (affiché si région sélectionnée ou 'all') */}
-                            <div className="space-y-2">
-                                <Label htmlFor="district">District</Label>
-                                <Select 
-                                    value={districtId} 
-                                    onValueChange={setDistrictId}
-                                    disabled={regionId !== 'all' && filteredDistricts.length === 0}
-                                >
-                                    <SelectTrigger id="district">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">
-                                            {regionId === 'all' 
-                                                ? 'Tous les districts' 
-                                                : 'Tous (région sélectionnée)'}
-                                        </SelectItem>
-                                        {filteredDistricts.map((d) => (
-                                            <SelectItem key={d.id} value={d.id.toString()}>
-                                                {d.nom_district}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </>
-                    ) : (
-                        /* ========== BADGE FIXE POUR ADMIN/USER DISTRICT ========== */
-                        <div className="space-y-2">
-                            <Label>District</Label>
-                            <div className="flex items-center h-10 px-3 py-2 bg-muted rounded-md">
-                                <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span className="font-medium">
-                                    {userDistrict?.nom_district || 'Non assigné'}
-                                </span>
-                                <Badge variant="secondary" className="ml-auto text-xs">
-                                    Fixe
-                                </Badge>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="region" className="text-xs sm:text-sm">Région</Label>
+                                        <Select 
+                                            value={regionId} 
+                                            onValueChange={handleRegionChange}
+                                            disabled={provinceId !== 'all' && filteredRegions.length === 0}
+                                        >
+                                            <SelectTrigger id="region" className="h-9 text-sm">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    {provinceId === 'all' ? 'Toutes' : 'Toutes (filtrées)'}
+                                                </SelectItem>
+                                                {filteredRegions.map((r) => (
+                                                    <SelectItem key={r.id} value={r.id.toString()}>
+                                                        {r.nom_region}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                {/* ========== INDICATEUR DE FILTRE ACTIF ========== */}
-                {(period !== 'all' || 
-                  (canFilterGeography && (provinceId !== 'all' || regionId !== 'all' || districtId !== 'all'))
-                ) && (
-                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <p className="text-sm text-blue-900 dark:text-blue-100">
-                            <strong>Filtre actif :</strong> {getPeriodLabel()}
-                            {canFilterGeography && (
-                                <> • {getGeographicLabel()}</>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="district" className="text-xs sm:text-sm">District</Label>
+                                        <Select 
+                                            value={districtId} 
+                                            onValueChange={setDistrictId}
+                                            disabled={regionId !== 'all' && filteredDistricts.length === 0}
+                                        >
+                                            <SelectTrigger id="district" className="h-9 text-sm">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    {regionId === 'all' ? 'Tous' : 'Tous (filtrés)'}
+                                                </SelectItem>
+                                                {filteredDistricts.map((d) => (
+                                                    <SelectItem key={d.id} value={d.id.toString()}>
+                                                        {d.nom_district}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label className="text-xs sm:text-sm">District</Label>
+                                    <div className="flex items-center h-9 px-3 py-2 bg-muted rounded-md text-sm">
+                                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                        <span className="font-medium truncate">
+                                            {userDistrict?.nom_district || 'Non assigné'}
+                                        </span>
+                                        <Badge variant="secondary" className="ml-auto text-xs shrink-0">
+                                            Fixe
+                                        </Badge>
+                                    </div>
+                                </div>
                             )}
-                        </p>
-                    </div>
-                )}
-            </CardContent>
+
+                            {/* Actions */}
+                            {hasActiveFilters && (
+                                <div className="flex items-center justify-between pt-2 border-t">
+                                    <p className="text-xs text-muted-foreground">
+                                        Filtres actifs
+                                    </p>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearFilters}
+                                        className="h-8 text-xs"
+                                    >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Réinitialiser
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </CollapsibleContent>
+            </Collapsible>
         </Card>
     );
 }

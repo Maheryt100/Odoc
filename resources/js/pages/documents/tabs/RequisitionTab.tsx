@@ -248,17 +248,17 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
                     </Alert>
                 )}
 
-                <Separator />
+                {/* <Separator /> */}
 
                 {/* Explication */}
-                <Alert>
+                {/* <Alert>
                     <FileOutput className="h-4 w-4" />
                     <AlertDescription>
                         La réquisition demande au Conservateur de la Propriété Foncière de procéder à
                         l'immatriculation ou au morcellement d'un terrain. Ce document ne nécessite pas
                         de sélectionner un demandeur spécifique.
                     </AlertDescription>
-                </Alert>
+                </Alert> */}
 
                 {/* Indicateur de génération */}
                 {isGenerating && (

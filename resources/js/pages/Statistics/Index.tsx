@@ -31,14 +31,14 @@ export default function StatisticsIndex({
         ]}>
             <Head title="Statistiques" />
 
-            <div className="flex flex-col gap-6 p-6">
+            <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
                 {/* Header */}
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent flex items-center gap-3">
-                        <BarChart3 className="h-8 w-8 text-cyan-600" />
-                        Statistiques et Analyses
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent flex items-center gap-2 sm:gap-3">
+                        <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600" />
+                        <span>Statistiques</span>
                     </h1>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground">
                         Tableau de bord analytique complet
                     </p>
                 </div>
@@ -55,17 +55,17 @@ export default function StatisticsIndex({
 
                 {/* Info Alert */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-cyan-50/50 to-sky-50/50 dark:from-cyan-950/20 dark:to-sky-950/20">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg shrink-0">
-                            <Info className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg shrink-0 mt-0.5">
+                            <Info className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-600 dark:text-cyan-400" />
                         </div>
-                        <AlertDescription className="text-sm text-cyan-900 dark:text-cyan-100">
-                            <span className="font-semibold flex items-center gap-2">
+                        <AlertDescription className="text-xs sm:text-sm text-cyan-900 dark:text-cyan-100">
+                            <span className="font-semibold flex items-center gap-1.5 sm:gap-2 mb-1">
                                 <Sparkles className="h-3 w-3" />
                                 Analyses approfondies
                             </span>
                             <span className="text-cyan-700 dark:text-cyan-300">
-                                — Explorez vos données par catégorie et visualisez les tendances détaillées
+                                Explorez vos données par catégorie et visualisez les tendances
                             </span>
                         </AlertDescription>
                     </div>
@@ -73,40 +73,54 @@ export default function StatisticsIndex({
 
                 {/* Tabs */}
                 <Tabs defaultValue="overview" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-6">
-                        <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-                        <TabsTrigger value="dossiers">Dossiers</TabsTrigger>
-                        <TabsTrigger value="proprietes">Propriétés</TabsTrigger>
-                        <TabsTrigger value="demandeurs">Demandeurs</TabsTrigger>
-                        <TabsTrigger value="financials">Finances</TabsTrigger>
-                        <TabsTrigger value="geographic">Géographie</TabsTrigger>
-                    </TabsList>
+                    {/* Tabs list responsive */}
+                    <div className="w-full overflow-x-auto pb-2">
+                        <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 h-auto flex-nowrap">
+                            <TabsTrigger value="overview" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap">
+                                Vue d'ensemble
+                            </TabsTrigger>
+                            <TabsTrigger value="dossiers" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap">
+                                Dossiers
+                            </TabsTrigger>
+                            <TabsTrigger value="proprietes" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap">
+                                Propriétés
+                            </TabsTrigger>
+                            <TabsTrigger value="demandeurs" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap">
+                                Demandeurs
+                            </TabsTrigger>
+                            <TabsTrigger value="financials" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap">
+                                Finances
+                            </TabsTrigger>
+                            <TabsTrigger value="geographic" className="text-xs sm:text-sm px-3 py-2 whitespace-nowrap">
+                                Géographie
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
 
-                    <TabsContent value="overview" className="space-y-6">
+                    <TabsContent value="overview" className="space-y-4 sm:space-y-6 mt-4">
                         <OverviewTab stats={stats} charts={charts} />
                     </TabsContent>
 
-                    <TabsContent value="dossiers">
+                    <TabsContent value="dossiers" className="mt-4">
                         <DossiersTab dossiers={stats.dossiers} charts={charts} />
                     </TabsContent>
 
-                    <TabsContent value="proprietes">
+                    <TabsContent value="proprietes" className="mt-4">
                         <ProprietesTab proprietes={stats.proprietes} charts={charts} />
                     </TabsContent>
 
-                    <TabsContent value="demandeurs" className="space-y-6">
+                    <TabsContent value="demandeurs" className="space-y-4 sm:space-y-6 mt-4">
                         <DemandeursTab 
                             demandeurs={stats.demandeurs} 
                             demographics={stats.demographics}
-                            charts={charts} 
                         />
                     </TabsContent>
 
-                    <TabsContent value="financials" className="space-y-6">
+                    <TabsContent value="financials" className="space-y-4 sm:space-y-6 mt-4">
                         <FinancialsTab financials={stats.financials} />
                     </TabsContent>
 
-                    <TabsContent value="geographic">
+                    <TabsContent value="geographic" className="mt-4">
                         <GeographicTab geographic={stats.geographic} />
                     </TabsContent>
                 </Tabs>

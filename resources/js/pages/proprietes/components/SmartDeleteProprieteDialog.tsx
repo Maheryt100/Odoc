@@ -1,358 +1,390 @@
-// pages/proprietes/components/SmartDeleteProprieteDialog.tsx
-import { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+// components/UploadPieceJointeDialog.tsx - MOBILE OPTIMISÉ
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { 
-    AlertTriangle, 
-    Archive, 
-    Users, 
-    Trash2, 
-    Info, 
-    Loader2,
-    CheckCircle2,
-    XCircle,
-    Home,
-    Lock
-} from 'lucide-react';
-import type { Propriete } from '@/types';
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogFooter,
+    DialogDescription
+} from '@/components/ui/dialog';
+import { Upload, Loader2, X, File, Image as ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import type { 
+    UploadForm, 
+    BaseDemandeur, 
+    BasePropriete 
+} from '@/pages/PiecesJointes/pieces-jointes';
+import { 
+    CATEGORIES, 
+    TYPES_DOCUMENTS, 
+    getCsrfToken,
+    formatFileSize 
+} from '@/pages/PiecesJointes/pieces-jointes';
 
-interface DemandeurInfo {
-    id: number;
-    nom_complet: string;
-    cin: string;
-    ordre: number;
-}
-
-interface DeleteCheckResponse {
-    can_delete: boolean;
-    is_archived: boolean;
-    is_dossier_closed: boolean;
-    total_demandeurs_actifs: number;
-    total_demandeurs_archives: number;
-    demandeurs_actifs: DemandeurInfo[];
-    demandeurs_archives: DemandeurInfo[];
-    propriete: {
-        id: number;
-        lot: string;
-        titre: string;
-        contenance: number;
-    };
-}
-
-interface SmartDeleteProprieteDialogProps {
-    propriete: Propriete | null;
+interface UploadPieceJointeDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    attachableType: 'Dossier' | 'Demandeur' | 'Propriete';
+    attachableId: number;
+    demandeurs?: BaseDemandeur[];
+    proprietes?: BasePropriete[];
+    onSuccess: () => void;
 }
 
-export default function SmartDeleteProprieteDialog({
-    propriete,
+export default function UploadPieceJointeDialog({
     open,
-    onOpenChange
-}: SmartDeleteProprieteDialogProps) {
-    const [loading, setLoading] = useState(false);
-    const [checkData, setCheckData] = useState<DeleteCheckResponse | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+    onOpenChange,
+    attachableType,
+    attachableId,
+    demandeurs = [],
+    proprietes = [],
+    onSuccess
+}: UploadPieceJointeDialogProps) {
+    const [uploading, setUploading] = useState(false);
+    const [uploadForm, setUploadForm] = useState<UploadForm>({
+        files: [],
+        type_document: '',
+        categorie: 'global',
+        description: '',
+        linked_entity_type: '',
+        linked_entity_id: '',
+    });
 
-    useEffect(() => {
-        if (open && propriete) {
-            loadCheckData();
-        } else {
-            setCheckData(null);
-        }
-    }, [open, propriete]);
-
-    const loadCheckData = async () => {
-        if (!propriete) return;
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
         
-        setLoading(true);
+        const validFiles = files.filter(file => {
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error(`${file.name}: Trop volumineux (max 10 MB)`);
+                return false;
+            }
+            return true;
+        });
+
+        setUploadForm(prev => ({ ...prev, files: validFiles }));
+    };
+
+    const removeFile = (index: number) => {
+        setUploadForm(prev => ({
+            ...prev,
+            files: prev.files.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleUpload = async () => {
+        if (uploadForm.files.length === 0) {
+            toast.error('Sélectionnez au moins un fichier');
+            return;
+        }
+
+        setUploading(true);
+        const formData = new FormData();
+        
+        uploadForm.files.forEach(file => formData.append('files[]', file));
+        formData.append('attachable_type', attachableType);
+        formData.append('attachable_id', String(attachableId));
+        
+        if (uploadForm.type_document) {
+            formData.append('type_document', uploadForm.type_document);
+        }
+        formData.append('categorie', uploadForm.categorie);
+        
+        if (uploadForm.description) {
+            formData.append('descriptions[0]', uploadForm.description);
+        }
+
+        if (uploadForm.linked_entity_type && uploadForm.linked_entity_id) {
+            formData.append('linked_entity_type', uploadForm.linked_entity_type);
+            formData.append('linked_entity_id', String(uploadForm.linked_entity_id));
+        }
+
         try {
-            const response = await fetch(
-                route('api.propriete.check-delete', { id: propriete.id })
-            );
+            const response = await fetch(route('pieces-jointes.upload'), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
             const data = await response.json();
-            setCheckData(data);
+
+            if (data.success) {
+                toast.success(data.message);
+                onOpenChange(false);
+                setUploadForm({
+                    files: [],
+                    type_document: '',
+                    categorie: 'global',
+                    description: '',
+                    linked_entity_type: '',
+                    linked_entity_id: '',
+                });
+                onSuccess();
+            } else {
+                toast.error(data.message || 'Erreur lors de l\'upload');
+                if (data.errors && data.errors.length > 0) {
+                    data.errors.forEach((error: any) => {
+                        toast.error(`${error.file}: ${error.errors.join(', ')}`);
+                    });
+                }
+            }
         } catch (error) {
-            console.error('Erreur chargement vérification:', error);
+            console.error('Erreur upload:', error);
+            toast.error('Erreur de connexion');
         } finally {
-            setLoading(false);
+            setUploading(false);
         }
     };
 
-    const handleConfirm = () => {
-        if (!propriete || !checkData?.can_delete || isDeleting) return;
-
-        setIsDeleting(true);
-        router.delete(route('proprietes.destroy', propriete.id), {
-            preserveScroll: true,
-            onFinish: () => {
-                setIsDeleting(false);
-                onOpenChange(false);
-            }
-        });
+    const getFileIcon = (file: File) => {
+        const isImage = file.type.startsWith('image/');
+        return isImage ? ImageIcon : File;
     };
-
-    if (!propriete) return null;
 
     return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2 text-xl">
-                        {checkData?.can_delete ? (
-                            <>
-                                <Trash2 className="h-6 w-6 text-red-500" />
-                                Supprimer la propriété
-                            </>
-                        ) : (
-                            <>
-                                <AlertTriangle className="h-6 w-6 text-amber-500" />
-                                Suppression impossible
-                            </>
-                        )}
-                    </AlertDialogTitle>
-                </AlertDialogHeader>
-
-                {loading ? (
-                    <div className="py-12 text-center">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Vérification des associations...</p>
-                    </div>
-                ) : checkData ? (
-                    <div className="space-y-6 py-4">
-                        {/* ✅ INFORMATIONS PROPRIÉTÉ */}
-                        <Card className="p-4 bg-muted/30">
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Home className="h-5 w-5 text-muted-foreground" />
-                                        <p className="font-semibold text-lg">Lot {checkData.propriete.lot}</p>
-                                    </div>
-                                    <div className="text-sm text-muted-foreground space-y-1">
-                                        {checkData.propriete.titre && (
-                                            <p>Titre : TNº{checkData.propriete.titre}</p>
-                                        )}
-                                        {checkData.propriete.contenance && (
-                                            <p>Contenance : {new Intl.NumberFormat('fr-FR').format(checkData.propriete.contenance)} m²</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    {checkData.is_archived && (
-                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                                            <Archive className="mr-1 h-3 w-3" />
-                                            Acquise
-                                        </Badge>
-                                    )}
-                                    {checkData.is_dossier_closed && (
-                                        <Badge variant="outline" className="bg-gray-100 text-gray-700">
-                                            <Lock className="mr-1 h-3 w-3" />
-                                            Dossier fermé
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-                        </Card>
-
-                        {/* ✅ STATISTIQUES */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <Card className="p-3 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">Demandeurs actifs</p>
-                                <p className="text-2xl font-bold text-blue-600">
-                                    {checkData.total_demandeurs_actifs}
-                                </p>
-                            </Card>
-                            <Card className="p-3 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">Demandeurs archivés</p>
-                                <p className="text-2xl font-bold text-green-600">
-                                    {checkData.total_demandeurs_archives}
-                                </p>
-                            </Card>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] sm:max-h-[95vh] overflow-hidden flex flex-col p-0">
+                <DialogHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 shrink-0">
+                    <DialogTitle className="text-base sm:text-lg">Ajouter des pièces jointes</DialogTitle>
+                    <DialogDescription className="text-xs sm:text-sm">
+                        PDF, images, documents (max 10 MB)
+                    </DialogDescription>
+                </DialogHeader>
+                
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto px-4 sm:px-6">
+                    <div className="space-y-3 sm:space-y-4 py-2">
+                        {/* File Input */}
+                        <div>
+                            <Label className="text-xs sm:text-sm mb-1.5 block">Fichiers *</Label>
+                            <Input
+                                type="file"
+                                multiple
+                                onChange={handleFileSelect}
+                                accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx"
+                                className="text-xs sm:text-sm h-9"
+                                disabled={uploading}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Max 10 MB par fichier
+                            </p>
                         </div>
 
-                        {/* ✅ RÉSULTAT DE LA VÉRIFICATION */}
-                        {checkData.can_delete ? (
-                            // ✅ SUPPRESSION AUTORISÉE
-                            <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                                <div className="flex items-start gap-3">
-                                    <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm text-blue-700 dark:text-blue-300">
-                                        <p className="font-medium mb-2">
-                                            ✅ Cette propriété peut être supprimée
-                                        </p>
-                                        <p>
-                                            Aucun demandeur n'est associé à cette propriété.
-                                        </p>
-                                        <p className="text-red-600 dark:text-red-400 font-medium mt-2">
-                                            ⚠️ Cette action est irréversible !
-                                        </p>
-                                    </div>
+                        {/* Selected Files - Compact sur mobile */}
+                        {uploadForm.files.length > 0 && (
+                            <div className="space-y-1.5">
+                                <Label className="text-xs sm:text-sm">
+                                    Sélectionnés ({uploadForm.files.length})
+                                </Label>
+                                <div className="space-y-1.5 max-h-32 sm:max-h-40 overflow-y-auto">
+                                    {uploadForm.files.map((file, index) => {
+                                        const Icon = getFileIcon(file);
+                                        return (
+                                            <div 
+                                                key={index}
+                                                className="flex items-center gap-2 p-2 border rounded bg-muted/30"
+                                            >
+                                                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="truncate font-medium text-xs">
+                                                        {file.name}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {formatFileSize(file.size)}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 shrink-0"
+                                                    onClick={() => removeFile(index)}
+                                                    disabled={uploading}
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </Card>
-                        ) : (
-                            // ❌ SUPPRESSION BLOQUÉE
+                            </div>
+                        )}
+
+                        {/* Type de document */}
+                        <div>
+                            <Label className="text-xs sm:text-sm mb-1.5 block">Type de document</Label>
+                            <Select 
+                                value={uploadForm.type_document} 
+                                onValueChange={(v) => setUploadForm(p => ({ ...p, type_document: v }))}
+                                disabled={uploading}
+                            >
+                                <SelectTrigger className="h-9 text-xs sm:text-sm">
+                                    <SelectValue placeholder="Sélectionner" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(TYPES_DOCUMENTS).map(([key, label]) => (
+                                        <SelectItem key={key} value={key} className="text-xs sm:text-sm">
+                                            {label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Catégorie */}
+                        <div>
+                            <Label className="text-xs sm:text-sm mb-1.5 block">Catégorie *</Label>
+                            <Select 
+                                value={uploadForm.categorie} 
+                                onValueChange={(v) => setUploadForm(p => ({ ...p, categorie: v }))}
+                                disabled={uploading}
+                            >
+                                <SelectTrigger className="h-9 text-xs sm:text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(CATEGORIES).map(([key, val]) => (
+                                        <SelectItem key={key} value={key} className="text-xs sm:text-sm">
+                                            {val.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Liaison - Simplifié pour mobile */}
+                        {attachableType === 'Dossier' && (demandeurs.length > 0 || proprietes.length > 0) && (
+                            <div className="space-y-2 p-2.5 sm:p-3 bg-muted/50 rounded-lg">
+                                <Label className="text-xs font-medium block">
+                                    Lier à (optionnel)
+                                </Label>
+                                <div className="space-y-2">
+                                    {demandeurs.length > 0 && (
+                                        <Select 
+                                            value={uploadForm.linked_entity_type === 'Demandeur' ? String(uploadForm.linked_entity_id) : ''}
+                                            onValueChange={(v) => setUploadForm(p => ({ 
+                                                ...p, 
+                                                linked_entity_type: 'Demandeur',
+                                                linked_entity_id: v,
+                                                categorie: 'demandeur'
+                                            }))}
+                                            disabled={uploading}
+                                        >
+                                            <SelectTrigger className="h-9 text-xs sm:text-sm">
+                                                <SelectValue placeholder="Demandeur" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {demandeurs.map(d => (
+                                                    <SelectItem key={d.id} value={String(d.id)} className="text-xs sm:text-sm">
+                                                        {d.nom_demandeur} {d.prenom_demandeur}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                    {proprietes.length > 0 && (
+                                        <Select 
+                                            value={uploadForm.linked_entity_type === 'Propriete' ? String(uploadForm.linked_entity_id) : ''}
+                                            onValueChange={(v) => setUploadForm(p => ({ 
+                                                ...p, 
+                                                linked_entity_type: 'Propriete',
+                                                linked_entity_id: v,
+                                                categorie: 'propriete'
+                                            }))}
+                                            disabled={uploading}
+                                        >
+                                            <SelectTrigger className="h-9 text-xs sm:text-sm">
+                                                <SelectValue placeholder="Propriété" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {proprietes.map(p => (
+                                                    <SelectItem key={p.id} value={String(p.id)} className="text-xs sm:text-sm">
+                                                        Lot {p.lot}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </div>
+                                {uploadForm.linked_entity_id && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        className="h-7 text-xs w-full"
+                                        onClick={() => setUploadForm(p => ({ 
+                                            ...p, 
+                                            linked_entity_type: '',
+                                            linked_entity_id: '',
+                                            categorie: 'global'
+                                        }))}
+                                        disabled={uploading}
+                                    >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Retirer
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Description */}
+                        <div>
+                            <Label className="text-xs sm:text-sm mb-1.5 block">Description</Label>
+                            <Textarea
+                                value={uploadForm.description}
+                                onChange={(e) => setUploadForm(p => ({ ...p, description: e.target.value }))}
+                                placeholder="Description..."
+                                rows={2}
+                                className="text-xs sm:text-sm resize-none"
+                                disabled={uploading}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer - Sticky en bas */}
+                <DialogFooter className="px-4 pb-4 pt-3 sm:px-6 border-t shrink-0 flex-row gap-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => onOpenChange(false)}
+                        disabled={uploading}
+                        className="h-9 text-xs sm:text-sm flex-1"
+                    >
+                        Annuler
+                    </Button>
+                    <Button 
+                        onClick={handleUpload} 
+                        disabled={uploading || uploadForm.files.length === 0}
+                        className="h-9 text-xs sm:text-sm flex-1"
+                    >
+                        {uploading ? (
                             <>
-                                <Card className="p-4 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
-                                    <div className="flex items-start gap-3">
-                                        <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                                        <div className="text-sm text-red-700 dark:text-red-300">
-                                            <p className="font-medium mb-1">
-                                                ❌ Impossible de supprimer cette propriété
-                                            </p>
-                                            <p>
-                                                Des demandeurs sont associés à cette propriété.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Card>
-
-                                {/* ✅ LISTE DES DEMANDEURS ACTIFS */}
-                                {checkData.demandeurs_actifs.length > 0 && (
-                                    <div className="space-y-2">
-                                        <h4 className="font-medium text-sm flex items-center gap-2">
-                                            <Users className="h-4 w-4" />
-                                            Demandeurs actifs ({checkData.demandeurs_actifs.length})
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {checkData.demandeurs_actifs.map((dem) => (
-                                                <Card 
-                                                    key={dem.id}
-                                                    className="p-3 bg-muted"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="font-medium text-sm">
-                                                                    {dem.nom_complet}
-                                                                </p>
-                                                                {dem.ordre === 1 ? (
-                                                                    <Badge variant="default" className="text-xs">
-                                                                        Principal
-                                                                    </Badge>
-                                                                ) : (
-                                                                    <Badge variant="secondary" className="text-xs">
-                                                                        Consort #{dem.ordre}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-xs text-muted-foreground font-mono">
-                                                                CIN: {dem.cin}
-                                                            </p>
-                                                        </div>
-                                                        <Badge variant="default" className="text-xs">
-                                                            Actif
-                                                        </Badge>
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* ✅ LISTE DES DEMANDEURS ARCHIVÉS */}
-                                {checkData.demandeurs_archives.length > 0 && (
-                                    <div className="space-y-2">
-                                        <h4 className="font-medium text-sm flex items-center gap-2">
-                                            <Archive className="h-4 w-4" />
-                                            Demandeurs ayant acquis ({checkData.demandeurs_archives.length})
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {checkData.demandeurs_archives.map((dem) => (
-                                                <Card 
-                                                    key={dem.id}
-                                                    className="p-3 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="font-medium text-sm">
-                                                                    {dem.nom_complet}
-                                                                </p>
-                                                                {dem.ordre === 1 && (
-                                                                    <Badge variant="outline" className="text-xs">
-                                                                        Principal
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-xs text-muted-foreground font-mono">
-                                                                CIN: {dem.cin}
-                                                            </p>
-                                                        </div>
-                                                        <Badge 
-                                                            variant="outline" 
-                                                            className="text-xs bg-green-100 text-green-700 border-green-300"
-                                                        >
-                                                            <Archive className="mr-1 h-3 w-3" />
-                                                            Acquis
-                                                        </Badge>
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* ✅ ACTIONS SUGGÉRÉES */}
-                                <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                                    <div className="flex items-start gap-2">
-                                        <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                                        <div className="text-sm text-blue-700 dark:text-blue-300">
-                                            <p className="font-medium mb-1">💡 Actions possibles :</p>
-                                            <ol className="list-decimal list-inside space-y-1">
-                                                {checkData.demandeurs_actifs.length > 0 && (
-                                                    <li>Dissociez d'abord tous les demandeurs actifs</li>
-                                                )}
-                                                {checkData.demandeurs_archives.length > 0 && (
-                                                    <li>Les acquisitions archivées doivent être conservées pour l'historique</li>
-                                                )}
-                                                {checkData.demandeurs_actifs.length === 0 && checkData.demandeurs_archives.length > 0 && (
-                                                    <li>Utilisez "Archiver (acquise)" si la propriété est définitivement acquise</li>
-                                                )}
-                                            </ol>
-                                        </div>
-                                    </div>
-                                </Card>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Upload...
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Uploader
                             </>
                         )}
-                    </div>
-                ) : null}
-
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>
-                        Annuler
-                    </AlertDialogCancel>
-                    {checkData?.can_delete && (
-                        <AlertDialogAction
-                            onClick={handleConfirm}
-                            disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            {isDeleting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Suppression...
-                                </>
-                            ) : (
-                                <>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Supprimer la propriété
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    )}
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

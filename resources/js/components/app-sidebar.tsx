@@ -142,9 +142,9 @@ export function AppSidebar() {
             <SidebarContent>
                 {/* Navigation principale */}
                 <div className="px-3 py-2">
-                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    {/* <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         Menu Principal
-                    </div>
+                    </div> */}
                 </div>
                 <NavMain items={mainNavItems} />
                 
@@ -158,12 +158,12 @@ export function AppSidebar() {
                 {/* Section Configuration (si items disponibles) */}
                 {configNavItems.length > 0 && (
                     <div>
-                        <div className="px-3 py-2">
+                        {/* <div className="px-3 py-2">
                             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 <Settings className="h-3.5 w-3.5" />
                                 Configuration
                             </div>
-                        </div>
+                        </div> */}
                         <NavMain items={configNavItems} />
                     </div>
                 )}

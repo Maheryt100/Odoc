@@ -1,4 +1,4 @@
-// js/pages/Dashboard/types.ts
+// Dashboard/types.ts - VERSION CORRIGÉE
 
 export interface KPI {
     dossiers_ouverts: number;
@@ -24,7 +24,6 @@ export interface ProprietesStatus {
     acquises: number;
 }
 
-// ✅ AMÉLIORATION : Type pour l'évolution complète
 export interface EvolutionCompleteItem {
     month: string;
     dossiers: number;
@@ -76,7 +75,7 @@ export interface Charts {
     proprietes_status: ProprietesStatus;
     top_communes: TopCommune[];
     evolution_mensuelle?: EvolutionItem[];
-    evolution_complete?: EvolutionCompleteItem[]; // ✅ AJOUT
+    evolution_complete?: EvolutionCompleteItem[];
     revenus_par_vocation?: RevenuVocation[];
     performance_trimestrielle?: PerformanceQuarterly[];
 }
@@ -103,7 +102,7 @@ export interface SuperficieDetails {
     disponible: number;
 }
 
-// ✅ AMÉLIORATION : Ajout des stats sans propriété par genre
+// ✅ CORRECTION : Toutes les propriétés sont obligatoires
 export interface DemandeurDetails {
     total: number;
     actifs: number;
@@ -115,6 +114,4 @@ export interface DemandeurDetails {
     femmes_actifs: number;
     hommes_acquis: number;
     femmes_acquis: number;
-    hommes_sans_propriete?: number; // ✅ Optionnel pour compatibilité
-    femmes_sans_propriete?: number; // ✅ Optionnel pour compatibilité
 }

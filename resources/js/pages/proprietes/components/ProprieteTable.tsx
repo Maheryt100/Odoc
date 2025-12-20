@@ -1,4 +1,4 @@
-// pages/proprietes/components/ProprieteTable.tsx - ✅ VERSION AVEC NOM PROPRIÉTÉ
+// pages/proprietes/components/ProprieteTable.tsx - ✅ PAGINATION CORRIGÉE
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,9 @@ import { AlertCircle, Eye, Pencil, Trash, Ellipsis, Link2, Archive, ArchiveResto
 import type { ProprieteWithDetails, ProprietesIndexProps } from '../types';
 import type { Propriete } from '@/types';
 import { getRowClassName, isPropertyArchived, hasActiveDemandeurs } from '../helpers';
-import EditProprieteDialog from '../components/EditProprieteDialog'; 
+import EditProprieteDialog from '../components/EditProprieteDialog';
+import { useIsMobile } from '@/hooks/useResponsive';
+import { ProprieteMobileCard } from './ProprieteMobileCard';
 
 interface ProprieteTableProps extends Omit<ProprietesIndexProps, 'proprietes'> {
     proprietes: ProprieteWithDetails[];
@@ -34,6 +36,7 @@ export default function ProprieteTable({
     
     const [editingPropriete, setEditingPropriete] = useState<ProprieteWithDetails | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const isMobile = useIsMobile();
 
     // Pagination
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -45,6 +48,57 @@ export default function ProprieteTable({
         setEditingPropriete(propriete);
         setIsEditDialogOpen(true);
     };
+
+    // ✅ CORRECTION: Fonction pagination utilisée
+    function renderPagination() {
+        if (totalPages <= 1) return null;
+        
+        return (
+            <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-8"
+                >
+                    Précédent
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let page;
+                    if (totalPages <= 5) {
+                        page = i + 1;
+                    } else if (currentPage <= 3) {
+                        page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                        page = totalPages - 4 + i;
+                    } else {
+                        page = currentPage - 2 + i;
+                    }
+                    return (
+                        <Button
+                            key={page}
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => onPageChange(page)}
+                            className="h-8 min-w-8"
+                        >
+                            {page}
+                        </Button>
+                    );
+                })}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-8"
+                >
+                    Suivant
+                </Button>
+            </div>
+        );
+    }
 
     if (proprietes.length === 0) {
         return (
@@ -58,6 +112,32 @@ export default function ProprieteTable({
         );
     }
 
+    // 📱 VERSION MOBILE
+    if (isMobile) {
+        return (
+            <>
+                <div className="space-y-3">
+                    {paginatedProprietes.map((propriete) => (
+                        <ProprieteMobileCard
+                            key={propriete.id}
+                            propriete={propriete}
+                            isIncomplete={isPropertyIncomplete(propriete)}
+                            dossierClosed={dossier.is_closed}
+                            onView={() => onSelectPropriete(propriete)}
+                            onEdit={() => handleEditClick(propriete)}
+                            onLink={() => onLinkDemandeur?.(propriete)}
+                            onArchive={() => onArchivePropriete(propriete.id)}
+                            onUnarchive={() => onUnarchivePropriete(propriete.id)}
+                            onDelete={() => onDeletePropriete(propriete.id)}
+                        />
+                    ))}
+                </div>
+                {renderPagination()}
+            </>
+        );
+    }
+
+    // 💻 VERSION DESKTOP
     return (
         <>
             <div className="overflow-x-auto">
@@ -70,7 +150,6 @@ export default function ProprieteTable({
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Titre
                             </th>
-                            {/* ✅ CHANGEMENT : Dep/Vol → Nom Propriété/Propriétaire */}
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 <div className="flex items-center gap-1.5">
                                     <User className="h-3.5 w-3.5" />
@@ -117,16 +196,12 @@ export default function ProprieteTable({
                                     <td className="px-4 py-3 text-sm text-muted-foreground">
                                         {propriete.titre ? `TNº${propriete.titre}` : '-'}
                                     </td>
-                                    {/* ✅ CHANGEMENT : Affichage du propriétaire */}
                                     <td className="px-4 py-3">
                                         <div className="flex items-start gap-2 max-w-[250px]">
                                             {propriete.proprietaire ? (
-                                                <>
-                                                    {/* <User className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" /> */}
-                                                    <span className="text-sm text-muted-foreground line-clamp-2" title={propriete.proprietaire}>
-                                                        {propriete.proprietaire}
-                                                    </span>
-                                                </>
+                                                <span className="text-sm text-muted-foreground line-clamp-2" title={propriete.proprietaire}>
+                                                    {propriete.proprietaire}
+                                                </span>
                                             ) : (
                                                 <span className="text-sm text-muted-foreground/50">-</span>
                                             )}
@@ -139,22 +214,15 @@ export default function ProprieteTable({
                                         {propriete.nature || '-'}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            {isArchived ? (
-                                                <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-400">
-                                                    <Archive className="mr-1 h-3 w-3" />
-                                                    Acquise
-                                                </Badge>
-                                            ) : hasDemandeurs ? (
-                                                <Badge variant="default" className="text-xs">
-                                                    Avec demandeur
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="secondary" className="text-xs">
-                                                    Sans demandeur
-                                                </Badge>
-                                            )}
-                                        </div>
+                                        {isArchived ? (
+                                            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+                                                <Archive className="mr-1 h-3 w-3" />Acquise
+                                            </Badge>
+                                        ) : hasDemandeurs ? (
+                                            <Badge variant="default" className="text-xs">Avec demandeur</Badge>
+                                        ) : (
+                                            <Badge variant="secondary" className="text-xs">Sans demandeur</Badge>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu>
@@ -165,8 +233,7 @@ export default function ProprieteTable({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => onSelectPropriete(propriete)}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Voir détails
+                                                    <Eye className="mr-2 h-4 w-4" />Voir détails
                                                 </DropdownMenuItem>
                                                 {!dossier.is_closed && (
                                                     <>
@@ -174,13 +241,11 @@ export default function ProprieteTable({
                                                             onClick={() => handleEditClick(propriete)}
                                                             disabled={!canModify}
                                                         >
-                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                            Modifier
+                                                            <Pencil className="mr-2 h-4 w-4" />Modifier
                                                         </DropdownMenuItem>
                                                         {!isArchived && (
                                                             <DropdownMenuItem onClick={() => onLinkDemandeur?.(propriete)}>
-                                                                <Link2 className="mr-2 h-4 w-4" />
-                                                                Lier un demandeur
+                                                                <Link2 className="mr-2 h-4 w-4" />Lier un demandeur
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuSeparator />
@@ -189,24 +254,21 @@ export default function ProprieteTable({
                                                                 className="text-blue-600" 
                                                                 onClick={() => onUnarchivePropriete(propriete.id)}
                                                             >
-                                                                <ArchiveRestore className="mr-2 h-4 w-4" />
-                                                                Désarchiver
+                                                                <ArchiveRestore className="mr-2 h-4 w-4" />Désarchiver
                                                             </DropdownMenuItem>
                                                         ) : (
                                                             <DropdownMenuItem 
                                                                 className="text-green-600" 
                                                                 onClick={() => onArchivePropriete(propriete.id)}
                                                             >
-                                                                <Archive className="mr-2 h-4 w-4" />
-                                                                Archiver (acquise)
+                                                                <Archive className="mr-2 h-4 w-4" />Archiver (acquise)
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuItem 
                                                             className="text-red-500" 
                                                             onClick={() => onDeletePropriete(propriete.id)}
                                                         >
-                                                            <Trash className="mr-2 h-4 w-4" />
-                                                            Supprimer
+                                                            <Trash className="mr-2 h-4 w-4" />Supprimer
                                                         </DropdownMenuItem>
                                                     </>
                                                 )}
@@ -220,42 +282,8 @@ export default function ProprieteTable({
                 </table>
             </div>
 
-            {/* Pagination compacte */}
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-4">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onPageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="h-8"
-                    >
-                        Précédent
-                    </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                            key={page}
-                            variant={currentPage === page ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => onPageChange(page)}
-                            className="h-8 min-w-8"
-                        >
-                            {page}
-                        </Button>
-                    ))}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onPageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="h-8"
-                    >
-                        Suivant
-                    </Button>
-                </div>
-            )}
+            {renderPagination()}
 
-            {/* Dialog d'édition */}
             <EditProprieteDialog
                 propriete={editingPropriete}
                 dossier={dossier}

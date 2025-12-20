@@ -371,17 +371,17 @@ export default function CsfTab({ proprietes, demandeurs, dossier }: CsfTabProps)
                     </>
                 )}
 
-                <Separator />
+                {/* <Separator /> */}
 
-                {/* Explication */}
-                <Alert>
+                
+                {/* <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
                         Le Certificat de Situation Financière certifie que le demandeur n'est redevable
                         d'aucune somme et a versé le cautionnement réglementaire. Un CSF distinct est 
                         requis pour chaque demandeur.
                     </AlertDescription>
-                </Alert>
+                </Alert> */}
 
                 {/* Indicateur de génération */}
                 {isGenerating && (

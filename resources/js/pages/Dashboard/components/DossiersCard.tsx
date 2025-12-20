@@ -1,16 +1,12 @@
-// Dashboard/components/DossiersCard.tsx
+// Dashboard/components/DossiersCard.tsx - VERSION CORRIGÉE
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
     Folder, 
     FolderOpen, 
-    FolderCheck, 
-    FolderX,
-    AlertCircle, 
-    TrendingUp,
-    FileQuestion
+    FolderCheck,
+    AlertCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { CompletionDetails } from '../types';
 
 interface Props {
@@ -37,55 +33,37 @@ export function DossiersCard({
     return (
         <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-2xl font-bold">Dossiers</CardTitle>
+                <CardTitle className="text-lg sm:text-2xl font-bold">Dossiers</CardTitle>
                 <Folder className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
                 {/* Total et statut */}
-                <div className="flex items-baseline gap-2 mb-3">
-                    <div className="text-2xl font-bold">{total}</div>
-                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                <div className="flex items-baseline gap-2 mb-3 flex-wrap">
+                    <div className="text-xl sm:text-2xl font-bold">{total}</div>
+                    <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700">
                         Total
                     </Badge>
                 </div>
 
                 {/* Statistiques principales */}
-                <div className="space-y-2 mb-3 pb-3 border-b">
+                <div className="space-y-2 mb-3 pb-3 border-b border-border">
                     {/* Ouverts */}
-                    <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                    <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
                         <div className="flex items-center gap-2">
-                            <FolderOpen className="h-3.5 w-3.5 text-green-600" />
-                            <span className="text-xs font-medium text-green-700">Ouverts</span>
+                            <FolderOpen className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Ouverts</span>
                         </div>
-                        <span className="text-sm font-bold text-green-700">{ouverts}</span>
+                        <span className="text-sm font-bold text-green-700 dark:text-green-300">{ouverts}</span>
                     </div>
 
                     {/* Fermés */}
-                    <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                    <div className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                         <div className="flex items-center gap-2">
-                            <FolderCheck className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="text-xs font-medium text-blue-700">Fermés</span>
+                            <FolderCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Fermés</span>
                         </div>
-                        <span className="text-sm font-bold text-blue-700">{fermes}</span>
+                        <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{fermes}</span>
                     </div>
-
-                    {/* Incomplets */}
-                    {/* {completion.dossiers_incomplets > 0 && (
-                        <div className="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
-                            <div className="flex items-center gap-2">
-                                <FileQuestion className="h-3.5 w-3.5 text-orange-600" />
-                                <span className="text-xs font-medium text-orange-700">Incomplets</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-orange-700">
-                                    {completion.dossiers_incomplets}
-                                </span>
-                                <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
-                                    {tauxIncomplet}%
-                                </Badge>
-                            </div>
-                        </div>
-                    )} */}
                 </div>
 
                 {/* Informations supplémentaires */}
@@ -102,21 +80,21 @@ export function DossiersCard({
 
                     {/* Dossiers en retard */}
                     {enRetard > 0 && (
-                        <div className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                        <div className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
                             <div className="flex items-center gap-2">
-                                <AlertCircle className="h-3.5 w-3.5 text-red-600" />
-                                <span className="text-xs font-medium text-red-700">
+                                <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                <span className="text-xs font-medium text-red-700 dark:text-red-400">
                                     En retard (&gt;90j)
                                 </span>
                             </div>
-                            <span className="text-sm font-bold text-red-700">{enRetard}</span>
+                            <span className="text-sm font-bold text-red-700 dark:text-red-300">{enRetard}</span>
                         </div>
                     )}
 
                     {/* Message d'action si incomplets */}
                     {completion.dossiers_incomplets > 0 && (
-                        <div className="pt-2 border-t">
-                            <p className="text-xs text-orange-700 font-medium">
+                        <div className="pt-2 border-t border-border">
+                            <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">
                                 Action requise !
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -125,8 +103,6 @@ export function DossiersCard({
                         </div>
                     )}
                 </div>
-
-                
             </CardContent>
         </Card>
     );

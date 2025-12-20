@@ -469,14 +469,14 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                     </>
                 )}
 
-                <Separator />
+                {/* <Separator />
 
                 {validationMessage && !hasRecu && !hasAdv && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{validationMessage}</AlertDescription>
                     </Alert>
-                )}
+                )} */}
 
                 {isGenerating && (
                     <Alert className="bg-blue-500/10 border-blue-500/50">
