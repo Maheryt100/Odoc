@@ -578,7 +578,17 @@ class ActivityLog extends Model
      */
     public function getDetailsAttribute(): string
     {
-        $meta = $this->metadata ?? [];
+        $meta = $this->metadata;
+    
+        // Si metadata est une string, la décoder
+        if (is_string($meta)) {
+            $meta = json_decode($meta, true) ?? [];
+        }
+        
+        // Si metadata est null, utiliser un array vide
+        if (!is_array($meta)) {
+            $meta = [];
+        }
         
         return match($this->entity_type) {
             self::ENTITY_DOCUMENT => $this->getDocumentDetails($meta),

@@ -125,21 +125,15 @@ export default function SmartDeleteDemandeurDialog({
         setError(null);
         
         try {
-            // Vérifier suppression complète
-            if (typeof window.route !== 'function') {
-                throw new Error('Helper route() non disponible');
-            }
+            // ✅ CORRECTION 1 : Vérification suppression complète
+            const deleteUrl = window.route('api.demandeur.check-delete', { id: demandeur.id });
             
-            // Vérifier suppression complète
-            const deleteResponse = await fetch(
-                window.route('api.demandeur.check-delete', { id: demandeur.id }),
-                {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                    }
+            const deleteResponse = await fetch(deleteUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 }
-            );
+            });
             
             if (!deleteResponse.ok) {
                 throw new Error(`Erreur HTTP ${deleteResponse.status}`);
@@ -147,7 +141,7 @@ export default function SmartDeleteDemandeurDialog({
             
             const deleteData = await deleteResponse.json();
             
-            // ✅ Validation et valeurs par défaut
+            // ✅ Validation des données reçues
             const safeDeleteData: DeleteCheckResponse = {
                 can_delete_completely: deleteData.can_delete_completely || false,
                 can_remove_from_dossier: deleteData.can_remove_from_dossier || false,
@@ -170,13 +164,17 @@ export default function SmartDeleteDemandeurDialog({
             
             setCheckData(safeDeleteData);
 
-            // Vérifier retrait du dossier actuel
-            const removeResponse = await fetch(
-                route('api.demandeur.check-remove', { 
-                    id: demandeur.id, 
-                    dossierId 
-                })
-            );
+            // ✅ CORRECTION 2 : Vérification retrait du dossier actuel
+            const removeUrl = window.route('api.demandeur.check-remove', { 
+                id: demandeur.id 
+            }) + `?dossierId=${dossierId}`;
+            
+            const removeResponse = await fetch(removeUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
             
             if (!removeResponse.ok) {
                 throw new Error('Erreur lors de la vérification de retrait');
@@ -184,7 +182,6 @@ export default function SmartDeleteDemandeurDialog({
             
             const removeData = await removeResponse.json();
             
-            // ✅ Validation et valeurs par défaut
             const safeRemoveData: RemoveCheckResponse = {
                 can_remove: removeData.can_remove || false,
                 lots_actifs: Array.isArray(removeData.lots_actifs) ? removeData.lots_actifs : [],

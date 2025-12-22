@@ -149,7 +149,8 @@ export default function ResumeDossier({ dossier, documents }: ResumeDossierProps
             <Toaster position="top-right" richColors />
 
             <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1600px] space-y-4 sm:space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div className="flex items-start justify-between gap-2">
+                    {/* Titre + Info */}
                     <div className="flex-1 min-w-0">
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                             Liste des demandes
@@ -161,10 +162,11 @@ export default function ResumeDossier({ dossier, documents }: ResumeDossierProps
                         </div>
                     </div>
 
+                    {/* Menu Actions - Toujours à droite */}
                     {isMobile ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="shrink-0">
+                                <Button variant="outline" size="sm" className="shrink-0 h-8 w-8 p-0">
                                     <Menu className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>

@@ -1,81 +1,67 @@
 <?php
 
-use App\Http\Controllers\Api\ApiController;
-use App\Http\Controllers\AssociationController;
-use App\Http\Controllers\DemandeurController;
-use App\Http\Controllers\GlobalSearchController;
-use Illuminate\Support\Facades\Route;
+// use App\Http\Controllers\Api\ApiController;
+// use App\Http\Controllers\AssociationController;
+// use App\Http\Controllers\DemandeurController;
+// use App\Http\Controllers\GlobalSearchController;
+// use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-*/
-
-// ✅ CORRECTION : Supprimer le prefix('api') car déjà géré par Laravel
-Route::middleware(['auth', 'district.scope'])->name('api.')->group(function () {
+// Route::middleware(['auth', 'district.scope'])->name('api.')->group(function () {
     
-    // ========================================================================
-    // RECHERCHE DEMANDEURS
-    // ========================================================================
+//     // ========================================================================
+//     // VALIDATION DE SUPPRESSION - PRIORITAIRE
+//     // ========================================================================
     
-    // ✅ Ceci créera l'URL: /api/demandeur/search-by-cin/{cin}
-    Route::get('/demandeur/search-by-cin/{cin}', [DemandeurController::class, 'searchByCin'])
-        ->name('demandeur.search-by-cin');
+//     // ✅ Demandeur - Retrait d'un dossier
+//     // URL: /api/demandeur/{id}/check-remove?dossierId={dossierId}
+//     Route::get('/demandeur/{id}/check-remove', [ApiController::class, 'checkDemandeurRemove'])
+//         ->name('demandeur.check-remove');
     
-    // ========================================================================
-    // ASSOCIATIONS
-    // ========================================================================
+//     // ✅ Demandeur - Suppression définitive
+//     // URL: /api/demandeur/{id}/check-delete
+//     Route::get('/demandeur/{id}/check-delete', [ApiController::class, 'checkDemandeurDelete'])
+//         ->name('demandeur.check-delete');
     
-    Route::get('/demandeur/{id_demandeur}/proprietes', [AssociationController::class, 'getDemandeurProprietes'])
-        ->name('demandeur.proprietes');
+//     // ✅ Propriété - Vérification suppression
+//     // URL: /api/propriete/{id}/check-delete
+//     Route::get('/propriete/{id}/check-delete', [ApiController::class, 'checkProprieteDelete'])
+//         ->name('propriete.check-delete');
     
-    Route::get('/propriete/{id_propriete}/demandeurs', [AssociationController::class, 'getProprieteDemandeurs'])
-        ->name('propriete.demandeurs');
+//     // ✅ Dossier - Vérification suppression
+//     Route::get('/dossier/{id}/check-delete', [ApiController::class, 'checkDossierDelete'])
+//         ->name('dossier.check-delete');
     
-    Route::get('/demandeur/{id}/associations', [ApiController::class, 'getDemandeurAssociations'])
-        ->name('demandeur.associations');
+//     // ========================================================================
+//     // RECHERCHE DEMANDEURS
+//     // ========================================================================
     
-    Route::get('/propriete/{id}/demandeurs-full', [ApiController::class, 'getProprieteDemandeursFull'])
-        ->name('propriete.demandeurs-full');
+//     Route::get('/demandeur/search-by-cin/{cin}', [DemandeurController::class, 'searchByCin'])
+//         ->name('demandeur.search-by-cin');
     
-    // ========================================================================
-    // RECHERCHE GLOBALE
-    // ========================================================================
+//     // ========================================================================
+//     // ASSOCIATIONS
+//     // ========================================================================
     
-    Route::get('/global-search', [GlobalSearchController::class, 'search'])
-        ->name('global-search');
+//     Route::get('/demandeur/{id_demandeur}/proprietes', [AssociationController::class, 'getDemandeurProprietes'])
+//         ->name('demandeur.proprietes');
     
-    Route::get('/search-suggestions', [GlobalSearchController::class, 'suggestions'])
-        ->name('search-suggestions');
+//     Route::get('/propriete/{id_propriete}/demandeurs', [AssociationController::class, 'getProprieteDemandeurs'])
+//         ->name('propriete.demandeurs');
     
-    // ========================================================================
-    // VALIDATION DE SUPPRESSION - DEMANDEURS
-    // ========================================================================
+//     Route::get('/demandeur/{id}/associations', [ApiController::class, 'getDemandeurAssociations'])
+//         ->name('demandeur.associations');
     
-    Route::get('/demandeur/{id}/check-remove/{dossierId}', [ApiController::class, 'checkDemandeurRemove'])
-        ->name('demandeur.check-remove');
+//     Route::get('/propriete/{id}/demandeurs-full', [ApiController::class, 'getProprieteDemandeursFull'])
+//         ->name('propriete.demandeurs-full');
     
-    Route::get('/demandeur/{id}/check-delete', [ApiController::class, 'checkDemandeurDelete'])
-        ->name('demandeur.check-delete');
-        
-    Route::get('/dossier/{id}/check-delete', [ApiController::class, 'checkDossierDelete'])
-    ->name('dossier.check-delete');
+//     Route::get('/propriete/{id}/availability', [ApiController::class, 'getProprieteAvailability'])
+//         ->name('propriete.availability');
     
-    // ========================================================================
-    // VALIDATION DE SUPPRESSION - PROPRIÉTÉS
-    // ========================================================================
     
-    Route::get('/propriete/{id}/check-delete', [ApiController::class, 'checkProprieteDelete'])
-        ->name('propriete.check-delete');
+//     // ========================================================================
+//     // STATISTIQUES
+//     // ========================================================================
     
-    Route::get('/propriete/{id}/availability', [ApiController::class, 'getProprieteAvailability'])
-        ->name('propriete.availability');
-    
-    // ========================================================================
-    // STATISTIQUES
-    // ========================================================================
-    
-    Route::get('/dossier/{id_dossier}/documents/stats', [ApiController::class, 'getDossierDocumentsStats'])
-        ->name('dossier.documents.stats');
-});
+//     Route::get('/dossier/{id_dossier}/documents/stats', [ApiController::class, 'getDossierDocumentsStats'])
+//         ->name('dossier.documents.stats');
+// });

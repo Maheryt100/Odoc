@@ -1,4 +1,4 @@
-// pages/demandes/index.tsx - ✅ CORRECTIONS POUR LES ERREURS TYPESCRIPT
+// pages/demandes/index.tsx - ✅ CORRECTION DES DONNÉES PASSÉES AUX DIALOGS
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import type {
     DemandeWithDetails,
     FiltreStatutDemandeType,
     TriDemandeType,
-    DocumentDemande // ✅ Import ajouté
+    DocumentDemande
 } from './types';
 import {
     filterDemandesByStatus,
@@ -98,13 +98,12 @@ export default function DemandesIndex({
                !prop?.nature || !prop?.vocation || !prop?.situation;
     };
 
-    // ✅ FIX 1: Transformation DocumentDemande → DemandeWithDetails
+    // FIX 1: Transformation DocumentDemande → DemandeWithDetails
     const processedDemandes = useMemo((): DemandeWithDetails[] => {
         if (!documents.data || !Array.isArray(documents.data)) {
             return [];
         }
         
-        // Convertir DocumentDemande[] en DemandeWithDetails[]
         return documents.data.map((doc): DemandeWithDetails => {
             const hasValidDemandeurs = doc.demandeurs && 
                                       Array.isArray(doc.demandeurs) && 
@@ -127,7 +126,7 @@ export default function DemandesIndex({
         });
     }, [documents.data]);
 
-    // ✅ FIX 2: FILTRAGE ET TRI sur DemandeWithDetails
+    // FIX 2: FILTRAGE ET TRI sur DemandeWithDetails
     const demandesFiltrees = useMemo(() => {
         let filtered = filterDemandesByStatus(processedDemandes, filtreStatut);
         
@@ -140,72 +139,60 @@ export default function DemandesIndex({
         return filtered;
     }, [processedDemandes, filtreStatut, recherche, tri, ordre]);
 
-    // ✅ FIX 3: Handlers convertis pour accepter DemandeWithDetails
+    // FIX 3: Handlers convertis pour accepter DemandeWithDetails
     const handleArchiveClick = (demandeWithDetails: DemandeWithDetails) => {
-        // Convertir DemandeWithDetails → format attendu par le parent
-        const docForParent: DocumentDemande = {
-            id: demandeWithDetails.id,
-            id_propriete: demandeWithDetails.id_propriete,
-            date_demande: demandeWithDetails.date_demande,
-            propriete: demandeWithDetails.propriete,
-            demandeurs: demandeWithDetails.demandeurs,
-            total_prix: demandeWithDetails.total_prix,
-            status: demandeWithDetails.status,
-            status_consort: demandeWithDetails.status_consort,
-            nombre_demandeurs: demandeWithDetails.nombre_demandeurs,
-            created_at: demandeWithDetails.created_at,
-            updated_at: demandeWithDetails.updated_at,
-        };
         onArchive(demandeWithDetails);
     };
 
     const handleUnarchiveClick = (demandeWithDetails: DemandeWithDetails) => {
-        const docForParent: DocumentDemande = {
-            id: demandeWithDetails.id,
-            id_propriete: demandeWithDetails.id_propriete,
-            date_demande: demandeWithDetails.date_demande,
-            propriete: demandeWithDetails.propriete,
-            demandeurs: demandeWithDetails.demandeurs,
-            total_prix: demandeWithDetails.total_prix,
-            status: demandeWithDetails.status,
-            status_consort: demandeWithDetails.status_consort,
-            nombre_demandeurs: demandeWithDetails.nombre_demandeurs,
-            created_at: demandeWithDetails.created_at,
-            updated_at: demandeWithDetails.updated_at,
-        };
         onUnarchive(demandeWithDetails);
     };
 
-    // HANDLERS - DIALOGUES (inchangés)
-    const handleSelectDemande = (doc: any) => {
+    // ✅ FIX PRINCIPAL : Passer les données complètes au dialog
+    const handleSelectDemande = (doc: DemandeWithDetails) => {
         if (showDemandeurDetail || showProprieteDetail) {
             setShowDemandeurDetail(false);
             setShowProprieteDetail(false);
         }
         
-        const demandeData = {
-            ...doc.demandeurs[0],
-            propriete: doc.propriete,
+        // ✅ CORRECTION : Passer l'objet complet, pas seulement le premier demandeur
+        setSelectedDemande({
+            id: doc.id,
+            id_demandeur: doc.demandeurs[0]?.id_demandeur,
+            id_propriete: doc.id_propriete,
+            date_demande: doc.date_demande,
+            total_prix: doc.total_prix,
+            status: doc.status,
+            status_consort: doc.status_consort,
+            // ✅ Passer les données complètes de tous les demandeurs
+            demandeurs: doc.demandeurs,
             nombre_demandeurs: doc.nombre_demandeurs,
-            demandeurs: doc.demandeurs
-        };
-        setSelectedDemande(demandeData);
+            // ✅ Passer les données complètes de la propriété
+            propriete: doc.propriete,
+            created_at: doc.created_at,
+            updated_at: doc.updated_at,
+        });
+        
         setShowDemandeDetail(true);
     };
 
+    // ✅ FIX : Extraire le demandeur complet depuis la demande
     const handleSelectDemandeurFromDemande = (demandeur: any) => {
         setShowDemandeDetail(false);
         setTimeout(() => {
             setSelectedDemande(null);
+            // ✅ CORRECTION : Passer l'objet demandeur complet
             setSelectedDemandeur(demandeur);
             setShowDemandeurDetail(true);
         }, 100);
     };
 
+    // ✅ FIX : Passer la propriété complète
     const handleSelectProprieteFromDemande = (propriete: any) => {
         setShowDemandeDetail(false);
         setTimeout(() => {
             setSelectedDemande(null);
+            // ✅ CORRECTION : Passer l'objet propriété complet
             setSelectedPropriete(propriete);
             setShowProprieteDetail(true);
         }, 100);
@@ -348,7 +335,7 @@ export default function DemandesIndex({
                 demandeur={selectedDemandeur}
                 open={showDemandeurDetail}
                 onOpenChange={handleCloseDemandeurDialog}
-                proprietes={(dossier.proprietes || []).map(p => ({ ...p, titre: p.titre ?? undefined, contenance: p.contenance ?? undefined, vocation: p.vocation ?? undefined, situation: p.situation ?? undefined }))}
+                proprietes={dossier.proprietes || []}  // ✅ Utiliser dossier.proprietes
                 onSelectPropriete={handleSelectProprieteFromDemandeur}
                 dossierId={dossier.id}
                 dossierClosed={dossier.is_closed}

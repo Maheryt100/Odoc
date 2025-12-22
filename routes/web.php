@@ -27,47 +27,56 @@ require __DIR__.'/auth.php';
 // ROUTES AUTHENTIFIÉES
 // ============================================================================
 
-Route::middleware(['auth', 'district.scope'])->group(function () {
+Route::middleware('auth')->group(function () {
     
-    // Dashboard & Statistiques
-    require __DIR__.'/dashboard.php';
+    // ========================================================================
+    // 🔍 RECHERCHES GLOBALES (SANS FILTRE DISTRICT)
+    // ========================================================================
+    // IMPORTANT : Cette section DOIT être AVANT 'district.scope'
+    require __DIR__.'/search.php';
     
-    // Paramètres utilisateur (Profile, Password, Appearance)
-    require __DIR__.'/settings.php';
-    
-    // Gestion des dossiers
-    require __DIR__.'/dossiers.php';
-    
-    // Gestion des propriétés
-    require __DIR__.'/proprietes.php';
-    
-    // Gestion des demandeurs
-    require __DIR__.'/demandeurs.php';
-    
-    // Gestion des demandes (documents)
-    require __DIR__.'/demandes.php';
-    
-    // Associations demandeur-propriété
-    require __DIR__.'/associations.php';
-    
-    // Localisations et prix
-    require __DIR__.'/locations.php';
-    
-    // Gestion des utilisateurs
-    require __DIR__.'/users.php';
-    
-    // Génération de documents
-    require __DIR__.'/documents.php';
-    
-    // Pièces jointes
-    require __DIR__.'/pieces-jointes.php';
-    
-    // Logs d'activité
-    require __DIR__.'/activity-logs.php';
-    
-    // API endpoints
-    require __DIR__.'/api.php';
-    
-    // Routes de compatibilité (anciennes routes - à deprecier progressivement)
-    require __DIR__.'/legacy.php';
+    // ========================================================================
+    // ROUTES AVEC FILTRE DISTRICT
+    // ========================================================================
+    Route::middleware('district.scope')->group(function () {
+        
+        // Dashboard & Statistiques
+        require __DIR__.'/dashboard.php';
+        
+        // Paramètres utilisateur (Profile, Password, Appearance)
+        require __DIR__.'/settings.php';
+        
+        // Gestion des dossiers
+        require __DIR__.'/dossiers.php';
+        
+        // Gestion des propriétés
+        require __DIR__.'/proprietes.php';
+        
+        // Gestion des demandeurs
+        require __DIR__.'/demandeurs.php';
+        
+        // Gestion des demandes (documents)
+        require __DIR__.'/demandes.php';
+        
+        // Associations demandeur-propriété
+        require __DIR__.'/associations.php';
+        
+        // Localisations et prix
+        require __DIR__.'/locations.php';
+        
+        // Gestion des utilisateurs
+        require __DIR__.'/users.php';
+        
+        // Génération de documents
+        require __DIR__.'/documents.php';
+        
+        // Pièces jointes
+        require __DIR__.'/pieces-jointes.php';
+        
+        // Logs d'activité
+        require __DIR__.'/activity-logs.php';
+        
+        // Routes de compatibilité (anciennes routes - à deprecier progressivement)
+        require __DIR__.'/legacy.php';
+    });
 });

@@ -1,19 +1,20 @@
-// documents/tabs/RequisitionTab.tsx
+// documents/tabs/RequisitionTab.tsx - ✅ VERSION MOBILE-OPTIMIZED
+
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { FileOutput, AlertCircle, Info, Loader2, FileCheck, MapPin, Ruler } from 'lucide-react';
+import { FileOutput, Loader2, FileCheck, MapPin, Ruler } from 'lucide-react';
 import { Dossier } from '@/types';
 import { ProprieteWithDemandeurs } from '../types';
 import DocumentStatusBadge from '../components/DocumentStatusBadge';
 import SecureDownloadButton from '../components/SecureDownloadButton';
+import ProprieteSelect from '../components/ProprieteSelect';
+import { useIsMobile } from '@/hooks/useResponsive';
 
 interface RequisitionTabProps {
     proprietes: ProprieteWithDemandeurs[];
@@ -23,6 +24,7 @@ interface RequisitionTabProps {
 export default function RequisitionTab({ proprietes, dossier }: RequisitionTabProps) {
     const [reqPropriete, setReqPropriete] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const isMobile = useIsMobile();
 
     const selectedProprieteData = proprietes.find(p => p.id === Number(reqPropriete));
     
@@ -36,7 +38,6 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
         return true;
     };
 
-    // Formater la contenance
     const formatContenance = (contenance: number | null): string => {
         if (!contenance) return "-";
 
@@ -97,130 +98,101 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
 
     return (
         <Card className="border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20">
-                <CardTitle className="flex items-center gap-2">
-                    <FileOutput className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <CardHeader className="bg-gradient-to-r from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20 p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <FileOutput className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
                     Réquisition
                 </CardTitle>
-                <CardDescription>
-                    Sélectionnez la propriété pour générer la réquisition (aucun demandeur requis)
-                </CardDescription>
+                {!isMobile && (
+                    <CardDescription className="text-xs sm:text-sm">
+                        Sélectionnez la propriété pour générer la réquisition (aucun demandeur requis)
+                    </CardDescription>
+                )}
             </CardHeader>
-            <CardContent className="space-y-6 p-6">
+            
+            <CardContent className="space-y-3 sm:space-y-6 p-3 sm:p-6">
                 
                 {/* Sélection Propriété */}
                 <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Propriété</Label>
-                    <Select 
-                        value={reqPropriete} 
-                        onValueChange={setReqPropriete}
+                    <Label className="text-xs sm:text-sm font-semibold">Propriété</Label>
+                    <ProprieteSelect
+                        value={reqPropriete}
+                        onChange={setReqPropriete}
+                        proprietes={proprietes}
                         disabled={isGenerating}
-                    >
-                        <SelectTrigger className="h-auto min-h-[60px]">
-                            <SelectValue placeholder="Sélectionner une propriété" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {proprietes.map((prop) => {
-                                const hasDoc = !!prop.document_requisition;
-                                
-                                return (
-                                    <SelectItem key={prop.id} value={String(prop.id)}>
-                                        <div className="flex items-center gap-6 py-2 whitespace-nowrap">
-
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="font-mono">
-                                                    Lot {prop.lot}
-                                                </Badge>
-
-                                                <Badge variant="outline">
-                                                    TN°{prop.titre}
-                                                </Badge>
-
-                                                {hasDoc && (
-                                                    <Badge variant="default" className="bg-green-500 text-xs">
-                                                        <FileCheck className="h-3 w-3 mr-1" />
-                                                        Généré
-                                                    </Badge>
-                                                )}
-
-                                                <Badge
-                                                    variant={prop.type_operation === "morcellement" ? "default" : "secondary"}
-                                                    className="text-xs"
-                                                >
-                                                    {prop.type_operation === "morcellement"
-                                                        ? "Morcellement"
-                                                        : "Immatriculation"}
-                                                </Badge>
-                                            </div>
-
-                                        </div>
-                                    </SelectItem>
-                                );
-                            })}
-                        </SelectContent>
-                    </Select>
+                        showDemandeurs={false}
+                    />
                 </div>
 
-                {/* Carte d'info propriété */}
+                {/* Carte propriété */}
                 {reqPropriete && selectedProprieteData && (
                     <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                        <CardContent className="p-4 space-y-4">
-                            <div className="flex items-start gap-3">
-                                <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1" />
-                                <div className="space-y-2 flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <Badge className="bg-blue-600 text-white">
+                        <CardContent className="p-2 sm:p-4 space-y-2 sm:space-y-4">
+                            <div className="flex items-start gap-2">
+                                <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                <div className="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <Badge className="bg-blue-600 text-white text-[10px] xs:text-xs">
                                             Lot {selectedProprieteData.lot}
                                         </Badge>
-                                        <Badge variant="outline">
+                                        <Badge variant="outline" className="text-[10px] xs:text-xs">
                                             TN°{selectedProprieteData.titre}
                                         </Badge>
-                                        <Badge variant={selectedProprieteData.type_operation === 'morcellement' ? 'default' : 'secondary'}>
-                                            {selectedProprieteData.type_operation === 'morcellement' ? 'Morcellement' : 'Immatriculation'}
+                                        <Badge 
+                                            variant={selectedProprieteData.type_operation === 'morcellement' ? 'default' : 'secondary'}
+                                            className="text-[10px] xs:text-xs"
+                                        >
+                                            {isMobile 
+                                                ? (selectedProprieteData.type_operation === 'morcellement' ? 'Morc.' : 'Immat.')
+                                                : (selectedProprieteData.type_operation === 'morcellement' ? 'Morcellement' : 'Immatriculation')
+                                            }
                                         </Badge>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
                                         <div>
-                                            <span className="text-muted-foreground flex items-center gap-1">
-                                                <Ruler className="h-3 w-3" />
-                                                Contenance:
+                                            <span className="text-muted-foreground text-[10px] xs:text-xs flex items-center gap-1">
+                                                <Ruler className="h-2.5 w-2.5 xs:h-3 xs:w-3" />
+                                                {isMobile ? 'Cont.' : 'Contenance'}:
                                             </span>
-                                            <div className="font-semibold">
+                                            <div className="font-semibold text-xs">
                                                 {formatContenance(selectedProprieteData.contenance)}
                                             </div>
                                         </div>
                                         <div>
-                                            <span className="text-muted-foreground">Nature:</span>
-                                            <div className="font-semibold capitalize">
+                                            <span className="text-muted-foreground text-[10px] xs:text-xs">Nature:</span>
+                                            <div className="font-semibold text-xs capitalize truncate">
                                                 {selectedProprieteData.nature}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="text-sm">
-                                        <span className="text-muted-foreground">Propriétaire:</span>
-                                        <div className="font-medium">{selectedProprieteData.proprietaire}</div>
-                                    </div>
+                                    {!isMobile && (
+                                        <>
+                                            <div className="text-xs">
+                                                <span className="text-muted-foreground text-[10px] xs:text-xs">Propriétaire:</span>
+                                                <div className="font-medium text-xs truncate">
+                                                    {selectedProprieteData.proprietaire}
+                                                </div>
+                                            </div>
 
-                                    <div className="text-sm">
-                                        <span className="text-muted-foreground">Situation:</span>
-                                        <div className="font-medium">{selectedProprieteData.situation}</div>
-                                    </div>
-
-                                    <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
-                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Info className="h-3 w-3" />
-                                            La réquisition sera générée automatiquement selon le type d'opération
-                                        </div>
-                                    </div>
+                                            <div className="text-xs">
+                                                <span className="text-muted-foreground text-[10px] xs:text-xs">Situation:</span>
+                                                <div className="font-medium text-xs truncate">
+                                                    {selectedProprieteData.situation}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Badge de statut */}
-                            <div className="pt-3 border-t">
+                            {/* Status */}
+                            <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">Statut Réquisition:</span>
+                                    <span className="text-[10px] xs:text-xs text-muted-foreground">
+                                        {isMobile ? 'Réq.:' : 'Réquisition:'}
+                                    </span>
                                     <DocumentStatusBadge document={selectedProprieteData.document_requisition} />
                                 </div>
                             </div>
@@ -230,71 +202,57 @@ export default function RequisitionTab({ proprietes, dossier }: RequisitionTabPr
 
                 {/* Statut réquisition */}
                 {reqPropriete && hasRequisition && documentRequisition && (
-                    <Alert className="bg-green-500/10 border-green-500/50">
-                        <FileCheck className="h-4 w-4 text-green-500" />
-                        <AlertDescription className="text-green-700 dark:text-green-300">
-                            <div className="space-y-1">
-                                <div className="font-medium">
-                                    Réquisition déjà générée
-                                </div>
-                                <div className="text-xs opacity-75">
+                    <Alert className="bg-green-500/10 border-green-500/50 p-2 sm:p-4">
+                        <FileCheck className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                        <AlertDescription className="text-green-700 dark:text-green-300 text-xs sm:text-sm">
+                            <div className="font-medium">
+                                Réquisition déjà générée
+                            </div>
+                            {!isMobile && (
+                                <div className="text-[10px] xs:text-xs opacity-75 mt-0.5">
                                     Généré le {documentRequisition.generated_at}
                                 </div>
-                                <div className="text-xs opacity-75">
-                                    Téléchargé {documentRequisition.download_count || 0} fois
-                                </div>
-                            </div>
+                            )}
                         </AlertDescription>
                     </Alert>
                 )}
 
-                {/* <Separator /> */}
-
-                {/* Explication */}
-                {/* <Alert>
-                    <FileOutput className="h-4 w-4" />
-                    <AlertDescription>
-                        La réquisition demande au Conservateur de la Propriété Foncière de procéder à
-                        l'immatriculation ou au morcellement d'un terrain. Ce document ne nécessite pas
-                        de sélectionner un demandeur spécifique.
-                    </AlertDescription>
-                </Alert> */}
-
-                {/* Indicateur de génération */}
+                {/* Génération en cours */}
                 {isGenerating && (
-                    <Alert className="bg-blue-500/10 border-blue-500/50">
-                        <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-                        <AlertDescription className="text-blue-700 dark:text-blue-300">
+                    <Alert className="bg-blue-500/10 border-blue-500/50 p-2 sm:p-4">
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 animate-spin" />
+                        <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs sm:text-sm">
                             {hasRequisition ? 'Téléchargement en cours...' : 'Génération en cours...'}
                         </AlertDescription>
                     </Alert>
                 )}
 
-                {/* ✅ BOUTON UNIFIÉ */}
+                {/* Bouton */}
                 {reqPropriete && (
                     hasRequisition && documentRequisition ? (
                         <SecureDownloadButton
                             document={documentRequisition}
                             downloadRoute={route('documents.requisition.download', documentRequisition.id)}
                             regenerateRoute={route('documents.requisition.regenerate', documentRequisition.id)}
-                            typeName="Réquisition"
+                            typeName={isMobile ? 'Réq.' : 'Réquisition'}
+                            size={isMobile ? 'default' : 'lg'}
                         />
                     ) : (
                         <Button
                             onClick={handleGenerate}
                             disabled={!canGenerate() || isGenerating}
-                            size="lg"
-                            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                            size={isMobile ? 'default' : 'lg'}
+                            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-xs sm:text-sm"
                         >
                             {isGenerating ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin" />
                                     Génération...
                                 </>
                             ) : (
                                 <>
-                                    <FileOutput className="h-4 w-4 mr-2" />
-                                    Générer la Réquisition
+                                    <FileOutput className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                                    {isMobile ? 'Générer' : 'Générer la Réquisition'}
                                 </>
                             )}
                         </Button>

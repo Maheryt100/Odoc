@@ -42,7 +42,7 @@ export default function Create() {
                     </p>
                     
                     {/* ✅ Info numéros - Masqué sur mobile, visible desktop */}
-                    {(last_numero !== null || suggested_numero) && (
+                    {/* {(last_numero !== null || suggested_numero) && (
                         <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground pt-1">
                             {last_numero !== null && (
                                 <span className="flex items-center gap-1">
@@ -61,7 +61,7 @@ export default function Create() {
                                 </span>
                             )}
                         </div>
-                    )}
+                    )} */}
                 </div>
 
                 {/* ✅ Formulaire */}

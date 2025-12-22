@@ -1,4 +1,4 @@
-// pages/DemandeursProprietes/NouveauLot.tsx - ✅ AVEC DATE_DEMANDE
+// pages/DemandeursProprietes/NouveauLot.tsx - ✅ VALIDATION CORRIGÉE
 
 import { useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -23,7 +23,6 @@ export default function NouveauLot() {
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
     
-    // ✅ NOUVEAU : État pour date_demande
     const today = new Date().toISOString().split('T')[0];
     const [dateDemande, setDateDemande] = useState<string>(today);
     const [dateDemandeError, setDateDemandeError] = useState<string>('');
@@ -120,23 +119,19 @@ export default function NouveauLot() {
         });
     };
 
-    // ✅ NOUVEAU : Validation date_demande
     const handleDateDemandeChange = (newDate: string) => {
         setDateDemande(newDate);
         
-        // Validation : pas dans le futur
         if (new Date(newDate) > new Date()) {
             setDateDemandeError('La date ne peut pas être dans le futur');
             return;
         }
         
-        // Validation : pas avant 2020
         if (new Date(newDate) < new Date('2020-01-01')) {
             setDateDemandeError('La date ne peut pas être antérieure au 01/01/2020');
             return;
         }
         
-        // Validation : cohérence avec date_requisition
         const dateRequisition = proprietes[0]?.date_requisition;
         if (dateRequisition && new Date(newDate) < new Date(dateRequisition)) {
             setDateDemandeError('La date de demande ne peut pas être antérieure à la date de réquisition');
@@ -146,7 +141,7 @@ export default function NouveauLot() {
         setDateDemandeError('');
     };
 
-    // ========== VALIDATION ==========
+    // ========== ✅ VALIDATION CORRIGÉE ==========
     const validateProprietes = (): boolean => {
         for (let i = 0; i < proprietes.length; i++) {
             const p = proprietes[i];
@@ -171,10 +166,12 @@ export default function NouveauLot() {
         return true;
     };
 
+    // ✅ VALIDATION DEMANDEUR ALLÉGÉE : Seulement les champs CRITIQUES
     const validateDemandeurs = (): boolean => {
         for (let i = 0; i < demandeurs.length; i++) {
             const d = demandeurs[i];
             
+            // ✅ CHAMPS OBLIGATOIRES MINIMUM
             if (!d.titre_demandeur?.trim()) {
                 toast.error(`Demandeur ${i + 1}: Le titre de civilité est obligatoire`);
                 return false;
@@ -192,6 +189,7 @@ export default function NouveauLot() {
                 return false;
             }
             
+            // ✅ CIN : OBLIGATOIRE et 12 chiffres
             if (!d.cin) {
                 toast.error(`Demandeur ${i + 1}: Le CIN est obligatoire`);
                 return false;
@@ -201,20 +199,20 @@ export default function NouveauLot() {
                 return false;
             }
             
+            // ✅ Vérifier unicité CIN dans le formulaire (pas de doublons internes)
             const cinDuplicates = demandeurs.filter((dem, idx) => idx !== i && dem.cin === d.cin);
             if (cinDuplicates.length > 0) {
-                toast.error(`Demandeur ${i + 1}: Ce CIN est utilisé plusieurs fois`);
+                toast.error(`Demandeur ${i + 1}: Ce CIN est utilisé plusieurs fois dans le formulaire`);
                 return false;
             }
         }
         return true;
     };
 
-    // ========== SOUMISSION - ✅ AVEC DATE_DEMANDE ==========
+    // ========== SOUMISSION ==========
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ✅ Validation date_demande
         if (dateDemandeError) {
             toast.error('Erreur de date', { description: dateDemandeError });
             return;
@@ -238,7 +236,7 @@ export default function NouveauLot() {
 
             router.post(route('nouveau-lot.store'), {
                 ...proprieteData,
-                date_demande: dateDemande, // ✅ NOUVEAU
+                date_demande: dateDemande,
                 demandeurs_json: JSON.stringify(demandeurs)
             }, {
                 onError: (errors) => {
@@ -411,7 +409,7 @@ export default function NouveauLot() {
                     </CardContent>
                 </Card>
 
-                {/* ✅ NOUVEAU : Section Date de demande (seulement si lot-demandeur) */}
+                {/* Date de demande */}
                 {creationMode === 'lot-demandeur' && (
                     <Card className="border-0 shadow-lg">
                         <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b">

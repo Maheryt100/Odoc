@@ -4,19 +4,14 @@
 
 import type { Demandeur, Dossier, Propriete } from '@/types';
 import type { LucideIcon } from 'lucide-react';
-import { DocumentDemande } from '../demandes/types';
 
 /**
  * ✅ Demandeur enrichi avec informations de propriétés
- * Étend le type global Demandeur
  */
 export interface DemandeurWithProperty extends Demandeur {
-    // Accessors déjà définis dans le type global
     hasProperty: boolean;
     proprietes_actives_count: number;
     proprietes_acquises_count: number;
-    
-    // Données supplémentaires chargées côté serveur
     proprietes_actives?: Propriete[];
     proprietes_acquises?: Propriete[];
 }
@@ -27,10 +22,10 @@ export interface DemandeurWithProperty extends Demandeur {
 export interface DemandeursIndexProps {
     demandeurs: DemandeurWithProperty[];
     dossier: Dossier;
-    proprietes: Propriete[];
+    proprietes: Propriete[];  // ✅ Type complet
     onDeleteDemandeur: (id: number) => void;
     onSelectDemandeur?: (demandeur: DemandeurWithProperty) => void;
-    onEditDemandeur?: (demandeur: DemandeurWithProperty) => void; // ✅ AJOUT
+    onEditDemandeur?: (demandeur: DemandeurWithProperty) => void;
     onLinkPropriete?: (demandeur: Demandeur) => void;
     isDemandeurIncomplete: (dem: Demandeur) => boolean;
     onDissociate: (
@@ -43,17 +38,13 @@ export interface DemandeursIndexProps {
 }
 
 /**
- * ✅ Types de filtres disponibles
+ * Types de filtres et tri
  */
 export type FiltreStatutType = 'tous' | 'actives' | 'acquises' | 'sans';
-
-/**
- * ✅ Types de tri disponibles
- */
 export type TriType = 'date' | 'nom' | 'proprietes' | 'statut';
 
 /**
- * ✅ Configuration de badge pour affichage
+ * Configuration de badge
  */
 export interface BadgeConfig {
     variant: 'default' | 'secondary' | 'outline' | 'destructive';
@@ -63,7 +54,7 @@ export interface BadgeConfig {
 }
 
 /**
- * ✅ Statistiques d'un demandeur
+ * Statistiques d'un demandeur
  */
 export interface DemandeurStats {
     total_proprietes: number;
@@ -82,12 +73,4 @@ export interface FiltreState {
     recherche: string;
     tri: TriType;
     ordre: 'asc' | 'desc';
-}
-
-export interface DemandeWithDetails extends DocumentDemande {
-  _computed: {
-    isIncomplete: boolean;
-    hasValidDemandeurs: boolean;
-    isArchived: boolean;
-  };
 }

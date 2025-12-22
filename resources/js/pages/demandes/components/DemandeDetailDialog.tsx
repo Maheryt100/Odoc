@@ -2,35 +2,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-    MapPin, FileText, Users, AlertCircle, 
+import {
+    MapPin, FileText, Users, AlertCircle,
     DollarSign, ArrowRight, Calendar, Clock
 } from 'lucide-react';
+import type { Demandeur, Propriete } from '@/types';
 
-interface Demandeur {
-    id: number;
-    titre_demandeur?: string;
-    nom_demandeur: string;
-    prenom_demandeur?: string;
-    cin: string;
-    domiciliation?: string;
-    telephone?: string;
-    nationalite?: string;
-    date_naissance?: string;
-    lieu_naissance?: string;
-}
+// interface Demandeur {
+//     id: number;
+//     titre_demandeur?: string;
+//     nom_demandeur: string;
+//     prenom_demandeur?: string;
+//     cin: string;
+//     domiciliation?: string;
+//     telephone?: string;
+//     nationalite?: string;
+//     date_naissance?: string;
+//     lieu_naissance?: string;
+// }
 
-interface Propriete {
-    id: number;
-    lot: string;
-    titre?: string;
-    contenance?: number;
-    nature?: string;
-    vocation?: string;
-    proprietaire?: string;
-    situation?: string;
-    date_requisition?: string;
-}
+// interface Propriete {
+//     id: number;
+//     lot: string;
+//     titre?: string;
+//     contenance?: number;
+//     nature?: string;
+//     vocation?: string;
+//     proprietaire?: string;
+//     situation?: string;
+//     date_requisition?: string;
+// }
 
 interface DemandeData {
     id: number;
@@ -90,7 +91,7 @@ export default function DemandeDetailDialog({
                 status: demande.status
             }];
         }
-        
+
         return [];
     })();
 
@@ -106,10 +107,10 @@ export default function DemandeDetailDialog({
 
     const formatDate = (dateStr: string | null | undefined, format: 'short' | 'long' = 'short'): string => {
         if (!dateStr) return '-';
-        
+
         try {
             const date = new Date(dateStr + 'T00:00:00');
-            
+
             if (format === 'long') {
                 return date.toLocaleDateString('fr-FR', {
                     weekday: 'long',
@@ -118,7 +119,7 @@ export default function DemandeDetailDialog({
                     day: 'numeric'
                 });
             }
-            
+
             return date.toLocaleDateString('fr-FR');
         } catch {
             return dateStr;
@@ -127,7 +128,7 @@ export default function DemandeDetailDialog({
 
     const getDemandeAge = (dateDemande: string | null | undefined): number | null => {
         if (!dateDemande) return null;
-        
+
         try {
             const date = new Date(dateDemande + 'T00:00:00');
             const now = new Date();
@@ -218,7 +219,7 @@ export default function DemandeDetailDialog({
                                     </h3>
                                     <div className="space-y-3">
                                         {allDemandeurs.map((dem, index) => (
-                                            <div 
+                                            <div
                                                 key={dem.id}
                                                 className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
                                                 onClick={() => onSelectDemandeur?.(dem.demandeur)}
@@ -232,7 +233,7 @@ export default function DemandeDetailDialog({
                                                     </div>
                                                     <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 </div>
-                                                
+
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <div>
                                                         <p className="text-xs text-muted-foreground">Nom complet</p>
@@ -270,7 +271,7 @@ export default function DemandeDetailDialog({
                                         <MapPin className="h-4 w-4" />
                                         Propriété
                                     </h3>
-                                    <div 
+                                    <div
                                         className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
                                         onClick={() => propriete && onSelectPropriete?.(propriete)}
                                     >
@@ -291,7 +292,7 @@ export default function DemandeDetailDialog({
                                             <div>
                                                 <p className="text-sm text-muted-foreground">Contenance</p>
                                                 <p>
-                                                    {propriete.contenance 
+                                                    {propriete.contenance
                                                         ? `${new Intl.NumberFormat('fr-FR').format(propriete.contenance)} m²`
                                                         : <span className="text-muted-foreground italic">Non définie</span>
                                                     }
@@ -301,14 +302,14 @@ export default function DemandeDetailDialog({
                                                 <p className="text-sm text-muted-foreground">Nature / Vocation</p>
                                                 <p>{propriete.nature || '-'} / {propriete.vocation || '-'}</p>
                                             </div>
-                                            
+
                                             {propriete.proprietaire && (
                                                 <div className="sm:col-span-2">
                                                     <p className="text-sm text-muted-foreground">Propriétaire</p>
                                                     <p className="text-sm">{propriete.proprietaire}</p>
                                                 </div>
                                             )}
-                                            
+
                                             {propriete.situation && (
                                                 <div className="sm:col-span-2">
                                                     <p className="text-sm text-muted-foreground">Situation</p>
@@ -340,7 +341,7 @@ export default function DemandeDetailDialog({
                                         <div>
                                             <p className="text-sm text-muted-foreground mb-1">Prix total</p>
                                             <p className="text-2xl sm:text-3xl font-bold text-primary">
-                                                {demande.total_prix 
+                                                {demande.total_prix
                                                     ? new Intl.NumberFormat('fr-FR').format(demande.total_prix)
                                                     : '0'
                                                 } Ar
@@ -353,7 +354,7 @@ export default function DemandeDetailDialog({
                                             </Badge>
                                         </div>
                                     </div>
-                                    
+
                                     {propriete.contenance && demande.total_prix > 0 && (
                                         <div className="mt-3 text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded">
                                             <p className="font-medium mb-1">Détail du calcul :</p>

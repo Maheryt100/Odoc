@@ -160,7 +160,7 @@ export default function ProprieteCreate({
                     {data.type_operation === 'morcellement' && (
                         <>
                             <div className="space-y-2">
-                                <Label className="text-sm font-medium">Propriété mère</Label>
+                                <Label className="text-sm font-medium">Nom propriété mère</Label>
                                 <Input
                                     value={data.propriete_mere}
                                     onChange={(e) => onChange('propriete_mere', e.target.value)}
@@ -179,21 +179,22 @@ export default function ProprieteCreate({
                             </div>
                         </>
                     )}
+                    
+                    <div className="space-y-2">
+                        <Label className="text-sm font-medium">Nom propriété / Propriétaire</Label>
+                        <Input
+                            value={data.proprietaire}
+                            onChange={(e) => onChange('proprietaire', e.target.value)}
+                            placeholder="Nom de la propriété"
+                            className="h-11"
+                        />
+                    </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-medium">Titre</Label>
                         <Input
                             value={data.titre}
                             onChange={(e) => onChange('titre', e.target.value)}
                             placeholder="Numéro du titre"
-                            className="h-11"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-sm font-medium">Nom Propriété / Propriétaire</Label>
-                        <Input
-                            value={data.proprietaire}
-                            onChange={(e) => onChange('proprietaire', e.target.value)}
-                            placeholder=""
                             className="h-11"
                         />
                     </div>
@@ -222,7 +223,7 @@ export default function ProprieteCreate({
                             min={1}
                             value={data.contenance}
                             onChange={(e) => onChange('contenance', e.target.value)}
-                            placeholder=""
+                            placeholder="en m²"
                             className="h-11"
                         />
                     </div>

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Demandeurs Routes
 |--------------------------------------------------------------------------
+| Routes pour la gestion des demandeurs FILTRÉES par district
 */
 
 Route::prefix('demandeurs')->name('demandeurs.')->group(function () {
@@ -49,7 +50,6 @@ Route::prefix('demandeurs')->name('demandeurs.')->group(function () {
         ])
         ->name('edit');
     
-    // ✅ Route PUT avec middleware de validation
     Route::put('/{id}', [DemandeurController::class, 'update'])
         ->middleware([
             'district.access:update', 

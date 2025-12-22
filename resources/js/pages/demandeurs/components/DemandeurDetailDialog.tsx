@@ -1,67 +1,23 @@
-// demandeurs/components/DemandeurDetailDialog.tsx
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
     User, Calendar, MapPin, Phone, FileText, Heart, Briefcase, 
-    Users, Home, Pencil, Archive, AlertCircle, Unlink,
+    Users, Home, Archive, AlertCircle, Unlink,
     Building2, Flag, MapPinned, CreditCard
 } from 'lucide-react';
+import type { Demandeur, Propriete } from '@/types';
+import { Button } from '@/components/ui/button';
 
-
-interface Demandeur {
-    id: number;
-    titre_demandeur: string;
-    nom_demandeur: string;
-    prenom_demandeur?: string;
-    cin: string;
-    date_naissance?: string;
-    lieu_naissance?: string;
-    sexe?: string;
-    occupation?: string;
-    nom_pere?: string;
-    nom_mere?: string;
-    date_delivrance?: string;
-    lieu_delivrance?: string;
-    date_delivrance_duplicata?: string;
-    lieu_delivrance_duplicata?: string;
-    domiciliation?: string;
-    telephone?: string;
-    nationalite?: string;
-    situation_familiale?: string;
-    regime_matrimoniale?: string;
-    date_mariage?: string;
-    lieu_mariage?: string;
-    marie_a?: string;
-}
-
-interface Propriete {
-    id: number;
-    lot: string;
-    titre?: string;
-    contenance?: number;
-    nature?: string;
-    vocation?: string;
-    situation?: string;
-    is_archived?: boolean;
-    demandes?: Array<{
-        id: number;
-        id_demandeur: number;
-        status: 'active' | 'archive';
-        ordre: number;
-        total_prix?: number;
-    }>;
-}
-
+// ✅ SUPPRESSION des types partiels - on utilise directement Propriete
 interface DemandeurDetailDialogProps {
     demandeur: Demandeur | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    proprietes?: Propriete[];
-    onSelectPropriete?: (propriete: Propriete) => void;
+    proprietes?: Propriete[];  // ✅ Type complet
+    onSelectPropriete?: (propriete: Propriete) => void;  // ✅ Type complet
     dossierId: number;
     dossierClosed?: boolean;
     onDissociate?: (
@@ -85,6 +41,7 @@ export default function DemandeurDetailDialog({
 }: DemandeurDetailDialogProps) {
     if (!demandeur) return null;
 
+    // ✅ Filtrage sécurisé avec vérification de null
     const proprietesAssociees = proprietes.filter(prop => {
         if (!prop.demandes?.length) return false;
         return prop.demandes.some(d => {
@@ -122,7 +79,7 @@ export default function DemandeurDetailDialog({
         ].filter(Boolean).join(' ');
     };
 
-    const formatDate = (date?: string) => {
+    const formatDate = (date?: string | null) => {
         if (!date) return '-';
         return new Date(date).toLocaleDateString('fr-FR', {
             day: '2-digit',
@@ -183,13 +140,6 @@ export default function DemandeurDetailDialog({
             onOpenChange(false);
             setTimeout(() => onSelectPropriete(propriete), 100);
         }
-    };
-
-    const handleEdit = () => {
-        onOpenChange(false);
-        setTimeout(() => {
-            window.location.href = `/demandeurs/${dossierId}/${demandeur.id}/edit`;
-        }, 100);
     };
 
     const InfoItem = ({ icon: Icon, label, value, valueClass = '' }: any) => {
@@ -522,8 +472,8 @@ export default function DemandeurDetailDialog({
                                                                 Lot {prop.lot}
                                                             </p>
                                                             <p className="text-sm text-muted-foreground">
-                                                                {prop.titre && `TNº${prop.titre} • `}
-                                                                {prop.nature} • {prop.vocation}
+                                                                {prop.titre && `TNº${prop.titre} • `} 
+                                                                {prop.nature || '-'} • {prop.vocation || '-'}
                                                                 {prop.contenance && ` • ${new Intl.NumberFormat('fr-FR').format(prop.contenance)} m²`}
                                                             </p>
                                                             {demande?.total_prix && demande.total_prix > 0 && (
@@ -577,13 +527,13 @@ export default function DemandeurDetailDialog({
                                                             <p className="font-semibold text-lg mb-1">Lot {prop.lot}</p>
                                                             <p className="text-sm text-muted-foreground">
                                                                 {prop.titre && `TNº${prop.titre} • `}
-                                                                {prop.nature} • {prop.vocation}
+                                                                {prop.nature || '-'} • {prop.vocation || '-'}
                                                                 {prop.contenance && ` • ${new Intl.NumberFormat('fr-FR').format(prop.contenance)} m²`}
                                                             </p>
                                                         </div>
                                                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
                                                             <Archive className="mr-1 h-3 w-3" />
-                                                            Acquise
+                                            Acquise
                                                         </Badge>
                                                     </div>
                                                 </button>
@@ -604,15 +554,6 @@ export default function DemandeurDetailDialog({
                         </TabsContent>
                     </Tabs>
                 </div>
-
-                {/* {!dossierClosed && (
-                    <DialogFooter className="pt-4 border-t">
-                        <Button onClick={handleEdit} size="default">
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Modifier ce demandeur
-                        </Button>
-                    </DialogFooter>
-                )} */}
             </DialogContent>
         </Dialog>
     );

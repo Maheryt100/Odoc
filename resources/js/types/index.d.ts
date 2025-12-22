@@ -162,7 +162,7 @@ export interface Demandeur {
     id: number;
     titre_demandeur: string;
     nom_demandeur: string;
-    prenom_demandeur: string | null;
+    prenom_demandeur: string | null;  // ✅ Accepte null
     date_naissance: string;
     lieu_naissance: string | null;
     sexe: string | null;

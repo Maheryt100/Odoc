@@ -1,0 +1,95 @@
+/* resources/css/scrollbar-styles.css */
+
+/* ============================================
+   SCROLLBAR HORIZONTAL DISCRÈTE
+   ============================================ */
+
+.scrollbar-thin {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 4px;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(71 85 105);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(100 116 139);
+}
+
+/* Firefox */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+}
+
+.dark .scrollbar-thin {
+    scrollbar-color: rgb(71 85 105) transparent;
+}
+
+/* ============================================
+   INDICATEUR DE SCROLL SUR MOBILE
+   ============================================ */
+
+@media (max-width: 380px) {
+    .scrollbar-thin-container {
+        position: relative;
+    }
+    
+    .scrollbar-thin-container::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 20px;
+        background: linear-gradient(to left, rgba(255, 255, 255, 0.9), transparent);
+        pointer-events: none;
+        z-index: 10;
+    }
+    
+    .dark .scrollbar-thin-container::after {
+        background: linear-gradient(to left, rgba(0, 0, 0, 0.5), transparent);
+    }
+}
+
+/* ============================================
+   SMOOTH TRANSITIONS
+   ============================================ */
+
+.tab-transition {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   TOUCH-FRIENDLY ELEMENTS
+   ============================================ */
+
+.touch-target {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .touch-target {
+        min-height: 36px;
+        min-width: 36px;
+    }
+}

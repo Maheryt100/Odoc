@@ -125,78 +125,129 @@ class ApiController extends Controller
     // ========================================================================
 
     /**
-     * Vérifier si un demandeur peut être retiré d'un dossier spécifique
+     * ✅ Vérifier si un demandeur peut être retiré d'un dossier
      * 
      * @param int $id ID du demandeur
-     * @param int $dossierId ID du dossier
      * @return JsonResponse
      */
-    public function checkDemandeurRemove(int $id, int $dossierId): JsonResponse
+    public function checkDemandeurRemove(int $id): JsonResponse
     {
         try {
-            $validation = $this->deletionService->validateDemandeurRemovalFromDossier($id, $dossierId);
+            // ✅ Récupérer dossierId depuis query string
+            $dossierId = request()->query('dossierId');
+            
+            if (!$dossierId) {
+                return response()->json([
+                    'error' => 'dossierId manquant dans la requête'
+                ], 400);
+            }
+            
             $demandeur = Demandeur::findOrFail($id);
             
+            // Propriétés liées dans ce dossier spécifique
+            $demandes = $demandeur->demandes()
+                ->whereHas('propriete', fn($q) => $q->where('id_dossier', $dossierId))
+                ->with('propriete')
+                ->get();
+            
+            $lotsActifs = [];
+            $lotsArchives = [];
+            
+            foreach ($demandes as $demande) {
+                if ($demande->status === 'active') {
+                    $lotsActifs[] = $demande->propriete->lot;
+                } else {
+                    $lotsArchives[] = $demande->propriete->lot;
+                }
+            }
+            
+            $canRemove = empty($lotsActifs) && empty($lotsArchives);
+            
+            // ✅ Structure attendue par le frontend
             return response()->json([
-                'success' => true,
-                'can_remove' => $validation['can_remove'],
-                'reason' => $validation['reason'],
+                'can_remove' => $canRemove,
+                'lots_actifs' => $lotsActifs,
+                'lots_archives' => $lotsArchives,
+                'total_proprietes' => count($lotsActifs) + count($lotsArchives),
                 'demandeur' => [
                     'id' => $demandeur->id,
                     'nom_complet' => $demandeur->nom_complet,
                     'cin' => $demandeur->cin,
                 ],
-                'details' => $validation['details'],
-            ]);
+            ], 200);
+            
         } catch (\Exception $e) {
-            // Log::error('Erreur checkDemandeurRemove', [
-            //     'demandeur_id' => $id,
-            //     'dossier_id' => $dossierId,
-            //     'error' => $e->getMessage()
-            // ]);
             
             return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la vérification : ' . $e->getMessage()
+                'error' => 'Erreur lors de la vérification',
+                'message' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Vérifier si un demandeur peut être supprimé définitivement (tous dossiers)
-     * 
-     * @param int $id ID du demandeur
-     * @return JsonResponse
+     * ✅ Vérifier si un demandeur peut être supprimé définitivement
+     * Structure alignée avec SmartDeleteDemandeurDialog.tsx
      */
     public function checkDemandeurDelete(int $id): JsonResponse
     {
         try {
-            $validation = $this->deletionService->validateDemandeurDefinitiveDeletion($id);
-            $demandeur = Demandeur::findOrFail($id);
+            $demandeur = Demandeur::with(['demandes.propriete.dossier'])->findOrFail($id);
             
+            $demandesActives = $demandeur->demandes()
+                ->where('status', 'active')
+                ->with('propriete.dossier')
+                ->get();
+            
+            $demandesArchivees = $demandeur->demandes()
+                ->where('status', 'archive')
+                ->with('propriete.dossier')
+                ->get();
+            
+            // Grouper par dossier
+            $dossiersMap = [];
+            foreach ($demandeur->demandes as $demande) {
+                $dossierId = $demande->propriete->dossier->id;
+                
+                if (!isset($dossiersMap[$dossierId])) {
+                    $dossiersMap[$dossierId] = [
+                        'id' => $dossierId,
+                        'nom' => $demande->propriete->dossier->nom_dossier,
+                        'is_closed' => $demande->propriete->dossier->is_closed,
+                        'lots_actifs' => [],
+                        'lots_archives' => [],
+                    ];
+                }
+                
+                if ($demande->status === 'active') {
+                    $dossiersMap[$dossierId]['lots_actifs'][] = $demande->propriete->lot;
+                } else {
+                    $dossiersMap[$dossierId]['lots_archives'][] = $demande->propriete->lot;
+                }
+            }
+            
+            $canDelete = $demandesActives->isEmpty() && $demandesArchivees->isEmpty();
+            
+            // ✅ Structure EXACTE attendue par le frontend
             return response()->json([
-                'success' => true,
-                'can_delete_completely' => $validation['can_delete'],
-                'reason' => $validation['reason'],
+                'can_delete_completely' => $canDelete,
+                'can_remove_from_dossier' => false, // Sera déterminé par checkDemandeurRemove
+                'total_associations' => $demandeur->demandes()->count(),
+                'total_actives' => $demandesActives->count(),
+                'total_archivees' => $demandesArchivees->count(),
+                'dossiers' => array_values($dossiersMap),
                 'demandeur' => [
                     'id' => $demandeur->id,
                     'nom_complet' => $demandeur->nom_complet,
                     'cin' => $demandeur->cin,
                 ],
-                'total_associations' => $validation['details']['total_associations'] ?? 0,
-                'total_actives' => $validation['details']['total_actives'] ?? 0,
-                'total_archivees' => $validation['details']['total_archivees'] ?? 0,
-                'dossiers' => $validation['details']['dossiers'] ?? [],
-            ]);
-        } catch (\Exception $e) {
-            // Log::error('Erreur checkDemandeurDelete', [
-            //     'demandeur_id' => $id,
-            //     'error' => $e->getMessage()
-            // ]);
+            ], 200);
             
+        } catch (\Exception $e) {
+       
             return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la vérification : ' . $e->getMessage()
+                'error' => 'Erreur lors de la vérification',
+                'message' => $e->getMessage()
             ], 500);
         }
     }
@@ -206,46 +257,55 @@ class ApiController extends Controller
     // ========================================================================
 
     /**
-     * Vérifier si une propriété peut être supprimée
-     * 
-     * @param int $id ID de la propriété
-     * @return JsonResponse
+     * ✅ Vérifier si une propriété peut être supprimée
+     * Structure alignée avec SmartDeleteProprieteDialog.tsx
      */
     public function checkProprieteDelete(int $id): JsonResponse
     {
         try {
-            $validation = $this->deletionService->validateProprieteDeletion($id);
-            $propriete = Propriete::with('dossier')->findOrFail($id);
+            $propriete = Propriete::with(['demandes.demandeur', 'dossier'])->findOrFail($id);
             
+            // Récupérer les demandes actives avec leurs demandeurs
+            $demandesActives = $propriete->demandes()
+                ->where('status', 'active')
+                ->with('demandeur')
+                ->get();
+            
+            // Récupérer TOUTES les demandes (pour stats)
+            $totalDemandes = $propriete->demandes()->count();
+            
+            // Déterminer si suppression possible
+            $canDelete = $demandesActives->isEmpty();
+            
+            // ✅ Structure EXACTE attendue par le frontend
             return response()->json([
-                'success' => true,
-                'can_delete' => $validation['can_delete'],
-                'reason' => $validation['reason'],
+                'can_delete' => $canDelete,
                 'is_archived' => $propriete->is_archived,
-                'is_dossier_closed' => $propriete->dossier->is_closed ?? false,
+                'total_demandeurs_actifs' => $demandesActives->count(),
+                'total_demandes' => $totalDemandes,
                 'propriete' => [
                     'id' => $propriete->id,
                     'lot' => $propriete->lot,
                     'titre' => $propriete->titre,
                     'contenance' => $propriete->contenance,
                 ],
-                'total_demandeurs_actifs' => $validation['details']['total_demandeurs_actifs'] ?? 0,
-                'total_demandeurs_archives' => $validation['details']['total_demandeurs_archives'] ?? 0,
-                'demandeurs_actifs' => $validation['details']['demandeurs_actifs'] ?? [],
-                'demandeurs_archives' => $validation['details']['demandeurs_archives'] ?? [],
-            ]);
+                'demandeurs_actifs' => $demandesActives->map(fn($d) => [
+                    'id' => $d->demandeur->id,
+                    'nom_complet' => $d->demandeur->nom_complet,
+                    'cin' => $d->demandeur->cin,
+                    'ordre' => $d->ordre,
+                ])->toArray(),
+            ], 200);
+            
         } catch (\Exception $e) {
-            Log::error('Erreur checkProprieteDelete', [
-                'propriete_id' => $id,
-                'error' => $e->getMessage()
-            ]);
             
             return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la vérification : ' . $e->getMessage()
+                'error' => 'Erreur lors de la vérification',
+                'message' => $e->getMessage()
             ], 500);
         }
     }
+
 
     /**
      * Obtenir la disponibilité d'une propriété pour génération de documents

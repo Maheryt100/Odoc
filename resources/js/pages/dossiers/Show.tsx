@@ -397,7 +397,7 @@ export default function Show() {
             <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1600px] space-y-4 sm:space-y-6">
                 
                 {/* ✅ Header Responsive */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start justify-between gap-2">
                     {/* Titre et infos */}
                     <div className="flex-1 min-w-0">
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent truncate">
@@ -420,11 +420,11 @@ export default function Show() {
                         </div>
                     </div>
 
-                    {/* Actions - Mobile: Menu dropdown, Desktop: Boutons */}
+                    {/* Menu Actions - Toujours à droite */}
                     {isMobile ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" size="sm" className="shrink-0 h-8 w-8 p-0">
                                     <Menu className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -459,7 +459,7 @@ export default function Show() {
                                     Retour
                                 </Link>
                             </Button>
-                  
+                
                             <Button size="sm" asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg">
                                 <Link href={route('demandes.resume', dossier.id)}>
                                     <FileText className="h-4 w-4 mr-2" />
@@ -501,7 +501,6 @@ export default function Show() {
                         </div>
                     )}
                 </div>
-
                 {/* ✅ Alertes - Responsive */}
                 {isReadOnly && (
                     <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
@@ -633,18 +632,19 @@ export default function Show() {
                         onConfirm={confirmDissociate}
                     />
 
+                    {/* ✅ CORRECTION ICI */}
                     {selectedProprieteToDelete && (
                         <SmartDeleteProprieteDialog
-                            propriete={selectedProprieteToDelete}
+                            propriete={selectedProprieteToDelete}  // ✅ Singulier, pas de tableau
                             open={deleteProprieteOpen}
-                            onOpenChange={(open: boolean | ((prevState: boolean) => boolean)) => {
+                            onOpenChange={(open: boolean) => {
                                 setDeleteProprieteOpen(open);
                                 if (!open) {
                                     setTimeout(() => setSelectedProprieteToDelete(null), 300);
                                 }
-                            } } attachableType={'Dossier'} attachableId={0} onSuccess={function (): void {
-                                throw new Error('Function not implemented.');
-                            } }                        />
+                            }}
+                            dossierId={dossier.id}
+                        />
                     )}
 
                     <SmartDeleteDemandeurDialog

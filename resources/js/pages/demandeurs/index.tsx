@@ -70,7 +70,7 @@ export default function DemandeursIndex({
         }, 100);
     };
 
-    const handleSelectProprieteFromDemandeur = (propriete: Propriete) => {
+    const handleSelectProprieteFromDemandeur = (propriete: Propriete) => {  // ✅ Type complet
         setShowDemandeurDetail(false);
         setTimeout(() => {
             setSelectedPropriete(propriete);

@@ -1,4 +1,5 @@
-// pages/demandes/components/DemandeTable.tsx
+// pages/demandes/components/DemandeTable.tsx - ✅ CORRECTION LIGNE 169 & 316
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,43 +26,18 @@ import {
     DollarSign
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { DemandeWithDetails } from '../types';
+import { Pagination } from '@/components/ui/pagination';
 
 /* ===================== TYPES ===================== */
 
-interface Demandeur {
+// ✅ Type partiel pour le demandeur (suffisant pour l'affichage)
+interface DemandeurSimple {
     id: number;
     titre_demandeur?: string;
     nom_demandeur: string;
-    prenom_demandeur?: string;
+    prenom_demandeur?: string | null;
     cin: string;
-}
-
-interface Propriete {
-    id: number;
-    lot: string;
-    titre?: string;
-    contenance?: number;
-    nature?: string;
-    vocation?: string;
-    proprietaire?: string;
-    situation?: string;
-}
-
-interface DemandeWithDetails {
-    id: number;
-    date_demande?: string;
-    propriete: Propriete;
-    demandeurs: Array<{
-        id: number;
-        demandeur: Demandeur;
-    }>;
-    total_prix: number;
-    nombre_demandeurs: number;
-    _computed: {
-        isIncomplete: boolean;
-        hasValidDemandeurs: boolean;
-        isArchived: boolean;
-    };
 }
 
 interface Dossier {
@@ -83,7 +59,8 @@ interface DemandeTableProps {
 
 /* ===================== HELPERS ===================== */
 
-const formatNomComplet = (d: Demandeur) =>
+// ✅ CORRECTION : Accepter le type partiel
+const formatNomComplet = (d: DemandeurSimple) =>
     [d.titre_demandeur, d.nom_demandeur, d.prenom_demandeur].filter(Boolean).join(' ');
 
 const formatDate = (date?: string) =>
@@ -163,7 +140,8 @@ export default function DemandeTable({
                                         </td>
 
                                         <td className="px-4 py-3">
-                                            {premier ? formatNomComplet(premier) : '—'}
+                                            {/* ✅ CORRECTION LIGNE 169 : Cast vers DemandeurSimple */}
+                                            {premier ? formatNomComplet(premier as DemandeurSimple) : '—'}
                                         </td>
 
                                         {showDateDemande && (
@@ -310,7 +288,8 @@ function MobileDemandeCard({
                 </div>
 
                 <div className="text-sm text-muted-foreground">
-                    {premier ? formatNomComplet(premier) : 'Aucun demandeur'}
+                    {/* ✅ CORRECTION LIGNE 316 : Cast vers DemandeurSimple */}
+                    {premier ? formatNomComplet(premier as DemandeurSimple) : 'Aucun demandeur'}
                 </div>
 
                 {showDateDemande && (

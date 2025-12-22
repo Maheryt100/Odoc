@@ -257,25 +257,26 @@ export default function DossierForm({
                             <span>Identification</span>
                         </div>
 
-                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
-                            {/* Nom dossier */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">
-                                    Nom du dossier <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    type="text"
-                                    value={data.nom_dossier}
-                                    onChange={(e) => setData('nom_dossier', e.target.value)}
-                                    placeholder="Ex: Ambohimanarina 2025"
-                                    required
-                                    className="h-11"
-                                />
-                                {errors.nom_dossier && (
-                                    <p className="text-sm text-red-500">{errors.nom_dossier}</p>
-                                )}
-                            </div>
+                        {/* Nom dossier - Full width */}
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium">
+                                Nom du dossier <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                type="text"
+                                value={data.nom_dossier}
+                                onChange={(e) => setData('nom_dossier', e.target.value)}
+                                placeholder="Ex: Ambohimanarina 2025"
+                                required
+                                className="h-11"
+                            />
+                            {errors.nom_dossier && (
+                                <p className="text-sm text-red-500">{errors.nom_dossier}</p>
+                            )}
+                        </div>
 
+                        {/* Numéro d'ouverture + Date d'ouverture */}
+                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
                             {/* ✅ Numéro d'ouverture avec validation visuelle */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">
@@ -361,6 +362,15 @@ export default function DossierForm({
                                     </Alert>
                                 )}
                             </div>
+
+                            {/* Date d'ouverture */}
+                            <DateField
+                                label="Date d'ouverture"
+                                value={data.date_ouverture}
+                                onChange={(val) => setData('date_ouverture', val)}
+                                error={errors.date_ouverture}
+                                helperText="Date officielle d'ouverture du dossier"
+                            />
                         </div>
                     </div>
 
@@ -430,14 +440,14 @@ export default function DossierForm({
                         </div>
                     </div>
 
-                    {/* Section Dates */}
+                    {/* Section Dates de descente */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-sm font-semibold text-orange-600 dark:text-orange-400 pb-3 border-b-2 border-orange-100 dark:border-orange-900">
                             <Calendar className="h-4 w-4" />
-                            <span>Dates</span>
+                            <span>Dates de descente</span>
                         </div>
 
-                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
+                        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
                             <DateField
                                 label="Date début descente"
                                 value={data.date_descente_debut}
@@ -451,14 +461,6 @@ export default function DossierForm({
                                 onChange={(val) => setData('date_descente_fin', val)}
                                 min={data.date_descente_debut}
                                 error={errors.date_descente_fin}
-                            />
-
-                            <DateField
-                                label="Date d'ouverture"
-                                value={data.date_ouverture}
-                                onChange={(val) => setData('date_ouverture', val)}
-                                error={errors.date_ouverture}
-                                helperText="Date officielle d'ouverture du dossier"
                             />
                         </div>
                     </div>

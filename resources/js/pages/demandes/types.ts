@@ -29,7 +29,6 @@ export interface DemandeWithRelations extends DemandeWithStatus {
 
 export type Demande = DemandeWithRelations;
 
-// ✅ FIX: DocumentDemande hérite maintenant des propriétés requises
 export interface DocumentDemande {
     id: number;
     id_propriete: number;
@@ -37,7 +36,7 @@ export interface DocumentDemande {
     propriete: {
         id: number;
         lot: string;
-        titre?: string | null; // ✅ Accepte null ET undefined
+        titre?: string | null; 
         contenance?: number | null;
         nature?: string;
         vocation?: string;
@@ -53,7 +52,7 @@ export interface DocumentDemande {
             id: number;
             titre_demandeur?: string;
             nom_demandeur: string;
-            prenom_demandeur?: string;
+            prenom_demandeur?: string | null;
             cin: string;
             domiciliation?: string;
             telephone?: string;
@@ -66,7 +65,7 @@ export interface DocumentDemande {
         };
     }>;
     total_prix: number;
-    status: 'active' | 'archive'; // ✅ Type strict
+    status: 'active' | 'archive'; 
     status_consort: boolean;
     nombre_demandeurs: number;
     created_at?: string;

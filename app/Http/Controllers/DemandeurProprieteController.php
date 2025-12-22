@@ -15,6 +15,7 @@ use Inertia\Inertia;
 use App\Rules\ValidCIN;
 use App\Http\Requests\StoreDemandeurRequest;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class DemandeurProprieteController extends Controller
 {
@@ -31,16 +32,86 @@ class DemandeurProprieteController extends Controller
     }
 
     /**
-     * ✅ NOUVEAU LOT : Enregistrer (avec date_demande)
+     * ✅ CORRECTION CRITIQUE : Validation et décodage corrigés
      */
-    public function store(StoreDemandeurRequest $request)
+    public function store(Request $request)
     {
-        $validated = $request->validated();
+        // ✅ ÉTAPE 1 : Validation AVANT décodage JSON
+        $validated = $request->validate([
+            // Propriété
+            'lot' => 'required|string|max:15',
+            'type_operation' => 'required|in:morcellement,immatriculation',
+            'nature' => 'required|in:Urbaine,Suburbaine,Rurale',
+            'vocation' => 'required|in:Edilitaire,Agricole,Forestière,Touristique',
+            'proprietaire' => 'nullable|string|max:100',
+            'situation' => 'nullable|string',
+            'propriete_mere' => 'nullable|string|max:50',
+            'titre_mere' => 'nullable|string|max:50',
+            'titre' => 'nullable|string|max:50',
+            'contenance' => 'nullable|numeric|min:1',
+            'charge' => 'nullable|string|max:255',
+            'numero_FN' => 'nullable|string|max:30',
+            'numero_requisition' => 'nullable|string|max:50',
+            'id_dossier' => 'required|numeric|exists:dossiers,id',
+            
+            // Dates
+            'date_requisition' => 'nullable|date',
+            'date_depot_1' => 'nullable|date',
+            'date_depot_2' => 'nullable|date',
+            'date_approbation_acte' => 'nullable|date|after_or_equal:date_requisition',
+            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01',
+            
+            // Dep/Vol
+            'dep_vol_inscription' => 'nullable|string|max:50',
+            'numero_dep_vol_inscription' => 'nullable|string|max:50',
+            'dep_vol_requisition' => 'nullable|string|max:50',
+            'numero_dep_vol_requisition' => 'nullable|string|max:50',
+            
+            // ✅ CORRECTION : demandeurs_json au lieu de demandeurs
+            'demandeurs_json' => 'required|string',
+        ], [
+            'lot.required' => 'Le lot est obligatoire',
+            'demandeurs_json.required' => 'Au moins un demandeur est requis',
+        ]);
         
         DB::beginTransaction();
         
         try {
             $id_user = Auth::id();
+            
+            // ✅ ÉTAPE 2 : Décoder les demandeurs APRÈS validation
+            $demandeurs = json_decode($validated['demandeurs_json'], true);
+            
+            // ✅ ÉTAPE 3 : Validation des demandeurs décodés
+            if (!is_array($demandeurs) || empty($demandeurs)) {
+                throw new \Exception('Format de demandeurs invalide');
+            }
+            
+            Log::info('📦 Demandeurs décodés', [
+                'count' => count($demandeurs),
+                'cins' => array_column($demandeurs, 'cin')
+            ]);
+            
+            // ✅ ÉTAPE 4 : Vérifier les CIN en amont pour éviter les doublons
+            $existingDemandeurs = [];
+            foreach ($demandeurs as $demandeurData) {
+                $cin = $demandeurData['cin'] ?? null;
+                if ($cin) {
+                    // ✅ RECHERCHE GLOBALE sans filtre district
+                    $existing = Demandeur::withoutGlobalScopes()
+                        ->where('cin', $cin)
+                        ->first();
+                    
+                    if ($existing) {
+                        $existingDemandeurs[$cin] = $existing;
+                        Log::info('♻️ Demandeur existant détecté', [
+                            'cin' => $cin,
+                            'id' => $existing->id,
+                            'nom' => $existing->nom_complet
+                        ]);
+                    }
+                }
+            }
             
             // 1. Créer la propriété
             $proprieteData = array_merge(
@@ -61,8 +132,10 @@ class DemandeurProprieteController extends Controller
 
             $proprieteData = $this->convertEmptyToNull($proprieteData);
             $propriete = Propriete::create($proprieteData);
+            
+            Log::info('✅ Propriété créée', ['id' => $propriete->id, 'lot' => $propriete->lot]);
 
-            // ✅ 2. Préparer date_demande
+            // ✅ Préparer date_demande
             $dateDemande = isset($validated['date_demande']) 
                 ? Carbon::parse($validated['date_demande']) 
                 : Carbon::today();
@@ -78,26 +151,45 @@ class DemandeurProprieteController extends Controller
             // 3. Traiter les demandeurs
             $demandeursTraites = [];
             
-            foreach ($validated['demandeurs'] as $index => $demandeurData) {
+            foreach ($demandeurs as $index => $demandeurData) {
                 $cleanData = $this->convertEmptyToNull($demandeurData);
-
-                // Vérifier si demandeur existe
-                $demandeurExistant = Demandeur::where('cin', $cleanData['cin'])->first();
+                $cin = $cleanData['cin'];
                 
-                if ($demandeurExistant) {
+                Log::info("🔍 Traitement demandeur #{$index}", [
+                    'cin' => $cin,
+                    'nom' => $cleanData['nom_demandeur'] ?? 'N/A'
+                ]);
+
+                // ✅ CORRECTION MAJEURE : Utiliser la détection globale
+                if (isset($existingDemandeurs[$cin])) {
+                    // ✅ MISE À JOUR du demandeur existant
+                    $demandeur = $existingDemandeurs[$cin];
+                    
+                    // ✅ Mettre à jour UNIQUEMENT les champs non-null
                     $updateData = array_filter($cleanData, fn($v) => $v !== null);
-                    $demandeurExistant->update($updateData);
-                    $demandeur = $demandeurExistant;
+                    $demandeur->update($updateData);
+                    
+                    Log::info('♻️ Demandeur existant mis à jour', [
+                        'id' => $demandeur->id,
+                        'cin' => $cin,
+                        'champs_mis_a_jour' => count($updateData)
+                    ]);
                 } else {
+                    // ✅ CRÉATION d'un nouveau demandeur
                     $demandeur = Demandeur::create(array_merge($cleanData, [
                         'id_user' => $id_user,
                         'nationalite' => $cleanData['nationalite'] ?? 'Malagasy',
                         'situation_familiale' => $cleanData['situation_familiale'] ?? 'Non spécifiée',
                         'regime_matrimoniale' => $cleanData['regime_matrimoniale'] ?? 'Non spécifié',
                     ]));
+                    
+                    Log::info('✨ Nouveau demandeur créé', [
+                        'id' => $demandeur->id,
+                        'cin' => $cin
+                    ]);
                 }
 
-                // 4. Ajouter au dossier
+                // 4. Ajouter au dossier si pas déjà présent
                 Contenir::firstOrCreate([
                     'id_demandeur' => $demandeur->id,
                     'id_dossier' => $validated['id_dossier'],
@@ -109,15 +201,26 @@ class DemandeurProprieteController extends Controller
                     ->exists();
                 
                 if (!$liaisonExistante) {
-                    Demander::create([
+                    $demande = Demander::create([
                         'id_demandeur' => $demandeur->id,
                         'id_propriete' => $propriete->id,
-                        'date_demande' => $dateDemande, // ✅ NOUVEAU CHAMP
+                        'date_demande' => $dateDemande,
                         'id_user' => $id_user,
                         'status' => Demander::STATUS_ACTIVE,
-                        'status_consort' => count($validated['demandeurs']) > 1,
+                        'status_consort' => count($demandeurs) > 1,
                         // ordre calculé par boot()
                         // total_prix calculé par Observer
+                    ]);
+                    
+                    Log::info('🔗 Demande créée', [
+                        'id' => $demande->id,
+                        'ordre' => $demande->ordre,
+                        'date_demande' => $dateDemande->format('Y-m-d')
+                    ]);
+                } else {
+                    Log::warning('⚠️ Liaison déjà existante (skipped)', [
+                        'demandeur_id' => $demandeur->id,
+                        'propriete_id' => $propriete->id
                     ]);
                 }
                 
@@ -126,15 +229,31 @@ class DemandeurProprieteController extends Controller
 
             DB::commit();
             
-            $message = count($validated['demandeurs']) > 1 
-                ? count($validated['demandeurs']) . ' demandeurs liés à la propriété avec succès'
+            $message = count($demandeurs) > 1 
+                ? count($demandeurs) . ' demandeurs liés à la propriété avec succès'
                 : 'Demandeur et propriété créés avec succès';
+            
+            Log::info('✅ SUCCÈS TOTAL', [
+                'propriete_id' => $propriete->id,
+                'demandeurs_count' => count($demandeursTraites),
+                'demandeurs' => $demandeursTraites,
+                'existants_mis_a_jour' => count($existingDemandeurs),
+                'nouveaux_crees' => count($demandeurs) - count($existingDemandeurs)
+            ]);
             
             return Redirect::route('dossiers.show', $validated['id_dossier'])
                 ->with('success', $message);
                 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            Log::error('❌ Erreur store nouveau lot', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -218,7 +337,7 @@ class DemandeurProprieteController extends Controller
         $request->validate([
             'id_propriete' => 'required|exists:proprietes,id',
             'mode' => 'required|in:existant,nouveau',
-            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01', // ✅ NOUVEAU
+            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01',
         ]);
 
         DB::beginTransaction();
@@ -295,11 +414,9 @@ class DemandeurProprieteController extends Controller
             Demander::create([
                 'id_demandeur' => $id_demandeur,
                 'id_propriete' => $request->id_propriete,
-                'date_demande' => $dateDemande, // ✅ NOUVEAU
+                'date_demande' => $dateDemande,
                 'id_user' => $id_user,
                 'status' => Demander::STATUS_ACTIVE,
-                // ordre calculé automatiquement
-                // total_prix calculé par Observer
             ]);
 
             DB::commit();
@@ -343,7 +460,7 @@ class DemandeurProprieteController extends Controller
         $request->validate([
             'id_propriete' => 'required|exists:proprietes,id',
             'mode' => 'required|in:nouveau,existant',
-            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01', // ✅ NOUVEAU
+            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01',
         ]);
 
         DB::beginTransaction();
@@ -432,8 +549,6 @@ class DemandeurProprieteController extends Controller
                 'date_demande' => $dateDemande, 
                 'id_user' => $id_user,
                 'status' => Demander::STATUS_ACTIVE,
-                // ordre calculé automatiquement
-                // total_prix calculé par Observer
             ]);
 
             DB::commit();
@@ -448,7 +563,7 @@ class DemandeurProprieteController extends Controller
     }
 
     /**
-     * DISSOCIER (inchangé)
+     * DISSOCIER
      */
     public function dissociate(Request $request)
     {

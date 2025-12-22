@@ -218,7 +218,7 @@ export default function Index() {
                         </h1>
                         
                         {/* Stats responsive */}
-                        <div className="text-muted-foreground mt-1 text-sm sm:text-base">
+                        {/* <div className="text-muted-foreground mt-1 text-sm sm:text-base">
                             <span className="font-medium">{sortedDossiers.length}</span>
                             <span className="hidden xs:inline"> dossier{sortedDossiers.length > 1 ? 's' : ''}</span>
                             {sortedDossiers.length !== dossiers.length && (
@@ -229,7 +229,7 @@ export default function Index() {
                                     <span className="hidden xs:inline">)</span>
                                 </>
                             )}
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* ✅ Bouton Créer - Full width sur mobile */}
@@ -247,40 +247,45 @@ export default function Index() {
                     )}
                 </div>
 
-                {/* ✅ Alerte mode consultation - Padding adaptatif */}
-                {!canCreateDossier && (
-                    <Alert className="border-0 shadow-md bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                            <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
-                                <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
+                {/* ✅ Alerte mode consultation */}
+                    {!canCreateDossier && (
+                        <Alert className="border-0 shadow-md bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
+                            <div className="flex items-start gap-2 sm:gap-3">
+                                <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
+                                    <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <AlertDescription className="text-xs sm:text-sm text-amber-900 dark:text-amber-100">
+                                    <span className="font-semibold block sm:inline">
+                                        Mode consultation uniquement
+                                    </span>
+                                    <span className="text-amber-700 dark:text-amber-300 block sm:inline sm:ml-1 mt-1 sm:mt-0">
+                                        Vous pouvez consulter tous les dossiers mais pas les créer ou modifier.
+                                    </span>
+                                </AlertDescription>
                             </div>
-                            <AlertDescription className="text-xs sm:text-sm text-amber-900 dark:text-amber-100">
-                                <span className="font-semibold block sm:inline">Mode consultation uniquement</span>
-                                <span className="text-amber-700 dark:text-amber-300 block sm:inline sm:ml-1 mt-1 sm:mt-0">
-                                    Vous pouvez consulter tous les dossiers mais pas les créer ou modifier.
-                                </span>
-                            </AlertDescription>
-                        </div>
-                    </Alert>
-                )}
+                        </Alert>
+                    )}
 
-                {/* ✅ Alerte info - Responsive */}
-                <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                        <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-                            <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <AlertDescription className="text-xs sm:text-sm text-blue-900 dark:text-blue-100">
-                            <span className="font-semibold flex items-center gap-1.5 sm:gap-2">
-                                <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span>Gérez vos dossiers facilement</span>
-                            </span>
-                            <span className="text-blue-700 dark:text-blue-300 block mt-1">
-                                Consultez, modifiez et générez des documents
-                            </span>
-                        </AlertDescription>
-                    </div>
-                </Alert>
+                    {/* ✅ Alerte gestion complète (uniquement si autorisé) */}
+                    {canCreateDossier && (
+                        <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                            <div className="flex items-start gap-2 sm:gap-3">
+                                <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                                    <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <AlertDescription className="text-xs sm:text-sm text-blue-900 dark:text-blue-100">
+                                    <span className="font-semibold flex items-center gap-1.5 sm:gap-2">
+                                        <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                        <span>Gérez vos dossiers facilement</span>
+                                    </span>
+                                    <span className="text-blue-700 dark:text-blue-300 block mt-1">
+                                        Consultez, modifiez et générez des documents
+                                    </span>
+                                </AlertDescription>
+                            </div>
+                        </Alert>
+                    )}
+
 
                 {/* ✅ Card principale - Padding responsive */}
                 <Card className="border-0 shadow-lg">
