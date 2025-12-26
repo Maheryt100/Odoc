@@ -1,4 +1,4 @@
-// pages/demandes/helpers.ts - ✅ AVEC TRI PAR DATE_DEMANDE
+// pages/demandes/helpers.ts - ✅ CORRECTION TRI
 
 import type { DemandeWithDetails, FiltreStatutDemandeType, TriDemandeType } from './types';
 
@@ -26,7 +26,7 @@ export function filterDemandesByStatus(
 }
 
 /**
- * ✅ MISE À JOUR : Trier les demandes (avec option date_demande)
+ * ✅ CORRECTION : Trier les demandes (sans 'date_demande' dans le type)
  */
 export function sortDemandes(
     demandes: DemandeWithDetails[],
@@ -38,15 +38,10 @@ export function sortDemandes(
 
         switch (tri) {
             case 'date':
-                // Tri par created_at (date de création technique)
-                comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-                break;
-            
-            case 'date_demande': // ✅ NOUVEAU TRI
-                // Tri par date_demande (date officielle de la demande)
-                const dateA = a.date_demande ? new Date(a.date_demande).getTime() : 0;
-                const dateB = b.date_demande ? new Date(b.date_demande).getTime() : 0;
-                comparison = dateA - dateB;
+                // ✅ Utiliser created_at par défaut, ou date_demande si disponible
+                const dateA = a.date_demande || a.created_at || '';
+                const dateB = b.date_demande || b.created_at || '';
+                comparison = new Date(dateA).getTime() - new Date(dateB).getTime();
                 break;
 
             case 'lot':
@@ -177,13 +172,17 @@ export function getRowClassName(
 }
 
 /**
- * ✅ NOUVEAU : Formater une date pour affichage
+ * Formater une date pour affichage
  */
 export function formatDate(dateStr: string | null | undefined, format: 'short' | 'long' = 'short'): string {
     if (!dateStr) return '-';
     
     try {
-        const date = new Date(dateStr + 'T00:00:00');
+        const date = new Date(dateStr);
+        
+        if (isNaN(date.getTime())) {
+            return dateStr;
+        }
         
         if (format === 'long') {
             return date.toLocaleDateString('fr-FR', {
@@ -201,13 +200,18 @@ export function formatDate(dateStr: string | null | undefined, format: 'short' |
 }
 
 /**
- * ✅ NOUVEAU : Calculer l'ancienneté d'une demande (en jours)
+ * Calculer l'ancienneté d'une demande (en jours)
  */
 export function getDemandeAge(dateDemande: string | null | undefined): number | null {
     if (!dateDemande) return null;
     
     try {
-        const date = new Date(dateDemande + 'T00:00:00');
+        const date = new Date(dateDemande);
+        
+        if (isNaN(date.getTime())) {
+            return null;
+        }
+        
         const now = new Date();
         const diffTime = Math.abs(now.getTime() - date.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -218,7 +222,7 @@ export function getDemandeAge(dateDemande: string | null | undefined): number | 
 }
 
 /**
- * ✅ NOUVEAU : Obtenir un badge pour l'ancienneté
+ * Obtenir un badge pour l'ancienneté
  */
 export function getAgeLabel(age: number | null): string {
     if (age === null) return '-';
@@ -232,7 +236,7 @@ export function getAgeLabel(age: number | null): string {
 }
 
 /**
- * ✅ NOUVEAU : Filtrer par période de date_demande
+ * Filtrer par période de date_demande
  */
 export function filterByDateRange(
     demandes: DemandeWithDetails[],
@@ -259,7 +263,7 @@ export function filterByDateRange(
 }
 
 /**
- * ✅ NOUVEAU : Obtenir les statistiques par période
+ * Obtenir les statistiques par période
  */
 export interface DemandeStats {
     total: number;

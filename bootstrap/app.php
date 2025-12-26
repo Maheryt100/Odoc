@@ -36,6 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.attachments' => \App\Http\Middleware\CheckAttachmentsAccess::class,
             'check.dossier.not.closed' => \App\Http\Middleware\CheckDossierNotClosed::class,
             'validate.ordre' => \App\Http\Middleware\ValidateOrdreConsort::class,
+            'search.log' => \App\Http\Middleware\SearchLogger::class,
+            'super.admin' => \App\Http\Middleware\CheckSuperAdmin::class,
+
         ]);;
     })
     ->withExceptions(function (Exceptions $exceptions) {

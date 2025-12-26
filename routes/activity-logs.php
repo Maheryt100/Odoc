@@ -1,33 +1,56 @@
 <?php
 
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\LogsSettingsController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Activity Logs Routes
 |--------------------------------------------------------------------------
-| Consultation des logs d'activité (admin uniquement)
+| Gestion complète des logs avec export et suppression
 */
 
 Route::prefix('admin/activity-logs')
     ->name('admin.activity-logs.')
-    ->middleware('district.access:manage_users')
+    ->middleware('auth')
     ->group(function () {
-        
-        // Liste des logs
-        Route::get('/', [ActivityLogController::class, 'index'])
-            ->name('index');
-        
-        // Statistiques documents
-        Route::get('/document-stats', [ActivityLogController::class, 'documentStats'])
-            ->name('document-stats');
-        
-        // Activité d'un utilisateur
-        Route::get('/user/{userId}', [ActivityLogController::class, 'userActivity'])
-            ->name('user-activity');
-        
-        // Export
-        Route::get('/export', [ActivityLogController::class, 'export'])
-            ->name('export');
+
+        // ========== CONSULTATION ==========
+        Route::middleware('district.access:manage_users')->group(function () {
+
+            Route::get('/', [ActivityLogController::class, 'index'])
+                ->name('index');
+
+            Route::get('/document-stats', [ActivityLogController::class, 'documentStats'])
+                ->name('document-stats');
+
+            Route::get('/user/{userId}', [ActivityLogController::class, 'userActivity'])
+                ->name('user-activity');
+        });
+
+        // ========== SUPER ADMIN ==========
+        Route::middleware('super.admin')->group(function () {
+
+            Route::get('/settings', [LogsSettingsController::class, 'index'])
+                ->name('settings');
+
+            Route::put('/settings', [LogsSettingsController::class, 'update'])
+                ->name('settings.update');
+
+            Route::post('/export', [LogsSettingsController::class, 'export'])
+                ->name('export');
+
+            Route::get('/download/{filename}', [LogsSettingsController::class, 'download'])
+                ->name('download');
+
+            Route::delete('/exports/{filename}', [LogsSettingsController::class, 'deleteExport'])
+                ->name('exports.delete');
+
+            Route::post('/cleanup', [LogsSettingsController::class, 'cleanup'])
+                ->name('cleanup');
+
+            Route::get('/preview-cleanup', [LogsSettingsController::class, 'previewCleanup'])
+                ->name('preview-cleanup');
+        });
     });

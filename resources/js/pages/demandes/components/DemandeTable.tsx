@@ -63,8 +63,30 @@ interface DemandeTableProps {
 const formatNomComplet = (d: DemandeurSimple) =>
     [d.titre_demandeur, d.nom_demandeur, d.prenom_demandeur].filter(Boolean).join(' ');
 
-const formatDate = (date?: string) =>
-    date ? new Date(date + 'T00:00:00').toLocaleDateString('fr-FR') : '-';
+const formatDate = (dateStr?: string | null): string => {
+    if (!dateStr) return '-';
+
+    try {
+        let cleanDate = dateStr.trim();
+        
+        // Si la date contient déjà une heure ou un T (ISO), on ne touche à rien
+        if (cleanDate.includes('T') || cleanDate.includes(' ')) {
+            const date = new Date(cleanDate);
+            return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('fr-FR');
+        }
+        
+        // Si c'est juste YYYY-MM-DD, on ajoute l'heure pour éviter les décalages de fuseau horaire
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+            const date = new Date(cleanDate + 'T00:00:00');
+            return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('fr-FR');
+        }
+        
+        const date = new Date(cleanDate);
+        return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('fr-FR');
+    } catch (e) {
+        return dateStr;
+    }
+};
 
 /* ===================== COMPONENT ===================== */
 

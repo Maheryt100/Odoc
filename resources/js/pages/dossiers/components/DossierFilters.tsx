@@ -1,15 +1,17 @@
-// DossierFilters.tsx - ✅ VERSION RESPONSIVE AMÉLIORÉE
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Search, X, SortAsc, SortDesc, Calendar, Filter } from 'lucide-react';
-import { useState } from 'react';
-import type { District } from '@/types';
+import { useState, useRef, useEffect } from 'react';
 
 export type FiltreStatutDossierType = 'tous' | 'ouverts' | 'fermes' | 'incomplets' | 'avec_problemes';
 export type TriDossierType = 'date' | 'nom' | 'commune' | 'numero';
+
+interface District {
+    id: number;
+    nom_district: string;
+}
 
 interface DossierFiltersProps {
     filtreStatut: FiltreStatutDossierType;
@@ -53,14 +55,62 @@ export default function DossierFilters({
     canShowAllDistricts
 }: DossierFiltersProps) {
     
-    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const filterRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (!showFilters) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            
+            if (buttonRef.current?.contains(target)) {
+                return;
+            }
+            
+            if (filterRef.current?.contains(target)) {
+                return;
+            }
+            
+            const isSelectPortal = (target as Element).closest('[role="listbox"]') || 
+                                  (target as Element).closest('[data-radix-select-viewport]') ||
+                                  (target as Element).closest('[data-radix-popper-content-wrapper]');
+            
+            if (isSelectPortal) {
+                return;
+            }
+            
+            setShowFilters(false);
+        };
+
+        const timeoutId = setTimeout(() => {
+            document.addEventListener('mousedown', handleClickOutside);
+        }, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilters]);
 
     const hasActiveFilters = 
         filtreStatut !== 'tous' || 
         recherche !== '' || 
         districtFilter !== 'all' || 
         dateStart !== '' || 
-        dateEnd !== '';
+        dateEnd !== '' ||
+        tri !== 'date' ||
+        ordre !== 'desc';
+
+    const activeFiltersCount = [
+        filtreStatut !== 'tous',
+        districtFilter !== 'all',
+        dateStart,
+        dateEnd,
+        tri !== 'date',
+        ordre !== 'desc'
+    ].filter(Boolean).length;
 
     const resetAllFilters = () => {
         onFiltreStatutChange('tous');
@@ -68,81 +118,73 @@ export default function DossierFilters({
         onDistrictFilterChange('all');
         onDateStartChange('');
         onDateEndChange('');
+        onTriChange('date');
+    };
+
+    const getStatusLabel = (status: FiltreStatutDossierType) => {
+        const labels = {
+            tous: 'Tous',
+            ouverts: 'Ouverts',
+            fermes: 'Fermés',
+            incomplets: 'Incomplets',
+            avec_problemes: 'Avec problèmes'
+        };
+        return labels[status];
+    };
+
+    const getSortLabel = (sort: TriDossierType) => {
+        const labels = {
+            date: 'Date',
+            nom: 'Nom',
+            commune: 'Commune',
+            numero: 'Numéro'
+        };
+        return labels[sort];
     };
 
     return (
-        <div className="space-y-4">
-            {/* ✅ Ligne principale - Responsive */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                {/* Barre de recherche */}
-                <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="text"
-                        placeholder="Rechercher..."
-                        value={recherche}
-                        onChange={(e) => onRechercheChange(e.target.value)}
-                        className="pl-9 pr-9 h-10"
-                    />
-                    {recherche && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRechercheChange('')}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                        </Button>
-                    )}
-                </div>
+        <div className="space-y-3">
+            <div className="relative">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    {/* Barre de recherche */}
+                    <div className="relative flex-1 min-w-0">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Rechercher..."
+                            value={recherche}
+                            onChange={(e) => onRechercheChange(e.target.value)}
+                            className="pl-9 pr-9 h-10"
+                        />
+                        {recherche && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onRechercheChange('')}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+                    </div>
 
-                {/* Filtres principaux - Wrappable */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                    {/* Statut */}
-                    <Select value={filtreStatut} onValueChange={onFiltreStatutChange}>
-                        <SelectTrigger className="w-full sm:w-[140px] h-10">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="tous">Tous ({totalDossiers})</SelectItem>
-                            <SelectItem value="ouverts">Ouverts</SelectItem>
-                            <SelectItem value="fermes">Fermés</SelectItem>
-                            <SelectItem value="incomplets">Incomplets</SelectItem>
-                            <SelectItem value="avec_problemes">Avec problèmes</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    {/* Bouton Filtres */}
+                    <Button
+                        ref={buttonRef}
+                        variant="outline"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="relative h-10 px-4 gap-2"
+                    >
+                        <Filter className="h-4 w-4" />
+                        <span className="text-sm font-medium">Filtres</span>
+                        {activeFiltersCount > 0 && (
+                            <span className="absolute -top-1 -right-1 h-5 w-5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                                {activeFiltersCount}
+                            </span>
+                        )}
+                    </Button>
 
-                    {/* District */}
-                    {canShowAllDistricts && districts.length > 0 && (
-                        <Select value={districtFilter} onValueChange={onDistrictFilterChange}>
-                            <SelectTrigger className="w-full sm:w-[130px] h-10">
-                                <SelectValue placeholder="District" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tous districts</SelectItem>
-                                {districts.map(d => (
-                                    <SelectItem key={d.id} value={d.id.toString()}>
-                                        {d.nom_district}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
-
-                    {/* Tri */}
-                    <Select value={tri} onValueChange={onTriChange}>
-                        <SelectTrigger className="w-full sm:w-[120px] h-10">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="date">Date</SelectItem>
-                            <SelectItem value="nom">Nom</SelectItem>
-                            <SelectItem value="commune">Commune</SelectItem>
-                            <SelectItem value="numero">Numéro</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    {/* Ordre */}
+                    {/* Bouton Ordre */}
                     <Button
                         variant="outline"
                         size="icon"
@@ -152,99 +194,200 @@ export default function DossierFilters({
                     >
                         {ordre === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
                     </Button>
-
-                    {/* Filtres avancés toggle (mobile) */}
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className="h-10 w-10 sm:hidden"
-                        title="Filtres de dates"
-                    >
-                        <Calendar className="h-4 w-4" />
-                    </Button>
-
-                    {/* Reset */}
-                    {hasActiveFilters && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={resetAllFilters}
-                            className="h-10 px-3"
-                        >
-                            <X className="h-4 w-4 mr-1" />
-                            <span className="hidden sm:inline">Réinitialiser</span>
-                        </Button>
-                    )}
                 </div>
-            </div>
 
-            {/* ✅ Filtres de dates - Collapsible sur mobile */}
-            <div className={`${showAdvancedFilters || window.innerWidth >= 640 ? 'block' : 'hidden'} sm:block`}>
-                <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 p-3 rounded-lg border">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                        <div className="flex items-center gap-2 shrink-0">
-                            <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <span className="text-sm font-medium text-muted-foreground">
-                                Période :
-                            </span>
-                        </div>
-                        
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
-                            {/* Date début */}
-                            <div className="flex-1 min-w-0">
-                                <Label htmlFor="date-start" className="text-xs text-muted-foreground mb-1 block">
-                                    Du
-                                </Label>
-                                <Input
-                                    id="date-start"
-                                    type="date"
-                                    value={dateStart}
-                                    onChange={(e) => onDateStartChange(e.target.value)}
-                                    className="h-9"
-                                />
-                            </div>
-
-                            {/* Date fin */}
-                            <div className="flex-1 min-w-0">
-                                <Label htmlFor="date-end" className="text-xs text-muted-foreground mb-1 block">
-                                    Au
-                                </Label>
-                                <Input
-                                    id="date-end"
-                                    type="date"
-                                    value={dateEnd}
-                                    onChange={(e) => onDateEndChange(e.target.value)}
-                                    min={dateStart || undefined}
-                                    className="h-9"
-                                />
-                            </div>
-
-                            {/* Reset dates */}
-                            {(dateStart || dateEnd) && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                        onDateStartChange('');
-                                        onDateEndChange('');
-                                    }}
-                                    className="h-9 w-9 mt-0 sm:mt-5 shrink-0"
-                                    title="Réinitialiser les dates"
+                {/* Badges des filtres actifs */}
+                {hasActiveFilters && (
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium text-muted-foreground">
+                            Filtres actifs :
+                        </span>
+                        {filtreStatut !== 'tous' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                                {getStatusLabel(filtreStatut)}
+                                <button
+                                    onClick={() => onFiltreStatutChange('tous')}
+                                    className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
                                 >
-                                    <X className="h-4 w-4" />
-                                </Button>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        {districtFilter !== 'all' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">
+                                District: {districts.find(d => d.id.toString() === districtFilter)?.nom_district}
+                                <button
+                                    onClick={() => onDistrictFilterChange('all')}
+                                    className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        {dateStart && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                                Du: {new Date(dateStart).toLocaleDateString('fr-FR')}
+                                <button
+                                    onClick={() => onDateStartChange('')}
+                                    className="hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        {dateEnd && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                                Au: {new Date(dateEnd).toLocaleDateString('fr-FR')}
+                                <button
+                                    onClick={() => onDateEndChange('')}
+                                    className="hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        {tri !== 'date' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs rounded-full">
+                                Tri: {getSortLabel(tri)}
+                                <button
+                                    onClick={() => onTriChange('date')}
+                                    className="hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        <button
+                            onClick={resetAllFilters}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                        >
+                            Tout effacer
+                        </button>
+                    </div>
+                )}
+
+                {/* Panel Filtres Popup */}
+                {showFilters && (
+                    <div 
+                        ref={filterRef}
+                        className="absolute top-full right-0 mt-2 w-full sm:w-96 bg-background border rounded-lg shadow-2xl z-50 animate-in slide-in-from-top-2 duration-200"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b">
+                            <h4 className="font-semibold flex items-center gap-2">
+                                <Filter className="h-4 w-4 text-blue-600" />
+                                Filtres de recherche
+                            </h4>
+                            {hasActiveFilters && (
+                                <button 
+                                    onClick={resetAllFilters} 
+                                    className="text-sm text-blue-600 hover:underline font-medium"
+                                >
+                                    Réinitialiser
+                                </button>
                             )}
                         </div>
 
-                        {/* Badge résultats */}
-                        {hasActiveFilters && (
-                            <Badge variant="secondary" className="text-xs shrink-0 self-start sm:self-center sm:mt-5">
-                                {totalFiltres} / {totalDossiers}
-                            </Badge>
-                        )}
+                        {/* Body */}
+                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                            
+                            {/* Statut */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Statut</Label>
+                                <Select value={filtreStatut} onValueChange={(value) => onFiltreStatutChange(value as FiltreStatutDossierType)}>
+                                    <SelectTrigger className="w-full h-10">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="tous">Tous ({totalDossiers})</SelectItem>
+                                        <SelectItem value="ouverts">Ouverts</SelectItem>
+                                        <SelectItem value="fermes">Fermés</SelectItem>
+                                        <SelectItem value="incomplets">Incomplets</SelectItem>
+                                        <SelectItem value="avec_problemes">Avec problèmes</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* District */}
+                            {canShowAllDistricts && districts.length > 0 && (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">District</Label>
+                                    <Select value={districtFilter} onValueChange={onDistrictFilterChange}>
+                                        <SelectTrigger className="w-full h-10">
+                                            <SelectValue placeholder="District" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Tous districts</SelectItem>
+                                            {districts.map(d => (
+                                                <SelectItem key={d.id} value={d.id.toString()}>
+                                                    {d.nom_district}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {/* Tri */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Trier par</Label>
+                                <Select value={tri} onValueChange={(value) => onTriChange(value as TriDossierType)}>
+                                    <SelectTrigger className="w-full h-10">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="date">Date</SelectItem>
+                                        <SelectItem value="nom">Nom</SelectItem>
+                                        <SelectItem value="commune">Commune</SelectItem>
+                                        <SelectItem value="numero">Numéro</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Période */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-blue-600" />
+                                    Période
+                                </Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="date-start" className="text-xs text-muted-foreground">
+                                            Du
+                                        </Label>
+                                        <Input
+                                            id="date-start"
+                                            type="date"
+                                            value={dateStart}
+                                            onChange={(e) => onDateStartChange(e.target.value)}
+                                            className="h-10"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="date-end" className="text-xs text-muted-foreground">
+                                            Au
+                                        </Label>
+                                        <Input
+                                            id="date-end"
+                                            type="date"
+                                            value={dateEnd}
+                                            onChange={(e) => onDateEndChange(e.target.value)}
+                                            min={dateStart || undefined}
+                                            className="h-10"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-4 py-3 border-t bg-muted/30 rounded-b-lg">
+                            <div className="text-xs text-muted-foreground text-center">
+                                {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''} sur {totalDossiers}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

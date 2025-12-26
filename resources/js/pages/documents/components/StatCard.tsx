@@ -1,15 +1,16 @@
-// documents/components/StatCard.tsx - ✅ VERSION RESPONSIVE
+// documents/components/StatCard.tsx - ✅ VERSION ULTRA-CLEAN
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, CheckCircle2, LucideIcon } from 'lucide-react';
+import { TrendingUp, CheckCircle2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useResponsive';
+import * as React from 'react';
 
 interface StatCardProps {
     title: string;
     value: number;
     total: number;
-    icon: LucideIcon;
+    icon: any;
     colorScheme: 'violet' | 'green' | 'emerald' | 'blue' | 'cyan';
     label?: string;
 }
@@ -18,7 +19,7 @@ export default function StatCard({
     title,
     value,
     total,
-    icon: Icon,
+    icon: IconProp,
     colorScheme,
     label = 'éléments'
 }: StatCardProps) {
@@ -67,35 +68,35 @@ export default function StatCard({
     const colors = colorClasses[colorScheme];
 
     return (
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+        <Card className="border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
             <div className={`bg-gradient-to-br ${colors.gradient}`}>
-                <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${isMobile ? 'pb-2 px-3 pt-3' : 'pb-2'}`}>
-                    <CardTitle className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium truncate pr-2`}>
+                <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${isMobile ? 'pb-2 px-3 pt-2' : 'pb-2 px-4 pt-3'}`}>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold truncate pr-2`}>
                         {title}
-                    </CardTitle>
+                    </span>
                     <div className={`${colors.iconBg} rounded-lg shrink-0 ${isMobile ? 'p-1.5' : 'p-2'}`}>
-                        <Icon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${colors.iconColor}`} />
+                        <IconProp className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${colors.iconColor}`} />
                     </div>
                 </CardHeader>
             </div>
-            <CardContent className={isMobile ? 'pt-3 px-3 pb-3' : 'pt-4'}>
-                <div className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r ${colors.textGradient} bg-clip-text text-transparent`}>
+            <CardContent className={isMobile ? 'pt-2 px-3 pb-2' : 'pt-3 px-4 pb-3'}>
+                <div className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold bg-gradient-to-r ${colors.textGradient} bg-clip-text text-transparent`}>
                     {value}
                 </div>
-                <div className={`flex items-center gap-2 ${isMobile ? 'mt-1' : 'mt-2'}`}>
+                <div className={`flex items-center gap-1.5 ${isMobile ? 'mt-1' : 'mt-2'}`}>
                     <TrendingUp className={`${isMobile ? 'h-2.5 w-2.5' : 'h-3 w-3'} text-green-500`} />
                     <p className="text-xs text-muted-foreground truncate">
                         {isMobile ? `/${total}` : `sur ${total} ${label}`}
                     </p>
                 </div>
-                <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full ${isMobile ? 'h-1.5 mt-2' : 'h-2 mt-3'}`}>
+                <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full ${isMobile ? 'h-1.5 mt-2' : 'h-2 mt-2'}`}>
                     <div
                         className={`bg-gradient-to-r ${colors.progressBar} ${isMobile ? 'h-1.5' : 'h-2'} rounded-full transition-all duration-500 ease-out`}
                         style={{ width: `${percentage}%` }}
                     />
                 </div>
                 {value > 0 && !isMobile && (
-                    <Badge variant="outline" className="mt-3 text-xs">
+                    <Badge variant="outline" className="mt-2 text-xs">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         {percentage}%
                     </Badge>

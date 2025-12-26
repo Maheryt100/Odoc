@@ -21,6 +21,20 @@ class ActivityLogController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        // ✅ Validation des paramètres
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'user_id' => 'nullable|integer|exists:users,id',
+            'action' => 'nullable|string|max:50',
+            'document_type' => 'nullable|string|max:50',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'per_page' => 'nullable|integer|min:10|max:200', // ✅ Configurable
+        ]);
+
+        // ✅ Par défaut : 50 par page (modifiable)
+        $perPage = $request->input('per_page', 50);
+
         // ✅ Query de base avec TOUS les attributs nécessaires
         $query = ActivityLog::with([
             'user:id,name,email',
@@ -32,6 +46,7 @@ class ActivityLogController extends Controller
             'action',
             'entity_type',
             'entity_id',
+            'entity_name', // ✅ NOUVEAU
             'document_type',
             'id_district',
             'metadata',
@@ -47,27 +62,9 @@ class ActivityLogController extends Controller
             $query->where('id_district', $user->id_district);
         }
 
-        // ✅ FILTRES
-        if ($request->filled('user_id')) {
-            $query->where('id_user', $request->user_id);
-        }
-
-        if ($request->filled('action')) {
-            $query->where('action', $request->action);
-        }
-
-        if ($request->filled('document_type')) {
-            $query->where('document_type', $request->document_type);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
+        // ✅ FILTRES CÔTÉ SERVEUR (plus performant)
+        
+        // Recherche textuelle
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -76,32 +73,58 @@ class ActivityLogController extends Controller
                         ->orWhere('email', 'ilike', "%{$search}%")
                 )
                 ->orWhere('action', 'ilike', "%{$search}%")
-                ->orWhere('entity_type', 'ilike', "%{$search}%");
+                ->orWhere('entity_type', 'ilike', "%{$search}%")
+                ->orWhere('entity_name', 'ilike', "%{$search}%"); // ✅ Cherche dans les noms
             });
         }
 
-        // ✅ Pagination
-        $logs = $query->paginate(50)
-            ->withQueryString()
+        // Filtre utilisateur
+        if ($request->filled('user_id')) {
+            $query->where('id_user', $request->user_id);
+        }
+
+        // Filtre action
+        if ($request->filled('action')) {
+            $query->where('action', $request->action);
+        }
+
+        // Filtre type de document
+        if ($request->filled('document_type')) {
+            $query->where('document_type', $request->document_type);
+        }
+
+        // Filtre période
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // ✅ Pagination côté serveur
+        $logs = $query->paginate($perPage)
+            ->withQueryString() // ✅ Garde les paramètres de recherche dans l'URL
             ->through(function($log) {
                 return [
                     'id' => $log->id,
                     'user' => $log->user,
                     'district' => $log->district,
                     'action' => $log->action,
-                    'action_label' => $log->action_label, // ✅ Appel de l'accessor
+                    'action_label' => $log->action_label,
                     'entity_type' => $log->entity_type,
-                    'entity_label' => $log->entity_label, // ✅ Appel de l'accessor
+                    'entity_label' => $log->entity_label,
+                    'entity_name' => $log->entity_name, // ✅ Nom lisible
                     'document_type' => $log->document_type,
                     'entity_id' => $log->entity_id,
-                    'details' => $log->details, // ✅ Appel de l'accessor
+                    'details' => $log->details,
                     'metadata' => $log->metadata,
                     'ip_address' => $log->ip_address,
                     'created_at' => $log->created_at->toISOString(),
                 ];
             });
 
-        // ✅ Statistiques
+        // ✅ Statistiques (non paginées)
         $statsQuery = ActivityLog::query();
         if (!$user->canAccessAllDistricts()) {
             $statsQuery->where('id_district', $user->id_district);
@@ -147,7 +170,7 @@ class ActivityLogController extends Controller
         ];
 
         return Inertia::render('admin/activity-logs/Index', [
-            'logs' => $logs,
+            'logs' => $logs, // ✅ Paginé côté serveur
             'filters' => [
                 'search' => $request->get('search'),
                 'user_id' => $request->get('user_id'),
@@ -155,6 +178,7 @@ class ActivityLogController extends Controller
                 'document_type' => $request->get('document_type'),
                 'date_from' => $request->get('date_from'),
                 'date_to' => $request->get('date_to'),
+                'per_page' => $perPage,
             ],
             'stats' => $stats,
             'users' => $users,
@@ -209,6 +233,7 @@ class ActivityLogController extends Controller
                     'id' => $log->id,
                     'action_label' => $log->action_label,
                     'entity_label' => $log->entity_label,
+                    'entity_name' => $log->entity_name,
                     'details' => $log->details,
                     'created_at' => $log->created_at->toISOString(),
                 ];

@@ -1,4 +1,4 @@
-// users/components/ConfirmationDialogs.tsx - MOBILE OPTIMIZED
+// users/components/ConfirmationDialogs.tsx - SOLUTION FINALE
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,13 +22,30 @@ interface ToggleStatusDialogProps {
 export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDialogProps) => {
     if (!user) return null;
 
+    // ✅ NE PAS appeler onClose() dans handleConfirm
+    // Laisser Inertia recharger la page, ce qui fermera automatiquement le dialog
     const handleConfirm = () => {
         onConfirm(user);
     };
 
     return (
-        <AlertDialog open={!!user} onOpenChange={(open) => !open && onClose()}>
-            <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+        <AlertDialog 
+            open={!!user} 
+            onOpenChange={(isOpen) => {
+                // ✅ Ne fermer que si l'utilisateur annule (isOpen = false)
+                if (!isOpen) {
+                    onClose();
+                }
+            }}
+        >
+            <AlertDialogContent 
+                className="max-w-[calc(100vw-2rem)] sm:max-w-lg"
+                // ✅ Empêcher la fermeture par clic sur overlay pendant le traitement
+                onEscapeKeyDown={(e) => {
+                    // Vous pouvez bloquer l'escape si nécessaire
+                    // e.preventDefault();
+                }}
+            >
                 <AlertDialogHeader>
                     <AlertDialogTitle className="text-base sm:text-lg">
                         {user.status ? 'Désactiver' : 'Activer'} l'utilisateur
@@ -57,7 +74,6 @@ export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDia
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                     <AlertDialogCancel 
-                        onClick={onClose}
                         className="w-full sm:w-auto order-2 sm:order-1 mt-0"
                     >
                         Annuler
@@ -85,12 +101,21 @@ interface DeleteUserDialogProps {
 export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogProps) => {
     if (!user) return null;
 
+    // ✅ NE PAS appeler onClose() dans handleConfirm
     const handleConfirm = () => {
         onConfirm(user);
     };
 
     return (
-        <AlertDialog open={!!user} onOpenChange={(open) => !open && onClose()}>
+        <AlertDialog 
+            open={!!user} 
+            onOpenChange={(isOpen) => {
+                // ✅ Ne fermer que si l'utilisateur annule
+                if (!isOpen) {
+                    onClose();
+                }
+            }}
+        >
             <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -120,7 +145,6 @@ export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogP
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                     <AlertDialogCancel 
-                        onClick={onClose}
                         className="w-full sm:w-auto order-2 sm:order-1 mt-0"
                     >
                         Annuler

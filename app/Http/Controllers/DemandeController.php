@@ -845,104 +845,184 @@ class DemandeController extends Controller
     }
 
     /**
-     * ✅ CORRECTION 1 : Assurer que date_demande est chargé + créé
-     */
-    public function resume(Request $request, $dossierId)
-    {
-        $dossier = Dossier::with([
-            'proprietes' => function($q) {
-                $q->select('id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 'situation', 'proprietaire', 'id_dossier', 'date_requisition')
+ * ✅ CORRECTION PRINCIPALE : Charger les demandeurs complets dans propriete.demandes
+ */
+public function resume(Request $request, $dossierId)
+{
+    // ✅ ÉTAPE 1 : Charger le dossier avec TOUTES les relations nécessaires
+    $dossier = Dossier::with([
+        'proprietes' => function($q) {
+            $q->select(
+                'id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 
+                'situation', 'proprietaire', 'id_dossier', 'date_requisition',
+                'date_depot_1', 'date_depot_2', 'date_approbation_acte',  // ✅ Dates complètes
+                'dep_vol_inscription', 'dep_vol_inscription_complet',
+                'dep_vol_requisition', 'dep_vol_requisition_complet',
+                'numero_FN', 'numero_requisition', 'is_archived'
+            )
+            ->with([
+                'demandes' => function($subq) {
+                    $subq->select(
+                        'id', 
+                        'id_propriete', 
+                        'id_demandeur', 
+                        'date_demande',
+                        'status', 
+                        'ordre', 
+                        'total_prix',
+                        'status_consort',
+                        'created_at'
+                    )
+                    // ✅ FIX CRITIQUE : Charger le demandeur COMPLET
                     ->with([
-                        'demandes' => function($subq) {
-                            $subq->select(
+                        'demandeur' => function($demQ) {
+                            $demQ->select(
                                 'id', 
-                                'id_propriete', 
-                                'id_demandeur', 
-                                'date_demande', // ✅ AJOUTÉ
-                                'status', 
-                                'ordre', 
-                                'total_prix',
-                                'created_at'
-                            )
-                            ->with('demandeur:id,titre_demandeur,nom_demandeur,prenom_demandeur,cin,domiciliation')
-                            ->orderBy('ordre');
+                                'titre_demandeur', 
+                                'nom_demandeur', 
+                                'prenom_demandeur', 
+                                'cin',
+                                'domiciliation',
+                                'telephone',
+                                'date_naissance',
+                                'lieu_naissance',
+                                'sexe',
+                                'occupation',
+                                'nationalite',
+                                'situation_familiale',
+                                'nom_pere',
+                                'nom_mere'
+                            );
                         }
-                    ]);
-            },
-            'demandeurs'
-        ])->findOrFail($dossierId);
+                    ])
+                    ->orderBy('ordre');
+                }
+            ]);
+        },
+        // ✅ Charger aussi les demandeurs du dossier
+        'demandeurs' => function($q) {
+            $q->select(
+                'id', 
+                'titre_demandeur', 
+                'nom_demandeur', 
+                'prenom_demandeur', 
+                'cin',
+                'date_naissance',
+                'lieu_naissance',
+                'date_delivrance',
+                'lieu_delivrance',
+                'domiciliation',
+                'occupation',
+                'nom_mere',
+                'telephone',
+                'sexe',
+                'nationalite',
+                'situation_familiale',
+                'regime_matrimoniale',
+                'marie_a',
+                'date_mariage',
+                'lieu_mariage',
+                'nom_pere'
+            );
+        }
+    ])->findOrFail($dossierId);
 
-        $query = Demander::with([
-            'demandeur' => function($q) {
-                $q->select(
-                    'id', 'titre_demandeur', 'nom_demandeur', 'prenom_demandeur', 'cin',
-                    'date_naissance', 'lieu_naissance', 'date_delivrance', 'lieu_delivrance',
-                    'domiciliation', 'occupation', 'nom_mere', 'telephone'
-                );
-            },
-            'propriete' => function($q) {
-                $q->select('id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 'situation', 'proprietaire', 'id_dossier', 'date_requisition')
+    // ✅ ÉTAPE 2 : Query pour les demandes avec relations complètes
+    $query = Demander::with([
+        'demandeur' => function($q) {
+            $q->select(
+                'id', 'titre_demandeur', 'nom_demandeur', 'prenom_demandeur', 'cin',
+                'date_naissance', 'lieu_naissance', 'date_delivrance', 'lieu_delivrance',
+                'domiciliation', 'occupation', 'nom_mere', 'telephone', 'sexe',
+                'nationalite', 'situation_familiale'
+            );
+        },
+        'propriete' => function($q) {
+            $q->select(
+                'id', 'lot', 'titre', 'contenance', 'nature', 'vocation', 
+                'situation', 'proprietaire', 'id_dossier', 'date_requisition',
+                'date_depot_1', 'date_depot_2', 'date_approbation_acte',
+                'dep_vol_inscription_complet', 'dep_vol_requisition_complet',
+                'numero_FN', 'numero_requisition', 'is_archived'
+            )
+            ->with([
+                'demandes' => function($subq) {
+                    $subq->select(
+                        'id', 'id_propriete', 'id_demandeur', 'date_demande', 
+                        'status', 'ordre', 'total_prix', 'status_consort'
+                    )
+                    // ✅ FIX : Charger le demandeur dans les demandes de la propriété
                     ->with([
-                        'demandes' => function($subq) {
-                            $subq->select('id', 'id_propriete', 'id_demandeur', 'date_demande', 'status', 'ordre')
-                                ->orderBy('ordre');
+                        'demandeur' => function($demQ) {
+                            $demQ->select(
+                                'id', 'titre_demandeur', 'nom_demandeur', 
+                                'prenom_demandeur', 'cin', 'domiciliation', 
+                                'telephone', 'sexe'
+                            );
                         }
-                    ]);
-            }
-        ])
-        ->select('id', 'id_demandeur', 'id_propriete', 'date_demande', 'total_prix', 'status', 'status_consort', 'ordre', 'created_at', 'updated_at') // ✅ EXPLICITE
-        ->whereHas('propriete', fn($q) => $q->where('id_dossier', $dossier->id))
-        ->orderBy('id_propriete')
-        ->orderBy('ordre', 'asc');
-
-        // Filtres
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('propriete', fn($sub) =>
-                    $sub->where('lot', 'ilike', "%{$search}%")
-                        ->orWhere('titre', 'ilike', "%{$search}%")
-                )
-                ->orWhereHas('demandeur', fn($sub) =>
-                    $sub->where('nom_demandeur', 'ilike', "%{$search}%")
-                        ->orWhere('prenom_demandeur', 'ilike', "%{$search}%")
-                        ->orWhere('cin', 'like', "%{$search}%")
-                );
-            });
+                    ])
+                    ->orderBy('ordre');
+                }
+            ]);
         }
+    ])
+    ->select(
+        'id', 'id_demandeur', 'id_propriete', 'date_demande', 
+        'total_prix', 'status', 'status_consort', 'ordre', 
+        'created_at', 'updated_at'
+    )
+    ->whereHas('propriete', fn($q) => $q->where('id_dossier', $dossier->id))
+    ->orderBy('id_propriete')
+    ->orderBy('ordre', 'asc');
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $demandes = $query->get();
-
-        // Grouper par propriété avec date_demande
-        $documentsGroupes = $this->groupeDemandes($demandes);
-
-        // Pagination
-        $page = $request->get('page', 1);
-        $perPage = 20;
-        $total = $documentsGroupes->count();
-        $lastPage = ceil($total / $perPage);
-        
-        $paginatedData = $documentsGroupes->slice(($page - 1) * $perPage, $perPage)->values();
-
-        $documents = [
-            'data' => $paginatedData,
-            'current_page' => (int) $page,
-            'last_page' => (int) $lastPage,
-            'per_page' => $perPage,
-            'total' => $total,
-            'from' => ($page - 1) * $perPage + 1,
-            'to' => min($page * $perPage, $total),
-        ];
-
-        return Inertia::render('demandes/ResumeDossier', [
-            'dossier' => $dossier,
-            'documents' => $documents,
-        ]);
+    // Filtres
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->whereHas('propriete', fn($sub) =>
+                $sub->where('lot', 'ilike', "%{$search}%")
+                    ->orWhere('titre', 'ilike', "%{$search}%")
+            )
+            ->orWhereHas('demandeur', fn($sub) =>
+                $sub->where('nom_demandeur', 'ilike', "%{$search}%")
+                    ->orWhere('prenom_demandeur', 'ilike', "%{$search}%")
+                    ->orWhere('cin', 'like', "%{$search}%")
+            );
+        });
     }
+
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    $demandes = $query->get();
+
+    // Grouper par propriété avec date_demande
+    $documentsGroupes = $this->groupeDemandes($demandes);
+
+    // Pagination
+    $page = $request->get('page', 1);
+    $perPage = 20;
+    $total = $documentsGroupes->count();
+    $lastPage = ceil($total / $perPage);
+    
+    $paginatedData = $documentsGroupes->slice(($page - 1) * $perPage, $perPage)->values();
+
+    $documents = [
+        'data' => $paginatedData,
+        'current_page' => (int) $page,
+        'last_page' => (int) $lastPage,
+        'per_page' => $perPage,
+        'total' => $total,
+        'from' => ($page - 1) * $perPage + 1,
+        'to' => min($page * $perPage, $total),
+    ];
+
+    return Inertia::render('demandes/ResumeDossier', [
+        'dossier' => $dossier,
+        'documents' => $documents,
+    ]);
+}
 
 
 }

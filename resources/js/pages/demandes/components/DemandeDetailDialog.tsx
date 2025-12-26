@@ -1,3 +1,5 @@
+// pages/demandes/components/DemandeDetailDialog.tsx - ✅ CORRECTION COMPLÈTE
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -7,31 +9,6 @@ import {
     DollarSign, ArrowRight, Calendar, Clock
 } from 'lucide-react';
 import type { Demandeur, Propriete } from '@/types';
-
-// interface Demandeur {
-//     id: number;
-//     titre_demandeur?: string;
-//     nom_demandeur: string;
-//     prenom_demandeur?: string;
-//     cin: string;
-//     domiciliation?: string;
-//     telephone?: string;
-//     nationalite?: string;
-//     date_naissance?: string;
-//     lieu_naissance?: string;
-// }
-
-// interface Propriete {
-//     id: number;
-//     lot: string;
-//     titre?: string;
-//     contenance?: number;
-//     nature?: string;
-//     vocation?: string;
-//     proprietaire?: string;
-//     situation?: string;
-//     date_requisition?: string;
-// }
 
 interface DemandeData {
     id: number;
@@ -105,11 +82,64 @@ export default function DemandeDetailDialog({
         ].filter(Boolean).join(' ');
     };
 
+    /**
+     * ✅ CORRECTION PRINCIPALE : Gestion robuste des formats de date
+     */
     const formatDate = (dateStr: string | null | undefined, format: 'short' | 'long' = 'short'): string => {
         if (!dateStr) return '-';
 
         try {
-            const date = new Date(dateStr + 'T00:00:00');
+            // Nettoyer la chaîne
+            let cleanDate = dateStr.trim();
+            
+            // Si c'est déjà un DateTime complet, le parser directement
+            if (cleanDate.includes('T') || cleanDate.includes(' ')) {
+                const date = new Date(cleanDate);
+                
+                if (isNaN(date.getTime())) {
+                    console.error('Date invalide après parsing:', cleanDate);
+                    return dateStr; // Retourner la chaîne brute
+                }
+
+                if (format === 'long') {
+                    return date.toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+
+                return date.toLocaleDateString('fr-FR');
+            }
+            
+            // Si c'est juste YYYY-MM-DD, ajouter T00:00:00
+            if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+                const date = new Date(cleanDate + 'T00:00:00');
+                
+                if (isNaN(date.getTime())) {
+                    console.error('Date invalide:', cleanDate);
+                    return dateStr;
+                }
+
+                if (format === 'long') {
+                    return date.toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+
+                return date.toLocaleDateString('fr-FR');
+            }
+            
+            // Dernier recours : parser tel quel
+            const date = new Date(cleanDate);
+            if (isNaN(date.getTime())) {
+                console.error('Format de date non reconnu:', cleanDate);
+                return dateStr;
+            }
 
             if (format === 'long') {
                 return date.toLocaleDateString('fr-FR', {
@@ -121,21 +151,43 @@ export default function DemandeDetailDialog({
             }
 
             return date.toLocaleDateString('fr-FR');
-        } catch {
-            return dateStr;
+
+        } catch (error) {
+            console.error('Erreur formatDate:', error, 'pour:', dateStr);
+            return dateStr; // En cas d'erreur, retourner la valeur brute
         }
     };
 
+    /**
+     * ✅ CORRECTION : Calcul d'âge robuste
+     */
     const getDemandeAge = (dateDemande: string | null | undefined): number | null => {
         if (!dateDemande) return null;
 
         try {
-            const date = new Date(dateDemande + 'T00:00:00');
+            let cleanDate = dateDemande.trim();
+            let date: Date;
+
+            // Parser selon le format
+            if (cleanDate.includes('T') || cleanDate.includes(' ')) {
+                date = new Date(cleanDate);
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+                date = new Date(cleanDate + 'T00:00:00');
+            } else {
+                date = new Date(cleanDate);
+            }
+
+            if (isNaN(date.getTime())) {
+                console.error('Date invalide pour calcul âge:', dateDemande);
+                return null;
+            }
+
             const now = new Date();
             const diffTime = Math.abs(now.getTime() - date.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             return diffDays;
-        } catch {
+        } catch (error) {
+            console.error('Erreur getDemandeAge:', error);
             return null;
         }
     };
@@ -149,6 +201,23 @@ export default function DemandeDetailDialog({
         age < 365 ? `Il y a ${Math.floor(age / 30)} mois` :
         `Il y a ${Math.floor(age / 365)} an(s)`
     ) : null;
+
+    /**
+     * ✅ CORRECTION : Handlers avec données COMPLÈTES
+     */
+    const handleSelectDemandeur = (demandeur: Demandeur) => {
+        if (onSelectDemandeur) {
+            // ✅ Passer l'objet demandeur COMPLET (pas juste une partie)
+            onSelectDemandeur(demandeur);
+        }
+    };
+
+    const handleSelectPropriete = () => {
+        if (onSelectPropriete && propriete) {
+            // ✅ Passer l'objet propriété COMPLET
+            onSelectPropriete(propriete);
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -184,7 +253,7 @@ export default function DemandeDetailDialog({
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                {/* Section Date de demande - Mise en avant */}
+                                {/* Section Date de demande */}
                                 {demande.date_demande && (
                                     <div className="p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
                                         <div className="flex items-start gap-3">
@@ -211,7 +280,7 @@ export default function DemandeDetailDialog({
                                     </div>
                                 )}
 
-                                {/* Section Demandeurs */}
+                                {/* Section Demandeurs - ✅ AVEC HANDLER CORRIGÉ */}
                                 <div>
                                     <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                                         <Users className="h-4 w-4" />
@@ -222,7 +291,7 @@ export default function DemandeDetailDialog({
                                             <div
                                                 key={dem.id}
                                                 className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
-                                                onClick={() => onSelectDemandeur?.(dem.demandeur)}
+                                                onClick={() => handleSelectDemandeur(dem.demandeur)}
                                             >
                                                 <div className="flex items-center justify-between mb-3">
                                                     <div className="flex items-center gap-2">
@@ -265,7 +334,7 @@ export default function DemandeDetailDialog({
 
                                 <Separator />
 
-                                {/* Section Propriété */}
+                                {/* Section Propriété - ✅ AVEC HANDLER CORRIGÉ */}
                                 <div>
                                     <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                                         <MapPin className="h-4 w-4" />
@@ -273,7 +342,7 @@ export default function DemandeDetailDialog({
                                     </h3>
                                     <div
                                         className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition group"
-                                        onClick={() => propriete && onSelectPropriete?.(propriete)}
+                                        onClick={handleSelectPropriete}
                                     >
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>

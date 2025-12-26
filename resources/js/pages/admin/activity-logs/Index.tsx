@@ -1,98 +1,95 @@
-// admin/activity-logs/Index.tsx - ✅ VERSION REDESIGNÉE
+// pages/admin/activity-logs/Index.tsx - PAGINATION SERVEUR
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { Download, FileText, Activity as ActivityIcon, Info, Sparkles } from 'lucide-react';
-
-// Types
+import { Activity as ActivityIcon, Info, Sparkles, Settings } from 'lucide-react';
 import { ActivityLogsIndexProps } from './types';
-
-// Helpers
-import { buildSearchParams, hasActiveFilters as checkActiveFilters, clearAllFilters } from './helpers';
-
-// Components
 import { StatsCards } from './components/StatsCards';
-import { FiltersCard } from './components/FiltersCard';
+import ActivityFilters from './components/ActivityFilters';
 import { LogsTable } from './components/LogsTable';
 import { Pagination } from './components/Pagination';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { User } from '@/types';
 
 export default function ActivityLogsIndex({
     logs,
-    filters,
+    filters: initialFilters,
     stats,
     users,
     actions,
     documentTypes,
-}: ActivityLogsIndexProps) {
-    // États pour les filtres
-    const [search, setSearch] = useState(filters.search || '');
-    const [selectedUser, setSelectedUser] = useState(filters.user_id || 'all');
-    const [selectedAction, setSelectedAction] = useState(filters.action || 'all');
-    const [selectedDocType, setSelectedDocType] = useState(filters.document_type || 'all');
-    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
-    const [dateTo, setDateTo] = useState(filters.date_to || '');
+    auth,
+}: ActivityLogsIndexProps & { auth: { user: User } }) {
+    // ✅ États pour les filtres (synchronisés avec l'URL)
+    const [search, setSearch] = useState(initialFilters.search || '');
+    const [userId, setUserId] = useState(initialFilters.user_id || 'all');
+    const [action, setAction] = useState(initialFilters.action || 'all');
+    const [documentType, setDocumentType] = useState(initialFilters.document_type || 'all');
+    const [dateFrom, setDateFrom] = useState(initialFilters.date_from || '');
+    const [dateTo, setDateTo] = useState(initialFilters.date_to || '');
 
-    // État de chargement
-    const [isSearching, setIsSearching] = useState(false);
+    // ✅ Fonction pour appliquer les filtres (requête serveur)
+    const applyFilters = () => {
+        const params: Record<string, any> = {};
 
-    const handleFilter = () => {
-        setIsSearching(true);
-        
-        const params = buildSearchParams({
-            search,
-            user_id: selectedUser,
-            action: selectedAction,
-            document_type: selectedDocType,
-            date_from: dateFrom,
-            date_to: dateTo,
-        });
+        if (search) params.search = search;
+        if (userId !== 'all') params.user_id = userId;
+        if (action !== 'all') params.action = action;
+        if (documentType !== 'all') params.document_type = documentType;
+        if (dateFrom) params.date_from = dateFrom;
+        if (dateTo) params.date_to = dateTo;
 
         router.get('/admin/activity-logs', params, {
             preserveState: true,
             preserveScroll: true,
-            onFinish: () => setIsSearching(false),
         });
     };
 
+    // ✅ Réinitialiser les filtres
     const handleClearFilters = () => {
-        const clearedFilters = clearAllFilters();
-        setSearch(clearedFilters.search || '');
-        setSelectedUser(clearedFilters.user_id || 'all');
-        setSelectedAction(clearedFilters.action || 'all');
-        setSelectedDocType(clearedFilters.document_type || 'all');
-        setDateFrom(clearedFilters.date_from || '');
-        setDateTo(clearedFilters.date_to || '');
+        setSearch('');
+        setUserId('all');
+        setAction('all');
+        setDocumentType('all');
+        setDateFrom('');
+        setDateTo('');
         
-        router.get('/admin/activity-logs');
+        router.get('/admin/activity-logs', {}, {
+            preserveState: false,
+        });
     };
 
+    // ✅ Changer de page (pagination serveur)
     const handlePageChange = (page: number) => {
-        const params = buildSearchParams({
-            search,
-            user_id: selectedUser,
-            action: selectedAction,
-            document_type: selectedDocType,
-            date_from: dateFrom,
-            date_to: dateTo,
-        });
+        const params: Record<string, any> = {
+            page,
+        };
 
-        router.get(`/admin/activity-logs?page=${page}`, params, {
+        if (search) params.search = search;
+        if (userId !== 'all') params.user_id = userId;
+        if (action !== 'all') params.action = action;
+        if (documentType !== 'all') params.document_type = documentType;
+        if (dateFrom) params.date_from = dateFrom;
+        if (dateTo) params.date_to = dateTo;
+
+        router.get('/admin/activity-logs', params, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
-    const hasFilters = checkActiveFilters({
-        search,
-        user_id: selectedUser,
-        action: selectedAction,
-        document_type: selectedDocType,
-        date_from: dateFrom,
-        date_to: dateTo,
-    });
+    const hasActiveFilters = !!(
+        search ||
+        (userId && userId !== 'all') ||
+        (action && action !== 'all') ||
+        (documentType && documentType !== 'all') ||
+        dateFrom ||
+        dateTo
+    );
+
+    const isSuperAdmin = auth.user.role === 'super_admin';
 
     return (
         <AppSidebarLayout
@@ -103,103 +100,102 @@ export default function ActivityLogsIndex({
         >
             <Head title="Logs d'activité" />
 
-            <div className="container mx-auto p-6 max-w-[1800px] space-y-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent flex items-center gap-3">
-                                <ActivityIcon className="h-8 w-8 text-slate-600" />
-                                Logs d'Activité
-                            </h1>
-                            <p className="text-muted-foreground mt-1">
-                                Suivi complet des actions effectuées dans le système
-                            </p>
-                        </div>
+            <div className="container mx-auto p-3 sm:p-4 lg:p-6 max-w-[1800px] space-y-3 sm:space-y-4">
+                {/* En-tête avec bouton Paramètres */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent flex items-center gap-3">
+                            <ActivityIcon className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
+                            Logs d'Activité
+                        </h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                            Suivi complet des actions effectuées dans le système
+                        </p>
                     </div>
-                    <div className="flex gap-3">
-                        {/* <Button variant="outline" asChild className="gap-2 shadow-sm hover:shadow-md transition-all">
-                            <Link href="/admin/activity-logs/document-stats">
-                                <FileText className="h-4 w-4" />
-                                Stats Documents
-                            </Link>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => router.get('/admin/activity-logs/export', filters)}
-                            className="gap-2 shadow-sm hover:shadow-md transition-all"
-                        >
-                            <Download className="h-4 w-4" />
-                            Exporter CSV
-                        </Button> */}
-                    </div>
+
+                    {isSuperAdmin && (
+                        <Link href="/admin/activity-logs/settings">
+                            <Button variant="outline" className="gap-2">
+                                <Settings className="h-4 w-4" />
+                                <span className="hidden sm:inline">Paramètres</span>
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
-                {/* Cartes de statistiques */}
+                {/* Stats */}
                 <StatsCards stats={stats} />
 
+                {/* Alert Info */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg shrink-0">
-                            <Info className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg shrink-0">
+                            <Info className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-400" />
                         </div>
-                        <AlertDescription className="text-sm text-slate-900 dark:text-slate-100">
-                            <span className="font-semibold flex items-center gap-2">
+                        <AlertDescription className="text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                            <span className="font-semibold flex items-center gap-1.5 sm:gap-2">
                                 <Sparkles className="h-3 w-3" />
                                 Traçabilité complète du système
                             </span>
-                            <span className="text-slate-700 dark:text-slate-300">
-                                — Auditez chaque action utilisateur et générez des rapports détaillés
+                            <span className="text-slate-700 dark:text-slate-300 block sm:inline">
+                                <span className="hidden sm:inline"> — </span>
+                                Affichage de {logs.from} à {logs.to} sur {logs.total} logs
                             </span>
                         </AlertDescription>
                     </div>
                 </Alert>
 
-                {/* Filtres */}
-                <FiltersCard
-                    search={search}
-                    setSearch={setSearch}
-                    selectedUser={selectedUser}
-                    setSelectedUser={setSelectedUser}
-                    selectedAction={selectedAction}
-                    setSelectedAction={setSelectedAction}
-                    selectedDocType={selectedDocType}
-                    setSelectedDocType={setSelectedDocType}
-                    dateFrom={dateFrom}
-                    setDateFrom={setDateFrom}
-                    dateTo={dateTo}
-                    setDateTo={setDateTo}
-                    users={users}
-                    actions={actions}
-                    documentTypes={documentTypes}
-                    hasActiveFilters={hasFilters}
-                    onClearFilters={handleClearFilters}
-                    onFilter={handleFilter}
-                    isSearching={isSearching}
-                />
-
-                {/* Table des logs */}
+                {/* Card principale */}
                 <Card className="border-0 shadow-lg">
-                    <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 p-6 border-b">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg">
-                                <ActivityIcon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-xl">
-                                    Historique des activités
-                                </CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    {logs.total.toLocaleString()} log{logs.total > 1 ? 's' : ''} enregistré{logs.total > 1 ? 's' : ''}
-                                </p>
+                    {/* Header avec filtres */}
+                    <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 px-4 py-3 border-b">
+                        <div className="flex items-center justify-between gap-4 mb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-slate-100 dark:bg-slate-900/30 rounded-lg">
+                                    <ActivityIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg leading-tight">
+                                        Historique des activités
+                                    </CardTitle>
+                                    <p className="text-xs text-muted-foreground">
+                                        Page {logs.current_page} sur {logs.last_page}
+                                    </p>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Filtres */}
+                        <ActivityFilters
+                            search={search}
+                            onSearchChange={setSearch}
+                            userId={userId}
+                            onUserIdChange={setUserId}
+                            action={action}
+                            onActionChange={setAction}
+                            documentType={documentType}
+                            onDocumentTypeChange={setDocumentType}
+                            dateFrom={dateFrom}
+                            onDateFromChange={setDateFrom}
+                            dateTo={dateTo}
+                            onDateToChange={setDateTo}
+                            users={users}
+                            actions={actions}
+                            documentTypes={documentTypes}
+                            totalLogs={logs.total}
+                            filteredCount={logs.total}
+                            onClearFilters={handleClearFilters} onApplyFilters={function (): void {
+                                throw new Error('Function not implemented.');
+                            } }                        />
                     </div>
+
+                    {/* Table */}
                     <CardContent className="p-0">
                         <LogsTable logs={logs.data} actions={actions} />
 
-                        {/* Pagination */}
+                        {/* Pagination serveur */}
                         {logs.last_page > 1 && (
-                            <div className="p-6 border-t">
+                            <div className="p-4 border-t">
                                 <Pagination
                                     currentPage={logs.current_page}
                                     lastPage={logs.last_page}

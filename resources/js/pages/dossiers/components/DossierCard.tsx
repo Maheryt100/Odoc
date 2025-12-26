@@ -1,4 +1,5 @@
-// DossierCard.tsx - ✅ VERSION CORRIGÉE ET RESPONSIVE
+// DossierCard.tsx - ✅ VERSION AVEC PROTECTION BOUTON DOCUMENTS
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,29 +7,42 @@ import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
     DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel 
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     ChevronDown, ChevronUp, Eye, Pencil, EllipsisVertical, 
     LandPlot, UserPlus, Link2, Archive, Lock, LockOpen, 
-    Calendar, Hash, MapPin, Building2, AlertCircle, User
+    Calendar, Hash, MapPin, Building2, AlertCircle, User, FileOutput
 } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
 import type { Dossier } from '@/types';
+import { calculateDossierPermissions, getDisabledDocumentButtonTooltip } from '../helpers';
+import { useState } from 'react';
 
 interface DossierCardProps {
     dossier: Dossier & {
         can_modify?: boolean;
         can_close?: boolean;
     };
+    auth: {
+        user: {
+            id: number;
+            role: string;
+            id_district?: number | null;
+        };
+    };
     isReadOnly?: boolean;
 }
 
-export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
+export function DossierCard({ dossier, auth, isReadOnly = false }: DossierCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const hasArchivedProperties = dossier.proprietes?.some((p) => p.is_archived === true);
 
-    // ✅ Affichage sécurisé du numéro
+    // Calcul des permissions
+    const permissions = calculateDossierPermissions(dossier, auth.user);
+    const docTooltip = getDisabledDocumentButtonTooltip(dossier, auth.user);
+
+    // Affichage sécurisé du numéro
     const displayNumero = (() => {
         if (!dossier.numero_ouverture) return 'N/A';
         return typeof dossier.numero_ouverture === 'number' 
@@ -42,7 +56,7 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
     return (
         <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-3 sm:p-4">
-                {/* ✅ Header responsive */}
+                {/* Header responsive */}
                 <div className="flex items-start gap-2">
                     {/* Bouton expand */}
                     <Button
@@ -54,7 +68,7 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
 
-                    {/* ✅ Contenu principal - Flex column sur mobile */}
+                    {/* Contenu principal - Flex column sur mobile */}
                     <div 
                         className="flex-1 min-w-0 cursor-pointer"
                         onClick={() => router.visit(route('dossiers.show', dossier.id))}
@@ -120,7 +134,7 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
                         </div>
                     </div>
 
-                    {/* Menu actions */}
+                    {/* ✅ Menu actions avec protection Documents */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
@@ -137,13 +151,39 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
                                 </Link>
                             </DropdownMenuItem>
                             
-                            {!isReadOnly && dossier.can_modify && (
+                            {!isReadOnly && permissions.canEdit && (
                                 <DropdownMenuItem asChild>
                                     <Link href={route("dossiers.edit", dossier.id)} className="flex items-center">
                                         <Pencil className="mr-2 h-4 w-4" />
                                         Modifier
                                     </Link>
                                 </DropdownMenuItem>
+                            )}
+                            
+                            <DropdownMenuSeparator />
+                            
+                            {/* ✅ BOUTON DOCUMENTS AVEC PROTECTION */}
+                            {permissions.canGenerateDocuments ? (
+                                <DropdownMenuItem asChild>
+                                    <Link href={route("documents.generate", dossier.id)} className="flex items-center">
+                                        <FileOutput className="mr-2 h-4 w-4" />
+                                        Documents
+                                    </Link>
+                                </DropdownMenuItem>
+                            ) : (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="opacity-50 px-2 py-1.5 text-sm cursor-not-allowed flex items-center">
+                                                <FileOutput className="mr-2 h-4 w-4" />
+                                                Documents
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-[200px] text-xs">
+                                            <p>{docTooltip || 'Génération non disponible'}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             )}
                             
                             {!isReadOnly && (
@@ -164,7 +204,7 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
                                         <Link href={route("ajouter-demandeur.create", dossier.id)} className="flex items-center">
                                             <UserPlus className="mr-2 h-4 w-4" />
                                             Ajouter Demandeur
-                                            </Link>
+                                        </Link>
                                     </DropdownMenuItem>
                                     
                                     <DropdownMenuItem asChild>
@@ -179,7 +219,7 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
                     </DropdownMenu>
                 </div>
 
-                {/* ✅ Section étendue responsive */}
+                {/* Section étendue responsive */}
                 {isExpanded && (
                     <div className="mt-4 pt-4 border-t ml-0 sm:ml-9 space-y-4">
                         {/* Grille responsive */}
@@ -243,7 +283,7 @@ export function DossierCard({ dossier, isReadOnly = false }: DossierCardProps) {
     );
 }
 
-// ✅ Composant helper
+// Composant helper
 function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
     return (
         <div className="space-y-1">
@@ -256,7 +296,7 @@ function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; valu
     );
 }
 
-// ✅ Helper de formatage
+// Helper de formatage
 function formatDate(dateString: string): string {
     return new Date(dateString).toLocaleDateString('fr-FR', {
         day: '2-digit',

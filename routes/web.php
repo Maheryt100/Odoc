@@ -30,9 +30,9 @@ require __DIR__.'/auth.php';
 Route::middleware('auth')->group(function () {
     
     // ========================================================================
-    // 🔍 RECHERCHES GLOBALES (SANS FILTRE DISTRICT)
+    // RECHERCHES GLOBALES (SANS FILTRE DISTRICT)
     // ========================================================================
-    // IMPORTANT : Cette section DOIT être AVANT 'district.scope'
+
     require __DIR__.'/search.php';
     
     // ========================================================================

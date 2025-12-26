@@ -133,6 +133,14 @@ return [
             'days' => 90, // Garder 90 jours d'historique
             'permission' => 0644,
         ],
+        'search' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/search.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 14, // Garder 14 jours de logs
+            'permission' => 0664,
+            'locking' => false,
+        ],
 
     ],
 

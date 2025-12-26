@@ -1,61 +1,70 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// pages/users/components/UserFilters.tsx - VERSION CORRIGÉE
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Search, X, SortAsc, SortDesc, Filter } from 'lucide-react';
+import { Search, X, Filter } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import type { District, UserRole } from '../types';
 
-type FiltreStatutType = 'tous' | 'actives' | 'acquises' | 'sans';
-type TriType = 'date' | 'nom' | 'proprietes' | 'statut';
-
-interface DemandeurFiltersProps {
-    filtreStatut: FiltreStatutType;
-    onFiltreStatutChange: (filtre: FiltreStatutType) => void;
+interface UserFiltersProps {
+    // Valeurs des filtres
     recherche: string;
-    onRechercheChange: (recherche: string) => void;
-    tri: TriType;
-    onTriChange: (tri: TriType) => void;
-    ordre: 'asc' | 'desc';
-    onOrdreToggle: () => void;
-    totalDemandeurs: number;
+    onRechercheChange: (value: string) => void;
+    filtreRole: string;
+    onFiltreRoleChange: (value: string) => void;
+    filtreDistrict: string;
+    onFiltreDistrictChange: (value: string) => void;
+    filtreStatut: string;
+    onFiltreStatutChange: (value: string) => void;
+    
+    // Données
+    districts: District[];
+    roles: Record<UserRole, string>;
+    
+    // Stats
+    totalUtilisateurs: number;
     totalFiltres: number;
+    
+    // Actions
+    onResetFilters: () => void;
 }
 
-export default function DemandeurFilters({
-    filtreStatut,
-    onFiltreStatutChange,
+export default function UserFilters({
     recherche,
     onRechercheChange,
-    tri,
-    onTriChange,
-    ordre,
-    onOrdreToggle,
-    totalDemandeurs,
-    totalFiltres
-}: DemandeurFiltersProps) {
-    
+    filtreRole,
+    onFiltreRoleChange,
+    filtreDistrict,
+    onFiltreDistrictChange,
+    filtreStatut,
+    onFiltreStatutChange,
+    districts,
+    roles,
+    totalUtilisateurs,
+    totalFiltres,
+    onResetFilters,
+}: UserFiltersProps) {
     const [showFilters, setShowFilters] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
-    // ✅ Détection améliorée des clics outside
+    // ✅ Détection clics outside
     useEffect(() => {
         if (!showFilters) return;
 
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
             
-            // Ignorer si clic sur le bouton toggle
             if (buttonRef.current?.contains(target)) {
                 return;
             }
             
-            // Ignorer si clic dans le panel
             if (filterRef.current?.contains(target)) {
                 return;
             }
             
-            // Ignorer si clic dans un portal Select (radix-ui)
+            // Ignorer clics dans les portals des Select
             const isSelectPortal = (target as Element).closest('[role="listbox"]') || 
                                   (target as Element).closest('[data-radix-select-viewport]') ||
                                   (target as Element).closest('[data-radix-popper-content-wrapper]');
@@ -64,11 +73,9 @@ export default function DemandeurFilters({
                 return;
             }
             
-            // Fermer uniquement si vraiment en dehors
             setShowFilters(false);
         };
 
-        // Délai pour éviter fermeture immédiate à l'ouverture
         const timeoutId = setTimeout(() => {
             document.addEventListener('mousedown', handleClickOutside);
         }, 100);
@@ -80,41 +87,32 @@ export default function DemandeurFilters({
     }, [showFilters]);
 
     const hasActiveFilters = 
-        filtreStatut !== 'tous' || 
-        recherche !== '' ||
-        tri !== 'date' ||
-        ordre !== 'desc';
+        filtreRole !== '' || 
+        filtreDistrict !== '' || 
+        filtreStatut !== '' ||
+        recherche !== '';
 
     const activeFiltersCount = [
-        filtreStatut !== 'tous',
-        tri !== 'date',
-        ordre !== 'desc'
+        filtreRole !== '',
+        filtreDistrict !== '',
+        filtreStatut !== ''
     ].filter(Boolean).length;
 
-    const resetAllFilters = () => {
-        onFiltreStatutChange('tous');
-        onRechercheChange('');
-        onTriChange('date');
+    const getRoleLabel = (roleKey: string) => {
+        return roles[roleKey as UserRole] || roleKey;
     };
 
-    const getStatusLabel = (status: FiltreStatutType) => {
-        const labels = {
-            tous: 'Tous',
-            actives: 'Avec propriétés',
-            acquises: 'Acquises',
-            sans: 'Sans propriété'
-        };
-        return labels[status];
+    const getDistrictLabel = (districtId: string) => {
+        const district = districts.find(d => d.id.toString() === districtId);
+        return district?.nom_district || districtId;
     };
 
-    const getSortLabel = (sort: TriType) => {
+    const getStatutLabel = (statut: string) => {
         const labels = {
-            date: 'Date',
-            nom: 'Nom',
-            proprietes: 'Propriétés',
-            statut: 'Statut'
+            active: 'Actifs',
+            inactive: 'Inactifs'
         };
-        return labels[sort];
+        return labels[statut as keyof typeof labels];
     };
 
     return (
@@ -122,15 +120,15 @@ export default function DemandeurFilters({
             {/* Ligne principale */}
             <div className="relative">
                 <div className="flex items-center gap-2">
-                    {/* Barre de recherche */}
+                    {/* Barre de recherche - ✅ FOND BLANC AJOUTÉ */}
                     <div className="relative flex-1 min-w-0">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="text"
-                            placeholder="Rechercher par nom, CIN..."
+                            placeholder="Rechercher par nom, email..."
                             value={recherche}
                             onChange={(e) => onRechercheChange(e.target.value)}
-                            className="pl-9 pr-9 h-9"
+                            className="pl-9 pr-9 h-9 bg-white dark:bg-gray-950"
                         />
                         {recherche && (
                             <Button
@@ -154,24 +152,9 @@ export default function DemandeurFilters({
                         <Filter className="h-4 w-4" />
                         <span className="text-sm font-medium hidden lg:inline">Filtres</span>
                         {activeFiltersCount > 0 && (
-                            <span className="absolute -top-1 -right-1 h-5 w-5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                            <span className="absolute -top-1 -right-1 h-5 w-5 bg-rose-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
                                 {activeFiltersCount}
                             </span>
-                        )}
-                    </Button>
-
-                    {/* Bouton Ordre (Externe) */}
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={onOrdreToggle}
-                        className="h-9 w-9 flex-shrink-0"
-                        title={ordre === 'asc' ? 'Croissant' : 'Décroissant'}
-                    >
-                        {ordre === 'asc' ? (
-                            <SortAsc className="h-4 w-4" />
-                        ) : (
-                            <SortDesc className="h-4 w-4" />
                         )}
                     </Button>
                 </div>
@@ -182,22 +165,33 @@ export default function DemandeurFilters({
                         <span className="text-xs font-medium text-muted-foreground">
                             Filtres actifs :
                         </span>
-                        {filtreStatut !== 'tous' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs rounded-full">
-                                {getStatusLabel(filtreStatut)}
+                        {filtreRole && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 text-xs rounded-full">
+                                Rôle: {getRoleLabel(filtreRole)}
                                 <button
-                                    onClick={() => onFiltreStatutChange('tous')}
-                                    className="hover:bg-emerald-200 dark:hover:bg-emerald-800 rounded-full p-0.5 transition-colors"
+                                    onClick={() => onFiltreRoleChange('')}
+                                    className="hover:bg-rose-200 dark:hover:bg-rose-800 rounded-full p-0.5 transition-colors"
                                 >
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
                         )}
-                        {tri !== 'date' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs rounded-full">
-                                Tri: {getSortLabel(tri)}
+                        {filtreDistrict && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">
+                                District: {getDistrictLabel(filtreDistrict)}
                                 <button
-                                    onClick={() => onTriChange('date')}
+                                    onClick={() => onFiltreDistrictChange('')}
+                                    className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
+                        {filtreStatut && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs rounded-full">
+                                {getStatutLabel(filtreStatut)}
+                                <button
+                                    onClick={() => onFiltreStatutChange('')}
                                     className="hover:bg-amber-200 dark:hover:bg-amber-800 rounded-full p-0.5 transition-colors"
                                 >
                                     <X className="h-3 w-3" />
@@ -205,8 +199,8 @@ export default function DemandeurFilters({
                             </span>
                         )}
                         <button
-                            onClick={resetAllFilters}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                            onClick={onResetFilters}
+                            className="text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
                         >
                             Tout effacer
                         </button>
@@ -222,13 +216,13 @@ export default function DemandeurFilters({
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b">
                             <h4 className="font-semibold flex items-center gap-2">
-                                <Filter className="h-4 w-4 text-emerald-600" />
+                                <Filter className="h-4 w-4 text-rose-600" />
                                 Filtres
                             </h4>
                             {hasActiveFilters && (
                                 <button 
-                                    onClick={resetAllFilters} 
-                                    className="text-sm text-blue-600 hover:underline font-medium"
+                                    onClick={onResetFilters} 
+                                    className="text-sm text-rose-600 hover:underline font-medium"
                                 >
                                     Réinitialiser
                                 </button>
@@ -237,50 +231,71 @@ export default function DemandeurFilters({
 
                         {/* Body */}
                         <div className="p-4 space-y-4">
-                            
-                            {/* Statut */}
+                            {/* Rôle - ✅ FIX: Utiliser "tous" au lieu de "" */}
                             <div className="space-y-2">
-                                <Label className="text-sm font-medium">Statut</Label>
+                                <Label className="text-sm font-medium">Rôle</Label>
                                 <Select 
-                                    value={filtreStatut} 
-                                    onValueChange={(value) => onFiltreStatutChange(value as FiltreStatutType)}
+                                    value={filtreRole || "tous"} 
+                                    onValueChange={(val) => onFiltreRoleChange(val === "tous" ? "" : val)}
                                 >
                                     <SelectTrigger className="w-full h-10">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Tous les rôles" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="tous">Tous ({totalDemandeurs})</SelectItem>
-                                        <SelectItem value="actives">Avec propriétés</SelectItem>
-                                        <SelectItem value="acquises">Acquises</SelectItem>
-                                        <SelectItem value="sans">Sans propriété</SelectItem>
+                                        <SelectItem value="tous">Tous les rôles</SelectItem>
+                                        {Object.entries(roles).map(([key, label]) => (
+                                            <SelectItem key={key} value={key}>
+                                                {label}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Tri */}
+                            {/* District - ✅ FIX: Utiliser "tous" au lieu de "" */}
                             <div className="space-y-2">
-                                <Label className="text-sm font-medium">Trier par</Label>
+                                <Label className="text-sm font-medium">District</Label>
                                 <Select 
-                                    value={tri} 
-                                    onValueChange={(value) => onTriChange(value as TriType)}
+                                    value={filtreDistrict || "tous"} 
+                                    onValueChange={(val) => onFiltreDistrictChange(val === "tous" ? "" : val)}
                                 >
                                     <SelectTrigger className="w-full h-10">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Tous les districts" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="date">Date</SelectItem>
-                                        <SelectItem value="nom">Nom</SelectItem>
-                                        <SelectItem value="proprietes">Propriétés</SelectItem>
-                                        <SelectItem value="statut">Statut</SelectItem>
+                                        <SelectItem value="tous">Tous les districts</SelectItem>
+                                        {districts.map((district) => (
+                                            <SelectItem key={district.id} value={district.id.toString()}>
+                                                {district.nom_district}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Statut - ✅ FIX: Utiliser "tous" au lieu de "" */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Statut</Label>
+                                <Select 
+                                    value={filtreStatut || "tous"} 
+                                    onValueChange={(val) => onFiltreStatutChange(val === "tous" ? "" : val)}
+                                >
+                                    <SelectTrigger className="w-full h-10">
+                                        <SelectValue placeholder="Tous" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="tous">Tous</SelectItem>
+                                        <SelectItem value="active">Actifs</SelectItem>
+                                        <SelectItem value="inactive">Inactifs</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
 
-                        {/* Footer simplifié */}
+                        {/* Footer */}
                         <div className="px-4 py-3 border-t bg-muted/30 rounded-b-lg">
                             <div className="text-xs text-muted-foreground text-center">
-                                {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''} sur {totalDemandeurs}
+                                {totalFiltres} résultat{totalFiltres > 1 ? 's' : ''} sur {totalUtilisateurs}
                             </div>
                         </div>
                     </div>

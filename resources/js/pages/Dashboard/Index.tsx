@@ -1,5 +1,6 @@
-// Dashboard/Index.tsx - VERSION CORRIGÉE RESPONSIVE & DARK MODE
-import { Head } from '@inertiajs/react';
+// Dashboard/Index.tsx 
+import { useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { KPICards } from './components/KPICards';
 import { ActivitySection } from './components/ActivitySection';
@@ -7,20 +8,30 @@ import { ChartsSection } from './components/ChartsSection';
 import { QuickActions } from './components/QuickActions';
 import { StatisticsLinkButton } from './components/StatisticsLinkButton';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Info, LayoutDashboard, Sparkles } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar, Info, LayoutDashboard, Sparkles, Search } from 'lucide-react';
 import type { DashboardProps } from './types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import AdvancedSearchBar from '@/pages/dossiers/components/AdvancedSearchBar';
 
 export default function DashboardIndex({ kpis, charts, alerts, recentActivity }: DashboardProps) {
+    const { auth } = usePage().props as any;
+    const user = auth?.user;
+    
+    // ✅ État pour toggle recherche avancée
+    const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+    
+    const canShowAllDistricts = user?.role === 'super_admin' || user?.role === 'central_user';
+
     return (
         <AppLayout breadcrumbs={[{ title: 'Dashboard', href: route('dashboard.index') }]}>
             <Head title="Dashboard" />
 
-            {/* ✅ CORRECTION : Padding responsive */}
             <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
-                {/* En-tête avec gradient adapté au mode sombre */}
-                <div className="max-w-2xl space-y-4">
-                    <div className="space-y-2">
+                {/* ✅ En-tête avec bouton recherche */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-400 dark:to-blue-400 bg-clip-text text-transparent flex items-center gap-2 sm:gap-3">
                                 <LayoutDashboard className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 dark:text-indigo-400" />
@@ -32,9 +43,37 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
                             </Badge>
                         </div>
                     </div>
+
+                    {/* ✅ NOUVEAU : Bouton recherche avancée */}
+                    <Button 
+                        variant={showAdvancedSearch ? "default" : "outline"}
+                        size="default"
+                        onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+                        className="w-full sm:w-auto"
+                    >
+                        <Search className="h-4 w-4 mr-2" />
+                        {showAdvancedSearch ? 'Masquer la recherche' : 'Recherche avancée'}
+                    </Button>
                 </div>
 
-                {/* Alerte informative avec mode sombre */}
+                {/* ✅ NOUVELLE SECTION : Recherche avancée collapsible */}
+                {showAdvancedSearch && (
+                    <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50/50 to-blue-50/50 dark:from-indigo-950/20 dark:to-blue-950/20">
+                        <CardContent className="p-4 sm:p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Search className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                <h3 className="text-lg font-semibold">Recherche globale</h3>
+                            </div>
+                            <AdvancedSearchBar
+                                canExport={true}
+                                canAccessAllDistricts={canShowAllDistricts}
+                                initialPageSize={50}
+                            />
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Alerte informative */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-950/30 dark:to-blue-950/30">
                     <div className="flex items-start sm:items-center gap-3">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg shrink-0">

@@ -1,13 +1,16 @@
-// pages/demandes/types.ts - ✅ VERSION CORRIGÉE
+// pages/demandes/types.ts - ✅ VERSION FINALE CORRIGÉE
 
 import type { Demandeur, Propriete, Dossier } from '@/types';
 
-// Types de base pour une demande
+// ════════════════════════════════════════════════════════════════
+// TYPES DE BASE
+// ════════════════════════════════════════════════════════════════
+
 export interface DemandeBase {
     id: number;
     id_demandeur: number;
     id_propriete: number;
-    date_demande: string; // Format YYYY-MM-DD
+    date_demande: string;
     total_prix: number;
     ordre: number;
     created_at: string;
@@ -28,6 +31,10 @@ export interface DemandeWithRelations extends DemandeWithStatus {
 }
 
 export type Demande = DemandeWithRelations;
+
+// ════════════════════════════════════════════════════════════════
+// DOCUMENT DEMANDE (Structure groupée par propriété)
+// ════════════════════════════════════════════════════════════════
 
 export interface DocumentDemande {
     id: number;
@@ -72,7 +79,6 @@ export interface DocumentDemande {
     updated_at?: string;
 }
 
-// ✅ FIX: DemandeWithDetails étend DocumentDemande et ajoute _computed
 export interface DemandeWithDetails extends DocumentDemande {
     _computed: {
         isIncomplete: boolean;
@@ -81,7 +87,10 @@ export interface DemandeWithDetails extends DocumentDemande {
     };
 }
 
-// ✅ FIX: Les handlers utilisent maintenant DemandeWithDetails
+// ════════════════════════════════════════════════════════════════
+// PROPS COMPOSANTS
+// ════════════════════════════════════════════════════════════════
+
 export interface DemandesIndexProps {
     documents: {
         data: DocumentDemande[];
@@ -91,14 +100,28 @@ export interface DemandesIndexProps {
     };
     dossier: Dossier & {
         proprietes?: Propriete[];
+        demandeurs?: Demandeur[];
     };
-    onArchive: (doc: DemandeWithDetails) => void; // ✅ Changé
-    onUnarchive: (doc: DemandeWithDetails) => void; // ✅ Changé
+    onArchive: (doc: DemandeWithDetails) => void;
+    onUnarchive: (doc: DemandeWithDetails) => void;
 }
 
-// Types pour les filtres
+// ════════════════════════════════════════════════════════════════
+// ✅ CORRECTION : TYPES DE FILTRES ET TRI
+// ════════════════════════════════════════════════════════════════
+
 export type FiltreStatutDemandeType = 'tous' | 'actives' | 'archivees' | 'incompletes';
-export type TriDemandeType = 'date' | 'date_demande' | 'lot' | 'demandeur' | 'prix' | 'statut';
+
+/**
+ * ✅ CORRECTION : Type cohérent avec helpers.ts
+ * On retire 'date_demande' car c'est juste une variante de 'date'
+ * Si besoin, gérer ça dans la logique de tri, pas dans le type
+ */
+export type TriDemandeType = 'date' | 'lot' | 'demandeur' | 'prix' | 'statut';
+
+// ════════════════════════════════════════════════════════════════
+// AUTRES TYPES
+// ════════════════════════════════════════════════════════════════
 
 export interface DemandeFormData {
     id_demandeur: number;

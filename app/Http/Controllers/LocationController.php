@@ -220,6 +220,7 @@ class LocationController extends Controller
             $districtIds = [];
             
             foreach ($validated['districts'] as $districtData) {
+                $districtIds[] = $districtData['id'];
                 District::where('id', $districtData['id'])
                     ->update([
                         'edilitaire' => $districtData['edilitaire'],
@@ -232,7 +233,7 @@ class LocationController extends Controller
 
             ActivityLogger::logUpdate(
                 ActivityLog::ENTITY_DISTRICT,
-                null,
+                0,
                 [
                     'action_type' => 'bulk_update_prices',
                     'count' => $updated,

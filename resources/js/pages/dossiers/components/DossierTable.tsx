@@ -1,4 +1,5 @@
-// DossierTable.tsx - ✅ VERSION MOBILE OPTIMISÉE 320px+
+// DossierTable.tsx - ✅ VERSION AVEC PROTECTION BOUTON DOCUMENTS
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,7 @@ export default function DossierTable({
 
     return (
         <>
-            {/* ✅ Liste des dossiers - Spacing adaptatif */}
+            {/* Liste des dossiers - Spacing adaptatif */}
             <div className="space-y-2 sm:space-y-3">
                 {paginatedDossiers.map((dossier) => {
                     const isExpanded = expandedRows.has(dossier.id);
@@ -78,7 +79,7 @@ export default function DossierTable({
                     const demandeursCount = dossier.demandeurs_count ?? 0;
                     const proprietesCount = dossier.proprietes_count ?? 0;
 
-                    // ✅ Affichage sécurisé du numéro
+                    // Affichage sécurisé du numéro
                     const displayNumero = (() => {
                         if (!dossier.numero_ouverture) return 'N/A';
                         return typeof dossier.numero_ouverture === 'number' 
@@ -89,7 +90,7 @@ export default function DossierTable({
                     return (
                         <Card key={dossier.id} className="hover:shadow-lg transition-all border-0 shadow-md">
                             <CardContent className="p-3 sm:p-4">
-                                {/* ✅ Header mobile-first */}
+                                {/* Header mobile-first */}
                                 <div className="flex items-start gap-2">
                                     {/* Bouton expand */}
                                     <Button
@@ -105,7 +106,7 @@ export default function DossierTable({
                                         )}
                                     </Button>
 
-                                    {/* ✅ Contenu principal - Stack sur très petit mobile */}
+                                    {/* Contenu principal - Stack sur très petit mobile */}
                                     <div
                                         className="flex-1 min-w-0 cursor-pointer"
                                         onClick={() => router.visit(route('dossiers.show', dossier.id))}
@@ -166,7 +167,7 @@ export default function DossierTable({
                                         </div>
                                     </div>
 
-                                    {/* ✅ Menu actions - Compact */}
+                                    {/* ✅ Menu actions avec protection Documents */}
                                     <DossierActions 
                                         dossier={dossier} 
                                         permissions={permissions} 
@@ -175,7 +176,7 @@ export default function DossierTable({
                                     />
                                 </div>
 
-                                {/* ✅ Section étendue - Grid responsive */}
+                                {/* Section étendue - Grid responsive */}
                                 {isExpanded && (
                                     <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t ml-0 sm:ml-9 space-y-3 sm:space-y-4">
                                         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
@@ -208,7 +209,7 @@ export default function DossierTable({
                 })}
             </div>
 
-            {/* ✅ Pagination responsive */}
+            {/* Pagination responsive */}
             {totalPages > 1 && (
                 <div className="flex flex-col xs:flex-row justify-center items-center gap-2 mt-4 sm:mt-6">
                     <Button
@@ -225,7 +226,6 @@ export default function DossierTable({
                     {/* Pages - Scrollable sur mobile si trop de pages */}
                     <div className="flex items-center gap-1 overflow-x-auto max-w-full px-2 xs:px-0">
                         {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                            // Sur mobile, afficher max 5 pages autour de la page courante
                             let pageNum;
                             if (totalPages <= 5) {
                                 pageNum = i + 1;
@@ -269,7 +269,8 @@ export default function DossierTable({
     );
 }
 
-// ✅ Composant Actions - Menu compact
+/* ===================== COMPOSANT ACTIONS ===================== */
+
 interface DossierActionsProps {
     dossier: Dossier;
     permissions: ReturnType<typeof calculateDossierPermissions>;
@@ -286,6 +287,7 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[180px]">
+                {/* Voir détails */}
                 <DropdownMenuItem asChild>
                     <Link href={route('dossiers.show', dossier.id)} className="flex items-center text-sm">
                         <Eye className="mr-2 h-4 w-4" />
@@ -293,6 +295,7 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                     </Link>
                 </DropdownMenuItem>
                 
+                {/* Modifier */}
                 {permissions.canEdit && (
                     <DropdownMenuItem asChild>
                         <Link href={route('dossiers.edit', dossier.id)} className="flex items-center text-sm">
@@ -304,6 +307,7 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                 
                 <DropdownMenuSeparator />
                 
+                {/* ✅ BOUTON DOCUMENTS AVEC PROTECTION */}
                 {permissions.canGenerateDocuments ? (
                     <DropdownMenuItem asChild>
                         <Link href={route('documents.generate', dossier.id)} className="flex items-center text-sm">
@@ -321,12 +325,13 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-[200px] text-xs">
-                                <p>{docTooltip}</p>
+                                <p>{docTooltip || 'Génération non disponible'}</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 )}
                 
+                {/* Résumé des demandes */}
                 <DropdownMenuItem asChild>
                     <Link href={route('demandes.resume', dossier.id)} className="flex items-center text-sm">
                         <FileText className="mr-2 h-4 w-4" />
@@ -334,6 +339,7 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                     </Link>
                 </DropdownMenuItem>
                 
+                {/* Supprimer */}
                 {permissions.canDelete && (
                     <>
                         <DropdownMenuSeparator />
@@ -351,7 +357,8 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
     );
 }
 
-// ✅ Composant InfoItem - Responsive
+/* ===================== HELPERS ===================== */
+
 function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
     return (
         <div className="space-y-1 min-w-0">
@@ -364,7 +371,6 @@ function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; valu
     );
 }
 
-// ✅ Helper formatage date courte
 function formatDateShort(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {

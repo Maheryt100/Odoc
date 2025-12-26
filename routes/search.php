@@ -1,49 +1,36 @@
 <?php
 
 use App\Http\Controllers\DemandeurController;
+use App\Http\Controllers\AdvancedSearchController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Routes de Recherche Globale
 |--------------------------------------------------------------------------
-| Ces routes NE DOIVENT PAS être filtrées par district car elles servent
-| à rechercher des données dans TOUTE la base de données.
-| 
-| ATTENTION : Utilisées uniquement pour :
-| - Auto-complétion de formulaires
-| - Recherche de demandeurs existants
-| - Éviter les doublons
+| Routes accessibles par tous les utilisateurs authentifiés.
+| Logging activé pour suivre les performances.
 */
 
-Route::middleware('auth')->prefix('search')->name('search.')->group(function () {
+Route::middleware(['auth', 'search.log'])->prefix('search')->name('search.')->group(function () {
     
-    /**
-     * 🔍 RECHERCHE DEMANDEUR PAR CIN - GLOBAL (SANS FILTRE DISTRICT)
-     * 
-     * Cette route est VOLONTAIREMENT en dehors du middleware 'district.scope'
-     * pour permettre la détection des demandeurs dans TOUS les districts.
-     * 
-     * Cas d'usage :
-     * 1. Un demandeur de District A demande une propriété dans District B
-     * 2. Éviter la création de doublons (même personne, même CIN)
-     * 3. Mise à jour automatique des informations
-     * 
-     * Sécurité :
-     * - Lecture seule (GET)
-     * - Authentification requise
-     * - Pas de modification possible
-     * - Retourne uniquement les données publiques
-     */
+    // ✅ Recherche principale (tous les utilisateurs)
+    Route::get('/', [AdvancedSearchController::class, 'search'])
+        ->name('index')
+        ->middleware('throttle:60,1'); // Max 60 recherches/minute
+    
+    // ✅ Suggestions autocomplete
+    Route::get('/suggestions', [AdvancedSearchController::class, 'suggestions'])
+        ->name('suggestions')
+        ->middleware('throttle:120,1'); // 120 suggestions/minute
+    
+    // ✅ Export des résultats (tous les utilisateurs)
+    Route::get('/export', [AdvancedSearchController::class, 'export'])
+        ->name('export')
+        ->middleware('throttle:10,1'); // Max 10 exports/minute
+    
+    // ✅ Recherche demandeur par CIN (pour éviter doublons)
     Route::get('/demandeur/cin/{cin}', [DemandeurController::class, 'searchByCin'])
         ->name('demandeur.cin')
-        ->where('cin', '[0-9]{12}'); // Validation : exactement 12 chiffres
-    
-    /**
-     * 🔍 RECHERCHE DEMANDEUR PAR NOM - GLOBAL (OPTIONNEL)
-     * 
-     * Pour recherche par nom/prénom si nécessaire dans le futur
-     */
-    // Route::get('/demandeur/nom', [DemandeurController::class, 'searchByName'])
-    //     ->name('demandeur.nom');
+        ->where('cin', '[0-9]{12}');
 });

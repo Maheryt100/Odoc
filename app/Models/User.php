@@ -141,11 +141,6 @@ class User extends Authenticatable
         ]) && $this->id_district !== null;
     }
 
-    public function canAccessAllDistricts(): bool
-    {
-        return $this->isSuperAdmin() || $this->isCentralUser();
-    }
-
     public function isReadOnly(): bool
     {
         return $this->isSuperAdmin() || $this->isCentralUser();
@@ -244,10 +239,6 @@ class User extends Authenticatable
      * Peut exporter des données
      * ✅ TOUS peuvent exporter (lecture seule pour Super Admin et Central User)
      */
-    public function canExportData(): bool
-    {
-        return $this->status;
-    }
 
     // ============ GESTION DES UTILISATEURS ============
 
@@ -755,5 +746,32 @@ class User extends Authenticatable
     public function getRoleLabel(): string
     {
         return $this->role_name;
+    }
+
+    /**
+     * Vérifier si l'utilisateur peut accéder à la recherche avancée
+     * RÈGLE : Tous les utilisateurs authentifiés
+     */
+    public function canAccessSearchFeature(): bool
+    {
+        return true; // Tous les utilisateurs authentifiés
+    }
+
+    /**
+     * Vérifier si l'utilisateur peut exporter des données
+     * RÈGLE : Tous les rôles peuvent exporter
+     */
+    public function canExportData(): bool
+    {
+        return true; // Tous les utilisateurs peuvent exporter
+    }
+
+    /**
+     * Vérifier si l'utilisateur peut voir tous les districts
+     * (pour les filtres géographiques de la recherche)
+     */
+    public function canAccessAllDistricts(): bool
+    {
+        return $this->role === 'super_admin' || $this->role === 'central_user';
     }
 }

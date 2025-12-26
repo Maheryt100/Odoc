@@ -1,9 +1,9 @@
-// pages/demandes/index.tsx - ✅ CORRECTION DES DONNÉES PASSÉES AUX DIALOGS
+// pages/demandes/index.tsx - ✅ CORRECTION ERREURS TYPESCRIPT
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
-import type { Dossier } from '@/types';
+import type { Dossier, Propriete, Demandeur } from '@/types';
 import DemandeDetailDialog from './components/DemandeDetailDialog';
 import DemandeurDetailDialog from '@/pages/demandeurs/components/DemandeurDetailDialog';
 import ProprieteDetailDialog from '@/pages/proprietes/components/ProprieteDetailDialog';
@@ -98,7 +98,7 @@ export default function DemandesIndex({
                !prop?.nature || !prop?.vocation || !prop?.situation;
     };
 
-    // FIX 1: Transformation DocumentDemande → DemandeWithDetails
+    // Transformation DocumentDemande → DemandeWithDetails
     const processedDemandes = useMemo((): DemandeWithDetails[] => {
         if (!documents.data || !Array.isArray(documents.data)) {
             return [];
@@ -126,7 +126,7 @@ export default function DemandesIndex({
         });
     }, [documents.data]);
 
-    // FIX 2: FILTRAGE ET TRI sur DemandeWithDetails
+    // FILTRAGE ET TRI
     const demandesFiltrees = useMemo(() => {
         let filtered = filterDemandesByStatus(processedDemandes, filtreStatut);
         
@@ -139,7 +139,7 @@ export default function DemandesIndex({
         return filtered;
     }, [processedDemandes, filtreStatut, recherche, tri, ordre]);
 
-    // FIX 3: Handlers convertis pour accepter DemandeWithDetails
+    // HANDLERS - CONVERSION
     const handleArchiveClick = (demandeWithDetails: DemandeWithDetails) => {
         onArchive(demandeWithDetails);
     };
@@ -148,14 +148,13 @@ export default function DemandesIndex({
         onUnarchive(demandeWithDetails);
     };
 
-    // ✅ FIX PRINCIPAL : Passer les données complètes au dialog
+    // Passer les données complètes au dialog
     const handleSelectDemande = (doc: DemandeWithDetails) => {
         if (showDemandeurDetail || showProprieteDetail) {
             setShowDemandeurDetail(false);
             setShowProprieteDetail(false);
         }
         
-        // ✅ CORRECTION : Passer l'objet complet, pas seulement le premier demandeur
         setSelectedDemande({
             id: doc.id,
             id_demandeur: doc.demandeurs[0]?.id_demandeur,
@@ -164,10 +163,8 @@ export default function DemandesIndex({
             total_prix: doc.total_prix,
             status: doc.status,
             status_consort: doc.status_consort,
-            // ✅ Passer les données complètes de tous les demandeurs
             demandeurs: doc.demandeurs,
             nombre_demandeurs: doc.nombre_demandeurs,
-            // ✅ Passer les données complètes de la propriété
             propriete: doc.propriete,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
@@ -176,24 +173,125 @@ export default function DemandesIndex({
         setShowDemandeDetail(true);
     };
 
-    // ✅ FIX : Extraire le demandeur complet depuis la demande
-    const handleSelectDemandeurFromDemande = (demandeur: any) => {
+    /**
+     * ✅ CORRECTION : Enrichir le demandeur avec propriétés du dossier
+     */
+    const handleSelectDemandeurFromDemande = (demandeurPartiel: any) => {
         setShowDemandeDetail(false);
+        
         setTimeout(() => {
             setSelectedDemande(null);
-            // ✅ CORRECTION : Passer l'objet demandeur complet
-            setSelectedDemandeur(demandeur);
+            
+            const demandeurComplet = dossier.demandeurs?.find(
+                d => d.id === demandeurPartiel.id
+            );
+            
+            if (demandeurComplet) {
+                const demandeurAvecProprietes = {
+                    ...demandeurComplet,
+                    proprietes: dossier.proprietes || []
+                };
+                
+                setSelectedDemandeur(demandeurAvecProprietes);
+            } else {
+                console.warn('Demandeur complet introuvable, utilisation des données partielles');
+                setSelectedDemandeur(demandeurPartiel);
+            }
+            
             setShowDemandeurDetail(true);
         }, 100);
     };
 
-    // ✅ FIX : Passer la propriété complète
-    const handleSelectProprieteFromDemande = (propriete: any) => {
+    /**
+     * ✅ CORRECTION TYPESCRIPT : Type proper pour demandes[]
+     */
+    const handleSelectProprieteFromDemande = (proprietePartielle: any) => {
         setShowDemandeDetail(false);
+        
         setTimeout(() => {
             setSelectedDemande(null);
-            // ✅ CORRECTION : Passer l'objet propriété complet
-            setSelectedPropriete(propriete);
+            
+            // Chercher la propriété complète
+            let proprieteComplete = dossier.proprietes?.find(
+                p => p.id === proprietePartielle.id
+            );
+            
+            if (proprieteComplete) {
+                // ✅ VALIDATION : S'assurer que demandes[] est présent et enrichi
+                if (!proprieteComplete.demandes || proprieteComplete.demandes.length === 0) {
+                    console.warn('Propriété trouvée mais sans demandes, reconstruction...');
+                    
+                    // ✅ FIX TYPE : Reconstruire avec tous les champs nécessaires
+                    const demandesReconstruites = documents.data
+                        .filter(doc => doc.id_propriete === proprieteComplete!.id)
+                        .flatMap(doc => 
+                            doc.demandeurs.map((d, idx) => ({
+                                id: d.id,
+                                id_demandeur: d.id_demandeur,
+                                id_propriete: doc.id_propriete,
+                                date_demande: doc.date_demande || '', // ✅ Champ ajouté
+                                status: doc.status as 'active' | 'archive',
+                                status_consort: doc.status_consort, // ✅ Champ ajouté
+                                ordre: idx + 1,
+                                total_prix: doc.total_prix,
+                                motif_archive: null, // ✅ Champ ajouté
+                                id_user: 0, // ✅ Champ ajouté (valeur par défaut)
+                                created_at: doc.created_at || '', // ✅ Champ ajouté
+                                updated_at: doc.updated_at || '', // ✅ Champ ajouté
+                                demandeur: d.demandeur,
+                                propriete: undefined, // Optionnel
+                            }))
+                        );
+                    
+                    // ✅ FIX UNDEFINED : S'assurer que proprieteComplete est défini
+                    if (proprieteComplete) {
+                        proprieteComplete = {
+                            ...proprieteComplete,
+                            demandes: demandesReconstruites
+                        };
+                    }
+                }
+                
+                console.log('✅ Propriété complète envoyée au dialog:', {
+                    id: proprieteComplete?.id,
+                    lot: proprieteComplete?.lot,
+                    demandes_count: proprieteComplete?.demandes?.length || 0
+                });
+                
+                setSelectedPropriete(proprieteComplete);
+            } else {
+                console.warn('Propriété complète introuvable, reconstruction depuis données partielles');
+                
+                // ✅ FIX TYPE : Fallback avec tous les champs
+                const demandesReconstruites = documents.data
+                    .filter(doc => doc.id_propriete === proprietePartielle.id)
+                    .flatMap(doc => 
+                        doc.demandeurs.map((d, idx) => ({
+                            id: d.id,
+                            id_demandeur: d.id_demandeur,
+                            id_propriete: doc.id_propriete,
+                            date_demande: doc.date_demande || '',
+                            status: doc.status as 'active' | 'archive',
+                            status_consort: doc.status_consort,
+                            ordre: idx + 1,
+                            total_prix: doc.total_prix,
+                            motif_archive: null,
+                            id_user: 0,
+                            created_at: doc.created_at || '',
+                            updated_at: doc.updated_at || '',
+                            demandeur: d.demandeur,
+                            propriete: undefined,
+                        }))
+                    );
+                
+                const proprieteEnrichie = {
+                    ...proprietePartielle,
+                    demandes: demandesReconstruites
+                };
+                
+                setSelectedPropriete(proprieteEnrichie);
+            }
+            
             setShowProprieteDetail(true);
         }, 100);
     };
@@ -202,7 +300,9 @@ export default function DemandesIndex({
         setShowDemandeurDetail(false);
         setTimeout(() => {
             setSelectedDemandeur(null);
-            setSelectedPropriete(propriete);
+            
+            const proprieteComplete = dossier.proprietes?.find(p => p.id === propriete.id);
+            setSelectedPropriete(proprieteComplete || propriete);
             setShowProprieteDetail(true);
         }, 100);
     };
@@ -211,7 +311,19 @@ export default function DemandesIndex({
         setShowProprieteDetail(false);
         setTimeout(() => {
             setSelectedPropriete(null);
-            setSelectedDemandeur(demandeur);
+            
+            const demandeurComplet = dossier.demandeurs?.find(d => d.id === demandeur.id);
+            
+            if (demandeurComplet) {
+                const demandeurAvecProprietes = {
+                    ...demandeurComplet,
+                    proprietes: dossier.proprietes || []
+                };
+                setSelectedDemandeur(demandeurAvecProprietes);
+            } else {
+                setSelectedDemandeur(demandeur);
+            }
+            
             setShowDemandeurDetail(true);
         }, 100);
     };
@@ -323,6 +435,7 @@ export default function DemandesIndex({
                 </CardContent>
             </Card>
 
+            {/* DIALOGS AVEC DONNÉES COMPLÈTES */}
             <DemandeDetailDialog
                 demande={selectedDemande}
                 open={showDemandeDetail}
@@ -335,7 +448,7 @@ export default function DemandesIndex({
                 demandeur={selectedDemandeur}
                 open={showDemandeurDetail}
                 onOpenChange={handleCloseDemandeurDialog}
-                proprietes={dossier.proprietes || []}  // ✅ Utiliser dossier.proprietes
+                proprietes={dossier.proprietes || []}
                 onSelectPropriete={handleSelectProprieteFromDemandeur}
                 dossierId={dossier.id}
                 dossierClosed={dossier.is_closed}
