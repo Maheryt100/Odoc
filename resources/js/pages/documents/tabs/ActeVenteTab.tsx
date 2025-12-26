@@ -289,50 +289,52 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                 </Alert>
             )}
 
-            {/* Boutons Desktop */}
+            {/* Boutons Desktop - Centrés */}
             {!isMobile && selectedPropriete && demandeurPrincipal && (
-                <div className="space-y-3 pt-2 max-w-2xl">
-                    {hasRecu && documentRecu ? (
-                        <SecureDownloadButton
-                            document={documentRecu}
-                            downloadRoute={route('documents.recu.download', documentRecu.id)}
-                            regenerateRoute={route('documents.recu.regenerate', documentRecu.id)}
-                            typeName="Reçu"
-                            variant="outline"
-                        />
-                    ) : (
-                        <Button
-                            onClick={() => handleGenerate('recu')}
-                            disabled={!canGenerateRecu || isGenerating}
-                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
-                        >
-                            Générer le Reçu
-                        </Button>
-                    )}
-
-                    {hasRecu && (
-                        hasAdv && documentAdv ? (
+                <div className="flex flex-col items-center space-y-3 pt-2">
+                    <div className="w-full max-w-md space-y-3">
+                        {hasRecu && documentRecu ? (
                             <SecureDownloadButton
-                                document={documentAdv}
-                                downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
-                                regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
-                                typeName="Acte de Vente"
+                                document={documentRecu}
+                                downloadRoute={route('documents.recu.download', documentRecu.id)}
+                                regenerateRoute={route('documents.recu.regenerate', documentRecu.id)}
+                                typeName="Reçu"
+                                variant="outline"
                             />
                         ) : (
                             <Button
-                                onClick={() => handleGenerate('acte_vente')}
-                                disabled={!canGenerateActeVente || isGenerating}
-                                className="w-full bg-gradient-to-r from-violet-600 to-purple-600"
+                                onClick={() => handleGenerate('recu')}
+                                disabled={!canGenerateRecu || isGenerating}
+                                className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
                             >
-                                Générer l'Acte de Vente
-                                {consorts.length > 0 && (
-                                    <Badge variant="secondary" className="ml-2">
-                                        {consorts.length + 1} demandeurs
-                                    </Badge>
-                                )}
+                                Générer le Reçu
                             </Button>
-                        )
-                    )}
+                        )}
+
+                        {hasRecu && (
+                            hasAdv && documentAdv ? (
+                                <SecureDownloadButton
+                                    document={documentAdv}
+                                    downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
+                                    regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
+                                    typeName="Acte de Vente"
+                                />
+                            ) : (
+                                <Button
+                                    onClick={() => handleGenerate('acte_vente')}
+                                    disabled={!canGenerateActeVente || isGenerating}
+                                    className="w-full bg-gradient-to-r from-violet-600 to-purple-600"
+                                >
+                                    Générer l'Acte de Vente
+                                    {consorts.length > 0 && (
+                                        <Badge variant="secondary" className="ml-2">
+                                            {consorts.length + 1} demandeurs
+                                        </Badge>
+                                    )}
+                                </Button>
+                            )
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -361,14 +363,14 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                         />
                     ) : hasAdv && documentAdv && (
                         <StickyActionFooter
-                            activeTab="acte_vente"
-                            isGenerating={false}
-                            canGenerate={true}
-                            hasDocument={true}
-                            onGenerate={() => {}}
-                            onDownload={() => window.location.href = route('documents.acte-vente.download', documentAdv.id)}
-                            documentType="adv"
-                        />
+                                    activeTab="acte_vente"
+                                    isGenerating={false}
+                                    canGenerate={true}
+                                    hasDocument={true}
+                                    onDownload={() => window.location.href = route('documents.acte-vente.download', documentAdv.id)}
+                                    documentType="adv" onGenerate={function (): void {
+                                        throw new Error('Function not implemented.');
+                                    } }                        />
                     )}
                 </>
             )}

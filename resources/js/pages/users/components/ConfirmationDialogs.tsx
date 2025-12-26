@@ -1,4 +1,5 @@
-// users/components/ConfirmationDialogs.tsx - SOLUTION FINALE
+// users/components/ConfirmationDialogs.tsx - AVEC NETTOYAGE
+import { useEffect } from 'react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -12,6 +13,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { User } from '../types';
 import { AlertTriangle } from 'lucide-react';
+import { useDialogCleanup, useForceDialogCleanup } from '@/hooks/useDialogCleanup';
 
 interface ToggleStatusDialogProps {
     user: User | null;
@@ -20,32 +22,48 @@ interface ToggleStatusDialogProps {
 }
 
 export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDialogProps) => {
+    const isOpen = !!user;
+    
+    // ✅ Nettoyage automatique à la fermeture
+    useDialogCleanup(isOpen);
+    
+    // ✅ Nettoyage manuel pour les handlers
+    const forceCleanup = useForceDialogCleanup();
+    
+    // ✅ Nettoyage au démontage du composant
+    useEffect(() => {
+        return () => {
+            if (!isOpen) {
+                forceCleanup();
+            }
+        };
+    }, [isOpen, forceCleanup]);
+    
     if (!user) return null;
 
-    // ✅ NE PAS appeler onClose() dans handleConfirm
-    // Laisser Inertia recharger la page, ce qui fermera automatiquement le dialog
     const handleConfirm = () => {
         onConfirm(user);
+        // ✅ Nettoyage immédiat + fermeture
+        forceCleanup();
+        onClose();
+    };
+
+    const handleCancel = () => {
+        // ✅ Nettoyage immédiat + fermeture
+        forceCleanup();
+        onClose();
+    };
+
+    const handleOpenChange = (open: boolean) => {
+        if (!open) {
+            forceCleanup();
+            onClose();
+        }
     };
 
     return (
-        <AlertDialog 
-            open={!!user} 
-            onOpenChange={(isOpen) => {
-                // ✅ Ne fermer que si l'utilisateur annule (isOpen = false)
-                if (!isOpen) {
-                    onClose();
-                }
-            }}
-        >
-            <AlertDialogContent 
-                className="max-w-[calc(100vw-2rem)] sm:max-w-lg"
-                // ✅ Empêcher la fermeture par clic sur overlay pendant le traitement
-                onEscapeKeyDown={(e) => {
-                    // Vous pouvez bloquer l'escape si nécessaire
-                    // e.preventDefault();
-                }}
-            >
+        <AlertDialog open={true} onOpenChange={handleOpenChange}>
+            <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
                 <AlertDialogHeader>
                     <AlertDialogTitle className="text-base sm:text-lg">
                         {user.status ? 'Désactiver' : 'Activer'} l'utilisateur
@@ -74,6 +92,7 @@ export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDia
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                     <AlertDialogCancel 
+                        onClick={handleCancel}
                         className="w-full sm:w-auto order-2 sm:order-1 mt-0"
                     >
                         Annuler
@@ -99,23 +118,47 @@ interface DeleteUserDialogProps {
 }
 
 export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogProps) => {
+    const isOpen = !!user;
+    
+    // ✅ Nettoyage automatique à la fermeture
+    useDialogCleanup(isOpen);
+    
+    // ✅ Nettoyage manuel pour les handlers
+    const forceCleanup = useForceDialogCleanup();
+    
+    // ✅ Nettoyage au démontage du composant
+    useEffect(() => {
+        return () => {
+            if (!isOpen) {
+                forceCleanup();
+            }
+        };
+    }, [isOpen, forceCleanup]);
+    
     if (!user) return null;
 
-    // ✅ NE PAS appeler onClose() dans handleConfirm
     const handleConfirm = () => {
         onConfirm(user);
+        // ✅ Nettoyage immédiat + fermeture
+        forceCleanup();
+        onClose();
+    };
+
+    const handleCancel = () => {
+        // ✅ Nettoyage immédiat + fermeture
+        forceCleanup();
+        onClose();
+    };
+
+    const handleOpenChange = (open: boolean) => {
+        if (!open) {
+            forceCleanup();
+            onClose();
+        }
     };
 
     return (
-        <AlertDialog 
-            open={!!user} 
-            onOpenChange={(isOpen) => {
-                // ✅ Ne fermer que si l'utilisateur annule
-                if (!isOpen) {
-                    onClose();
-                }
-            }}
-        >
+        <AlertDialog open={true} onOpenChange={handleOpenChange}>
             <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -145,6 +188,7 @@ export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogP
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                     <AlertDialogCancel 
+                        onClick={handleCancel}
                         className="w-full sm:w-auto order-2 sm:order-1 mt-0"
                     >
                         Annuler

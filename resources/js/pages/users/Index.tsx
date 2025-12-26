@@ -1,4 +1,4 @@
-// pages/users/Index.tsx - SOLUTION FINALE
+// pages/users/Index.tsx - AVEC NETTOYAGE DIALOG
 import { useState, useEffect, useCallback } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { UserPlus, Users as UsersIcon, Info, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useForceDialogCleanup } from '@/hooks/useDialogCleanup';
 
 // Types
 import type { UsersIndexProps, User } from './types';
@@ -38,9 +39,19 @@ export default function UsersIndex({
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
     
-    // ✅ Dialogues - Simplifié sans isProcessing
+    // ✅ Dialogues
     const [deleteUser, setDeleteUser] = useState<User | null>(null);
     const [toggleStatusUser, setToggleStatusUser] = useState<User | null>(null);
+    
+    // ✅ Hook de nettoyage pour forcer le cleanup
+    const forceCleanup = useForceDialogCleanup();
+    
+    // ✅ Nettoyage global au démontage du composant
+    useEffect(() => {
+        return () => {
+            forceCleanup();
+        };
+    }, [forceCleanup]);
 
     // Filtrage côté client
     const utilisateursFiltres = useUserFilters(initialUsers.data, {
@@ -70,28 +81,27 @@ export default function UsersIndex({
         setCurrentPage(1);
     }, []);
 
-    // ✅ Handler pour toggle status - NE PAS fermer le dialog ici
-    // Laisser Inertia recharger la page ce qui fermera automatiquement le dialog
+    // ✅ Handler pour toggle status avec cleanup
     const handleToggleStatus = useCallback((user: User) => {
         router.post(`/users/${user.id}/toggle-status`, {}, {
             preserveScroll: true,
-            onSuccess: () => {
-                // ✅ Fermer après le succès d'Inertia
-                setToggleStatusUser(null);
-            },
+            onFinish: () => {
+                // ✅ Force le nettoyage après la requête Inertia
+                setTimeout(() => forceCleanup(), 100);
+            }
         });
-    }, []);
+    }, [forceCleanup]);
 
-    // ✅ Handler pour suppression
+    // ✅ Handler pour suppression avec cleanup
     const handleDelete = useCallback((user: User) => {
         router.delete(`/users/${user.id}`, {
             preserveScroll: true,
-            onSuccess: () => {
-                // ✅ Fermer après le succès d'Inertia
-                setDeleteUser(null);
-            },
+            onFinish: () => {
+                // ✅ Force le nettoyage après la requête Inertia
+                setTimeout(() => forceCleanup(), 100);
+            }
         });
-    }, []);
+    }, [forceCleanup]);
 
     const handlePageChange = useCallback((page: number) => {
         setCurrentPage(page);

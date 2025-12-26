@@ -36,7 +36,7 @@ const tabsConfig = [
         getCount: (stats: DocumentTabsProps['stats']) => 
             `${stats.proprietesAvecAdv}/${stats.totalProprietes}`,
         colorClass: 'from-violet-600 to-purple-600',
-        bgClass: 'bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20',
+        bgClass: 'bg-gradient-to-br from-violet-50/30 to-purple-50/30 dark:from-violet-950/10 dark:to-purple-950/10',
     },
     {
         value: 'csf' as DocumentTabType,
@@ -46,7 +46,7 @@ const tabsConfig = [
         getCount: (stats: DocumentTabsProps['stats']) => 
             `${stats.demandeursAvecCsf}/${stats.totalDemandeurs}`,
         colorClass: 'from-emerald-600 to-teal-600',
-        bgClass: 'bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20',
+        bgClass: 'bg-gradient-to-br from-emerald-50/30 to-teal-50/30 dark:from-emerald-950/10 dark:to-teal-950/10',
     },
     {
         value: 'requisition' as DocumentTabType,
@@ -56,7 +56,7 @@ const tabsConfig = [
         getCount: (stats: DocumentTabsProps['stats']) => 
             `${stats.requisitionsGenerees}/${stats.totalProprietes}`,
         colorClass: 'from-blue-600 to-cyan-600',
-        bgClass: 'bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20',
+        bgClass: 'bg-gradient-to-br from-blue-50/30 to-cyan-50/30 dark:from-blue-950/10 dark:to-cyan-950/10',
     },
 ];
 

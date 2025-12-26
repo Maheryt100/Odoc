@@ -1,7 +1,10 @@
+// documents/components/SecureDownloadButton.tsx - ✅ AVEC COMPTEUR DE TÉLÉCHARGEMENTS
+
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { Download, RefreshCw, Loader2, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Download, RefreshCw, Loader2, AlertTriangle, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { DocumentGenere } from '../types';
 import {
@@ -45,6 +48,10 @@ export default function SecureDownloadButton({
         canRegenerate: boolean;
     } | null>(null);
 
+    // ✅ Compteur de téléchargements depuis les métadonnées
+    const downloadCount = document.download_count || 0;
+    const lastDownload = document.last_downloaded_at;
+
     /**
      * ✅ Téléchargement sécurisé avec détection d'erreur
      */
@@ -69,7 +76,6 @@ export default function SecureDownloadButton({
             if (contentType.includes('application/json')) {
                 const errorData = await response.json();
 
-                // ✅ CORRECTION : Stocker AVANT de désactiver le loader
                 setErrorDetails({
                     message: errorData.message || 'Fichier introuvable',
                     details: errorData.details || null,
@@ -78,12 +84,11 @@ export default function SecureDownloadButton({
 
                 // ✅ Afficher le dialog IMMÉDIATEMENT si régénération possible
                 if (errorData.error === 'file_missing' && errorData.can_regenerate) {
-                    setIsDownloading(false); // ✅ Désactiver AVANT d'ouvrir le dialog
+                    setIsDownloading(false);
                     setShowRegenerateDialog(true);
-                    return; // ✅ SORTIR pour ne pas continuer
+                    return;
                 }
 
-                // Autre erreur non récupérable
                 toast.error(errorData.message || 'Erreur lors du téléchargement', {
                     description: errorData.details || undefined,
                 });
@@ -201,30 +206,47 @@ export default function SecureDownloadButton({
 
     return (
         <>
-            <Button
-                onClick={handleDownload}
-                disabled={isDownloading || isRegenerating}
-                variant={variant}
-                size={size}
-                className={className}
-            >
-                {isDownloading ? (
-                    <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Téléchargement...
-                    </>
-                ) : isRegenerating ? (
-                    <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Régénération...
-                    </>
-                ) : (
-                    <>
-                        <Download className="h-4 w-4 mr-2" />
-                        Télécharger {typeName}
-                    </>
+            <div className="space-y-2">
+                <Button
+                    onClick={handleDownload}
+                    disabled={isDownloading || isRegenerating}
+                    variant={variant}
+                    size={size}
+                    className={className}
+                >
+                    {isDownloading ? (
+                        <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Téléchargement...
+                        </>
+                    ) : isRegenerating ? (
+                        <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Régénération...
+                        </>
+                    ) : (
+                        <>
+                            <Download className="h-4 w-4 mr-2" />
+                            Télécharger {typeName}
+                        </>
+                    )}
+                </Button>
+                
+                {/* ✅ Compteur de téléchargements visible */}
+                {downloadCount > 0 && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                        <TrendingDown className="h-3 w-3" />
+                        <span>
+                            Téléchargé {downloadCount} fois
+                            {lastDownload && (
+                                <span className="ml-1">
+                                    • Dernier: {new Date(lastDownload).toLocaleDateString('fr-FR')}
+                                </span>
+                            )}
+                        </span>
+                    </div>
                 )}
-            </Button>
+            </div>
 
             {/* ✅ Dialog de confirmation - HTML CORRIGÉ */}
             <AlertDialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
@@ -234,7 +256,6 @@ export default function SecureDownloadButton({
                             <AlertTriangle className="h-5 w-5 text-amber-500" />
                             Fichier introuvable
                         </AlertDialogTitle>
-                        {/* ✅ CORRECTION : Utiliser asChild pour éviter le <p> wrapper */}
                         <AlertDialogDescription asChild>
                             <div className="space-y-3 text-left text-sm text-muted-foreground">
                                 <p>

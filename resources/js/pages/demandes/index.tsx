@@ -241,7 +241,7 @@ export default function DemandesIndex({
                                 demandeur: d.demandeur,
                                 propriete: undefined, // Optionnel
                             }))
-                        );
+                        ) as any[];
                     
                     // ✅ FIX UNDEFINED : S'assurer que proprieteComplete est défini
                     if (proprieteComplete) {
@@ -282,7 +282,7 @@ export default function DemandesIndex({
                             demandeur: d.demandeur,
                             propriete: undefined,
                         }))
-                    );
+                    ) as any[];
                 
                 const proprieteEnrichie = {
                     ...proprietePartielle,

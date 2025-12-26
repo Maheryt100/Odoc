@@ -158,8 +158,8 @@ class DossierController extends Controller
             
             DB::commit();
             
-            return Redirect::route('dossiers')
-                ->with('message', 'Dossier créé avec succès');
+            // return Redirect::route('dossiers')
+            //     ->with('message', 'Dossier créé avec succès');
                 
         } catch (\Exception $exception) {
             DB::rollBack();

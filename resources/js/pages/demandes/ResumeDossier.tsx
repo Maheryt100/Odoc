@@ -36,6 +36,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/useResponsive';
 import type { DocumentDemande, DemandeWithDetails } from './types';
+import { useDialogCleanup, useForceDialogCleanup, cleanupDialogOverlays } from '@/hooks/useDialogCleanup';
 
 interface ResumeDossierProps {
     dossier: Dossier & {
@@ -57,6 +58,8 @@ interface ResumeDossierProps {
 }
 
 export default function ResumeDossier({ dossier, documents, auth }: ResumeDossierProps) {
+
+    
     const { flash } = usePage<{ flash?: { message?: string; success?: string; error?: string } }>().props;
     const isMobile = useIsMobile();
     
@@ -65,6 +68,13 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
     const [unarchiveDialogOpen, setUnarchiveDialogOpen] = useState(false);
     const [selectedDemandeForAction, setSelectedDemandeForAction] = useState<DocumentDemande | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // ✅ Hook de nettoyage automatique
+    useDialogCleanup(archiveDialogOpen);
+    useDialogCleanup(unarchiveDialogOpen);
+    
+    // ✅ Hook de nettoyage manuel
+    const forceCleanup = useForceDialogCleanup();
 
     // ✅ NOUVEAU : Déterminer si l'utilisateur est en lecture seule
     const isReadOnly = useMemo(() => {
@@ -198,9 +208,11 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
         setUnarchiveDialogOpen(true);
     };
 
+    // ✅ Modifier les handlers d'archivage
     const confirmArchive = () => {
         if (!selectedDemandeForAction || isProcessing) return;
         setIsProcessing(true);
+        
         router.post(route('proprietes.archive'), 
             { id: selectedDemandeForAction.id_propriete },
             {
@@ -209,9 +221,17 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                     toast.success('Propriété archivée avec succès');
                     setArchiveDialogOpen(false);
                     setSelectedDemandeForAction(null);
+                    // ✅ Nettoyage forcé
+                    setTimeout(forceCleanup, 100);
                 },
-                onError: (errors) => toast.error(Object.values(errors).join('\n')),
-                onFinish: () => setIsProcessing(false)
+                onError: (errors) => {
+                    toast.error(Object.values(errors).join('\n'));
+                },
+                onFinish: () => {
+                    setIsProcessing(false);
+                    // ✅ Sécurité supplémentaire
+                    setTimeout(forceCleanup, 300);
+                }
             }
         );
     };
@@ -219,6 +239,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
     const confirmUnarchive = () => {
         if (!selectedDemandeForAction || isProcessing) return;
         setIsProcessing(true);
+        
         router.post(route('proprietes.unarchive'), 
             { id: selectedDemandeForAction.id_propriete },
             {
@@ -227,12 +248,26 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                     toast.success('Propriété désarchivée avec succès');
                     setUnarchiveDialogOpen(false);
                     setSelectedDemandeForAction(null);
+                    // ✅ Nettoyage forcé
+                    setTimeout(forceCleanup, 100);
                 },
-                onError: (errors) => toast.error(Object.values(errors).join('\n')),
-                onFinish: () => setIsProcessing(false)
+                onError: (errors) => {
+                    toast.error(Object.values(errors).join('\n'));
+                },
+                onFinish: () => {
+                    setIsProcessing(false);
+                    // ✅ Sécurité supplémentaire
+                    setTimeout(forceCleanup, 300);
+                }
             }
         );
     };
+    
+    useEffect(() => {
+        return () => {
+            cleanupDialogOverlays();
+        };
+    }, []);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dossiers', href: route('dossiers') },
@@ -411,24 +446,44 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                             <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                             Archiver la propriété
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <div className="space-y-2 sm:space-y-3">
-                                <p className="text-sm">Voulez-vous vraiment archiver cette propriété ?</p>
-                                <div className="p-2 sm:p-3 bg-muted rounded-lg text-xs sm:text-sm space-y-1">
-                                    <p className="truncate"><strong>Lot:</strong> {selectedDemandeForAction?.propriete?.lot}</p>
-                                    <p><strong>Demandeurs:</strong> {selectedDemandeForAction?.nombre_demandeurs} personne(s)</p>
-                                </div>
-                                <div className="flex items-start gap-2 p-2 sm:p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-md">
-                                    <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                                    <p className="text-xs sm:text-sm text-orange-800 dark:text-orange-200">
-                                        Toutes les demandes associées seront archivées
-                                    </p>
-                                </div>
-                            </div>
-                        </AlertDialogDescription>
+                        {/* ✅ FIX : Retirer AlertDialogDescription, utiliser div directement */}
                     </AlertDialogHeader>
+                    
+                    {/* ✅ FIX : Contenu dans CardContent au lieu de AlertDialogDescription */}
+                    <div className="px-6 pb-6 space-y-2 sm:space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                            Voulez-vous vraiment archiver cette propriété ?
+                        </p>
+                        
+                        <div className="p-2 sm:p-3 bg-muted rounded-lg text-xs sm:text-sm space-y-1">
+                            <p className="truncate">
+                                <strong>Lot:</strong> {selectedDemandeForAction?.propriete?.lot}
+                            </p>
+                            <p>
+                                <strong>Demandeurs:</strong> {selectedDemandeForAction?.nombre_demandeurs} personne(s)
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-start gap-2 p-2 sm:p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-md">
+                            <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs sm:text-sm text-orange-800 dark:text-orange-200">
+                                Toutes les demandes associées seront archivées
+                            </p>
+                        </div>
+                    </div>
+                    
                     <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                        <AlertDialogCancel disabled={isProcessing} className="w-full sm:w-auto">
+                        <AlertDialogCancel 
+                            disabled={isProcessing} 
+                            className="w-full sm:w-auto"
+                            onClick={() => {
+                                setArchiveDialogOpen(false);
+                                // ✅ Nettoyage forcé
+                                setTimeout(() => {
+                                    cleanupDialogOverlays();
+                                }, 100);
+                            }}
+                        >
                             Annuler
                         </AlertDialogCancel>
                         <AlertDialogAction
@@ -449,24 +504,43 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                             <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                             Désarchiver la propriété
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <div className="space-y-2 sm:space-y-3">
-                                <p className="text-sm">Voulez-vous vraiment désarchiver cette propriété ?</p>
-                                <div className="p-2 sm:p-3 bg-muted rounded-lg text-xs sm:text-sm space-y-1">
-                                    <p className="truncate"><strong>Lot:</strong> {selectedDemandeForAction?.propriete?.lot}</p>
-                                    <p><strong>Demandeurs:</strong> {selectedDemandeForAction?.nombre_demandeurs} personne(s)</p>
-                                </div>
-                                <div className="flex items-start gap-2 p-2 sm:p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
-                                    <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
-                                        Toutes les demandes associées seront réactivées
-                                    </p>
-                                </div>
-                            </div>
-                        </AlertDialogDescription>
                     </AlertDialogHeader>
+                    
+                    {/* ✅ FIX : Même correction */}
+                    <div className="px-6 pb-6 space-y-2 sm:space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                            Voulez-vous vraiment désarchiver cette propriété ?
+                        </p>
+                        
+                        <div className="p-2 sm:p-3 bg-muted rounded-lg text-xs sm:text-sm space-y-1">
+                            <p className="truncate">
+                                <strong>Lot:</strong> {selectedDemandeForAction?.propriete?.lot}
+                            </p>
+                            <p>
+                                <strong>Demandeurs:</strong> {selectedDemandeForAction?.nombre_demandeurs} personne(s)
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-start gap-2 p-2 sm:p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                            <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+                                Toutes les demandes associées seront réactivées
+                            </p>
+                        </div>
+                    </div>
+                    
                     <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                        <AlertDialogCancel disabled={isProcessing} className="w-full sm:w-auto">
+                        <AlertDialogCancel 
+                            disabled={isProcessing} 
+                            className="w-full sm:w-auto"
+                            onClick={() => {
+                                setUnarchiveDialogOpen(false);
+                                // ✅ Nettoyage forcé
+                                setTimeout(() => {
+                                    cleanupDialogOverlays();
+                                }, 100);
+                            }}
+                        >
                             Annuler
                         </AlertDialogCancel>
                         <AlertDialogAction

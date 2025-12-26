@@ -415,9 +415,7 @@ export default function NouveauLot() {
                         <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b">
                             <CardHeader>
                                 <CardTitle className="text-lg">Date de la demande</CardTitle>
-                                <CardDescription>
-                                    Date officielle de la demande d'acquisition
-                                </CardDescription>
+                               
                             </CardHeader>
                         </div>
                         <CardContent className="pt-6">

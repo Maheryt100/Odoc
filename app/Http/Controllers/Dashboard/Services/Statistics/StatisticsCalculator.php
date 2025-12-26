@@ -14,7 +14,7 @@ class StatisticsCalculator
 {
     use QueryFilterTrait;
     
-    public function __construct(
+     public function __construct(
         private PeriodService $periodService
     ) {}
     
@@ -47,6 +47,90 @@ class StatisticsCalculator
             'province_id' => $dates['province_id'] ?? null,
             'region_id' => $dates['region_id'] ?? null,
             'district_id' => $dates['district_id'] ?? null,
+        ];
+    }
+    
+    /**
+     * ✅ MISE À JOUR : Stats propriétés avec min/max et lots
+     */
+    public function getProprietesStats(array $dates): array
+    {
+        $geoFilters = $this->getGeoFilters($dates);
+        $districtIds = $this->getFilteredDistrictIds($geoFilters);
+        
+        $baseQuery = Propriete::query()
+            ->whereHas('dossier', function($q) use ($districtIds, $dates) {
+                $q->whereIn('id_district', $districtIds)
+                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
+            });
+        
+        $proprietes = (clone $baseQuery)->get();
+        
+        // Disponibles (demandes actives)
+        $disponiblesQuery = Propriete::query()
+            ->whereHas('dossier', function($q) use ($districtIds, $dates) {
+                $q->whereIn('id_district', $districtIds)
+                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
+            })
+            ->whereHas('demandes', fn($q) => $q->where('status', 'active'));
+        
+        $disponiblesCount = (clone $disponiblesQuery)->count();
+        $disponiblesSuperficie = (clone $disponiblesQuery)->sum('contenance') ?? 0;
+        
+        // Acquises (demandes archivées uniquement)
+        $acquisesQuery = Propriete::query()
+            ->whereHas('dossier', function($q) use ($districtIds, $dates) {
+                $q->whereIn('id_district', $districtIds)
+                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
+            })
+            ->whereHas('demandes', fn($q) => $q->where('status', 'archive'))
+            ->whereDoesntHave('demandes', fn($q) => $q->where('status', 'active'));
+        
+        $acquisesCount = (clone $acquisesQuery)->count();
+        $acquisesSuperficie = (clone $acquisesQuery)->sum('contenance') ?? 0;
+        
+        $sansDemande = (clone $baseQuery)->doesntHave('demandes')->count();
+        
+        $superficieTotale = $proprietes->sum('contenance') ?? 0;
+        $total = $proprietes->count();
+        
+        // ✅ CALCUL MIN/MAX avec lots
+        $proprietesAvecContenance = $proprietes->where('contenance', '>', 0);
+        
+        $superficieMax = 0;
+        $superficieMin = 0;
+        $lotMax = null;
+        $lotMin = null;
+        
+        if ($proprietesAvecContenance->isNotEmpty()) {
+            // Trouver la propriété avec superficie max
+            $propMax = $proprietesAvecContenance->sortByDesc('contenance')->first();
+            $superficieMax = $propMax ? $propMax->contenance : 0;
+            $lotMax = $propMax ? $propMax->lot : null;
+            
+            // Trouver la propriété avec superficie min
+            $propMin = $proprietesAvecContenance->sortBy('contenance')->first();
+            $superficieMin = $propMin ? $propMin->contenance : 0;
+            $lotMin = $propMin ? $propMin->lot : null;
+        }
+        
+        return [
+            'total' => $total,
+            'disponibles' => $disponiblesCount,
+            'disponibles_superficie' => $disponiblesSuperficie,
+            'acquises' => $acquisesCount,
+            'acquises_superficie' => $acquisesSuperficie,
+            'sans_demande' => $sansDemande,
+            'superficie_totale' => $superficieTotale,
+            'superficie_moyenne' => $total > 0 ? round($proprietes->avg('contenance'), 2) : 0,
+            'superficie_max' => $superficieMax, // ✅ NOUVEAU
+            'superficie_min' => $superficieMin, // ✅ NOUVEAU
+            'lot_max' => $lotMax, // ✅ NOUVEAU
+            'lot_min' => $lotMin, // ✅ NOUVEAU
+            'pourcentage_disponibles' => $total > 0 ? round(($disponiblesCount / $total) * 100, 1) : 0,
+            'pourcentage_disponibles_superficie' => $superficieTotale > 0 ? round(($disponiblesSuperficie / $superficieTotale) * 100, 1) : 0,
+            'pourcentage_acquises' => $total > 0 ? round(($acquisesCount / $total) * 100, 1) : 0,
+            'pourcentage_acquises_superficie' => $superficieTotale > 0 ? round(($acquisesSuperficie / $superficieTotale) * 100, 1) : 0,
         ];
     }
     
@@ -102,63 +186,6 @@ class StatisticsCalculator
                 ->whereNull('date_fermeture')
                 ->where('date_ouverture', '<', now()->subDays(90))
                 ->count(),
-        ];
-    }
-    
-    public function getProprietesStats(array $dates): array
-    {
-        $geoFilters = $this->getGeoFilters($dates);
-        $districtIds = $this->getFilteredDistrictIds($geoFilters);
-        
-        $baseQuery = Propriete::query()
-            ->whereHas('dossier', function($q) use ($districtIds, $dates) {
-                $q->whereIn('id_district', $districtIds)
-                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
-            });
-        
-        $proprietes = (clone $baseQuery)->get();
-        
-        // Disponibles (demandes actives)
-        $disponiblesQuery = Propriete::query()
-            ->whereHas('dossier', function($q) use ($districtIds, $dates) {
-                $q->whereIn('id_district', $districtIds)
-                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
-            })
-            ->whereHas('demandes', fn($q) => $q->where('status', 'active'));
-        
-        $disponiblesCount = (clone $disponiblesQuery)->count();
-        $disponiblesSuperficie = (clone $disponiblesQuery)->sum('contenance') ?? 0;
-        
-        // Acquises (demandes archivées uniquement)
-        $acquisesQuery = Propriete::query()
-            ->whereHas('dossier', function($q) use ($districtIds, $dates) {
-                $q->whereIn('id_district', $districtIds)
-                  ->whereBetween('date_ouverture', [$dates['from'], $dates['to']]);
-            })
-            ->whereHas('demandes', fn($q) => $q->where('status', 'archive'))
-            ->whereDoesntHave('demandes', fn($q) => $q->where('status', 'active'));
-        
-        $acquisesCount = (clone $acquisesQuery)->count();
-        $acquisesSuperficie = (clone $acquisesQuery)->sum('contenance') ?? 0;
-        
-        $sansDemande = (clone $baseQuery)->doesntHave('demandes')->count();
-        
-        $superficieTotale = $proprietes->sum('contenance') ?? 0;
-        $total = $proprietes->count();
-        
-        return [
-            'total' => $total,
-            'disponibles' => $disponiblesCount,
-            'disponibles_superficie' => $disponiblesSuperficie,
-            'acquises' => $acquisesCount,
-            'acquises_superficie' => $acquisesSuperficie,
-            'sans_demande' => $sansDemande,
-            'superficie_totale' => $superficieTotale,
-            'superficie_moyenne' => $total > 0 ? round($proprietes->avg('contenance'), 2) : 0,
-            'pourcentage_disponibles' => $total > 0 ? round(($disponiblesCount / $total) * 100, 1) : 0,
-            'pourcentage_disponibles_superficie' => $superficieTotale > 0 ? round(($disponiblesSuperficie / $superficieTotale) * 100, 1) : 0,
-            'pourcentage_acquises' => $total > 0 ? round(($acquisesCount / $total) * 100, 1) : 0,
-            'pourcentage_acquises_superficie' => $superficieTotale > 0 ? round(($acquisesSuperficie / $superficieTotale) * 100, 1) : 0,
         ];
     }
     

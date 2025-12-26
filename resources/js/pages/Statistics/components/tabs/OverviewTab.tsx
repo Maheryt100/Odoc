@@ -16,14 +16,14 @@ export function OverviewTab({ stats, charts }: Props) {
     const financials = stats.financials;
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-4 sm:space-y-6">
+            {/* Cards principales - Responsive */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
                 <StatCard 
                     icon={Activity}
                     title="Total dossiers"
                     value={overview.total_dossiers.toString()}
                     subtitle={`${overview.dossiers_ouverts} ouverts, ${overview.dossiers_fermes} fermés`}
-                    // trend={overview.taux_croissance}
                     color="blue"
                 />
                 <StatCard 
@@ -31,7 +31,6 @@ export function OverviewTab({ stats, charts }: Props) {
                     title="Propriétés"
                     value={proprietes.total.toString()}
                     subtitle={`${proprietes.disponibles} disponibles`}
-                    // trend={8}
                     color="green"
                 />
                 <StatCard 
@@ -39,7 +38,6 @@ export function OverviewTab({ stats, charts }: Props) {
                     title="Demandeurs"
                     value={demandeurs.total.toString()}
                     subtitle={`${demandeurs.avec_propriete} avec propriété`}
-                    // trend={15}
                     color="purple"
                 />
                 <StatCard 
@@ -47,11 +45,11 @@ export function OverviewTab({ stats, charts }: Props) {
                     title="Revenus"
                     value={`${(financials.total_revenus_potentiels / 1000000).toFixed(1)}M Ar`}
                     subtitle="Potentiel total"
-                    // trend={5}
                     color="orange"
                 />
             </div>
 
+            {/* Graphique d'évolution */}
             <EvolutionChart data={charts.evolution_complete} />
         </div>
     );

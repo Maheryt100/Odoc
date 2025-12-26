@@ -1,8 +1,10 @@
-// pages/Statistics/types.ts
+// Statistics/types.ts
 
 import { Auth } from '@/types';
 
-// ✅ NOUVEAUX TYPES GÉOGRAPHIQUES
+// ============================================
+// TYPES GÉOGRAPHIQUES
+// ============================================
 export interface Province {
     id: number;
     nom_province: string;
@@ -22,16 +24,21 @@ export interface District {
     region?: Region;
 }
 
-// ✅ FILTRES GÉOGRAPHIQUES HIÉRARCHIQUES
+// ============================================
+// FILTRES
+// ============================================
 export interface StatisticsFilters {
     period: string;
     date_from: string | null;
     date_to: string | null;
-    province_id: number | null;  // ✅ Nouveau
-    region_id: number | null;     // ✅ Nouveau
+    province_id: number | null;
+    region_id: number | null;
     district_id: number | null;
 }
 
+// ============================================
+// STATISTIQUES
+// ============================================
 export interface OverviewStats {
     total_dossiers: number;
     dossiers_ouverts: number;
@@ -56,6 +63,10 @@ export interface ProprietesStats {
     sans_demande: number;
     superficie_totale: number;
     superficie_moyenne: number;
+    superficie_max: number;        // ✅ NOUVEAU
+    superficie_min: number;        // ✅ NOUVEAU
+    lot_max: string | null;        // ✅ NOUVEAU
+    lot_min: string | null;        // ✅ NOUVEAU
     pourcentage_disponibles: number;
     pourcentage_disponibles_superficie: number;
     pourcentage_acquises: number;
@@ -132,6 +143,9 @@ export interface Stats {
     performance: PerformanceStats;
 }
 
+// ============================================
+// DONNÉES DES GRAPHIQUES
+// ============================================
 export interface ChartData {
     evolution_complete: Array<{
         month: string;
@@ -175,7 +189,9 @@ export interface ChartData {
     };
 }
 
-// ✅ Props avec données géographiques
+// ============================================
+// PROPS DE LA PAGE
+// ============================================
 export interface StatisticsProps {
     auth: Auth;
     stats: Stats;

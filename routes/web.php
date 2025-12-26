@@ -78,5 +78,8 @@ Route::middleware('auth')->group(function () {
         
         // Routes de compatibilité (anciennes routes - à deprecier progressivement)
         require __DIR__.'/legacy.php';
+
+        // Route Topo Flux
+        require __DIR__.'/topo-flux.php';
     });
 });

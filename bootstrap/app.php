@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'validate.ordre' => \App\Http\Middleware\ValidateOrdreConsort::class,
             'search.log' => \App\Http\Middleware\SearchLogger::class,
             'super.admin' => \App\Http\Middleware\CheckSuperAdmin::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
 
         ]);;
     })
