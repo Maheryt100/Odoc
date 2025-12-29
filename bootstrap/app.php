@@ -8,6 +8,7 @@ use App\Http\Middleware\CheckDossierAccess;
 use App\Http\Middleware\LogUserAccess;
 use App\Http\Middleware\CheckDossierClosed;
 
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -17,10 +18,24 @@ return Application::configure(basePath: dirname(__DIR__))
         
     )
     ->withMiddleware(function (Middleware $middleware) {
+        
+        // Global middleware
+        $middleware->append([
+            \Illuminate\Http\Middleware\TrustProxies::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
+            \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class,
+            \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+            \Illuminate\Foundation\Http\Middleware\TrimStrings::class,
+            \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+            \App\Http\Middleware\HandleTopoImport::class,
+        ]);
+
+            
         // Middlewares globaux pour le groupe 'web'
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\HandleAppearance::class,
+            \App\Http\Middleware\GenerateJwtToken::class,
         ]);
 
         $middleware->api(prepend: [

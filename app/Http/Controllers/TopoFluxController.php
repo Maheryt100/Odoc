@@ -1,82 +1,41 @@
 <?php
-// app/Http/Controllers/TopoFluxController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\TopoImport;
-use App\Models\TopoFile;
-use App\Models\Propriete;
-use App\Models\Demandeur;
-use App\Models\Dossier;
-use App\Models\PieceJointe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Spatie\Activitylog\Facades\Activity;
 
 class TopoFluxController extends Controller
 {
+    private function getFastApiUrl(): string
+    {
+        return config('services.fastapi.url', 'http://127.0.0.1:8000');
+    }
+
+    private function getJwtToken(): ?string
+    {
+        return session('geodoc_jwt');
+    }
+
     /**
-     * Page principale - Liste des imports en attente
+     * Page principale - Liste des imports
      */
     public function index(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
         
-        // Filtres
-        $status = $request->input('status', 'pending');
-        $entityType = $request->input('entity_type');
-        $dossierId = $request->input('dossier_id');
-        
-        // Query de base
-        $query = TopoImport::with(['dossier', 'district', 'processedBy'])
-            ->orderBy('import_date', 'desc');
-        
-        // Filtrage par district selon rôle
-        if (!$user->isSuperAdmin() && !$user->isCentralUser()) {
-            $query->where('target_district_id', $user->id_district);
-        }
-        
-        // Filtres utilisateur
-        if ($status) {
-            $query->where('status', $status);
-        }
-        
-        if ($entityType) {
-            $query->where('entity_type', $entityType);
-        }
-        
-        if ($dossierId) {
-            $query->where('target_dossier_id', $dossierId);
-        }
-        
-        // Pagination
-        $imports = $query->paginate(20)->withQueryString();
-        
-        // Enrichir avec comptage fichiers
-        $imports->getCollection()->transform(function ($import) {
-            $import->files_count = TopoFile::where('import_id', $import->id)->count();
-            return $import;
-        });
-        
-        // Statistiques
-        $stats = $this->getStatsData($user);
-        
         return Inertia::render('TopoFlux/Index', [
-            'imports' => $imports,
-            'stats' => $stats,
-            'filters' => [
-                'status' => $status,
-                'entity_type' => $entityType,
-                'dossier_id' => $dossierId
-            ]
+            'fastapi_url' => $this->getFastApiUrl(),
+            'jwt_token' => $this->getJwtToken()
         ]);
     }
-    
+
     /**
      * Détails d'un import spécifique
      */
@@ -85,94 +44,175 @@ class TopoFluxController extends Controller
         /** @var User $user */
         $user = Auth::user();
         
-        $import = TopoImport::with(['dossier', 'district', 'files', 'processedBy'])
-            ->findOrFail($importId);
-        
-        // Vérifier permissions district
-        if (!$user->isSuperAdmin() && !$user->isCentralUser()) {
-            if ($import->target_district_id != $user->id_district) {
-                abort(403, 'Accès refusé à cet import');
+        try {
+            $response = Http::withToken($this->getJwtToken())
+                ->get("{$this->getFastApiUrl()}/api/v1/staging/{$importId}");
+            
+            if (!$response->successful()) {
+                return back()->with('error', 'Import introuvable');
             }
-        }
-        
-        // Enrichir avec détails entité matchée
-        $matchedEntity = null;
-        if ($import->matched_entity_id) {
-            if ($import->entity_type === 'propriete') {
-                $matchedEntity = Propriete::find($import->matched_entity_id);
-            } elseif ($import->entity_type === 'demandeur') {
-                $matchedEntity = Demandeur::find($import->matched_entity_id);
+            
+            $import = $response->json();
+            
+            // Vérifier permissions district
+            if (!$user->isSuperAdmin() && !$user->isCentralUser()) {
+                if ($import['district_id'] != $user->id_district) {
+                    abort(403, 'Accès refusé à cet import');
+                }
             }
+            
+            return Inertia::render('TopoFlux/Show', [
+                'import' => $import,
+                'canValidate' => $user->isAdminDistrict() || $user->isUserDistrict()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération import TopoManager', [
+                'import_id' => $importId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return back()->with('error', 'Erreur lors de la récupération de l\'import');
         }
-        
-        return Inertia::render('TopoFlux/Show', [
-            'import' => $import,
-            'matchedEntity' => $matchedEntity,
-            'canValidate' => $user->isAdminDistrict() || $user->isUserDistrict()
-        ]);
     }
-    
+
     /**
-     * Valider un import (créer l'entité dans GeODOC)
+     * ✅ CORRECTION: Redirige vers formulaire (pas création directe)
      */
     public function validateImport(Request $request, $importId)
     {
         /** @var User $user */
         $user = Auth::user();
         
-        // Vérifier permissions
+        // Vérifier permissions (UNIQUEMENT district users)
         if (!$user->isAdminDistrict() && !$user->isUserDistrict()) {
-            return back()->with('error', 'Vous n\'avez pas les permissions pour valider');
+            return back()->with('error', 'Seuls les utilisateurs de district peuvent valider');
         }
-        
-        $import = TopoImport::findOrFail($importId);
-        
-        // Vérifier district
-        if ($import->target_district_id != $user->id_district) {
-            return back()->with('error', 'Import hors de votre district');
-        }
-        
-        // Vérifier statut
-        if ($import->status !== 'pending') {
-            return back()->with('error', 'Import déjà traité');
-        }
-        
-        DB::beginTransaction();
         
         try {
-            // Créer ou mettre à jour l'entité
-            $rawData = $import->raw_data;
+            // Récupérer import
+            $response = Http::withToken($this->getJwtToken())
+                ->get("{$this->getFastApiUrl()}/api/v1/staging/{$importId}");
             
-            if ($import->entity_type === 'propriete') {
-                $this->processProprieteCreation($import, $rawData, $user);
-            } elseif ($import->entity_type === 'demandeur') {
-                $this->processDemandeurCreation($import, $rawData, $user);
+            if (!$response->successful()) {
+                throw new \Exception('Import introuvable');
             }
             
-            // Marquer comme validé
-            $import->update([
-                'status' => 'validated',
-                'processed_at' => now(),
-                'processed_by' => $user->id
-            ]);
+            $import = $response->json();
             
-            // Logger
-            // Activity::causedBy($user)
-            //     ->performedOn($import)
-            //     ->log("Import TopoManager validé et traité");
+            // Vérifier district
+            if ($import['district_id'] != $user->id_district) {
+                return back()->with('error', 'Import hors de votre district');
+            }
             
-            DB::commit();
+            // Vérifier statut
+            if ($import['status'] !== 'pending') {
+                return back()->with('error', 'Import déjà traité');
+            }
             
-            return redirect()->route('topo-flux.index')
-                ->with('success', 'Import validé et intégré avec succès');
+            // ✅ TRANSFERT DES FICHIERS VERS LARAVEL STORAGE (avant redirection)
+            $transferredFiles = [];
+            if ($import['files_count'] > 0) {
+                $transferredFiles = $this->transferFilesToLaravel($importId, $import['files']);
+            }
+            
+            // ✅ REDIRECTION VERS FORMULAIRE (avec données en session)
+            $sessionData = [
+                'topo_import_id' => $importId,
+                'topo_data' => $import['raw_data'],
+                'topo_match_info' => $import['matched_entity_details'],
+                'topo_files' => $transferredFiles // Fichiers déjà transférés
+            ];
+            
+            if ($import['entity_type'] === 'propriete') {
+                $route = $import['action_suggested'] === 'update' && $import['matched_entity_id']
+                    ? route('proprietes.edit', [
+                        'id_dossier' => $import['dossier_id'],
+                        'id_propriete' => $import['matched_entity_id']
+                      ])
+                    : route('nouveau-lot.create', ['id' => $import['dossier_id']]);
+                
+                return redirect($route)->with($sessionData);
+            }
+            
+            if ($import['entity_type'] === 'demandeur') {
+                $route = $import['action_suggested'] === 'update' && $import['matched_entity_id']
+                    ? route('demandeurs.edit', [
+                        'id_dossier' => $import['dossier_id'],
+                        'id_demandeur' => $import['matched_entity_id']
+                      ])
+                    : route('demandeurs.create', ['id' => $import['dossier_id']]);
+                
+                return redirect($route)->with($sessionData);
+            }
+            
+            return back()->with('error', 'Type d\'entité non supporté');
             
         } catch (\Exception $e) {
-            DB::rollBack();
+            Log::error('Erreur validation import TopoManager', [
+                'import_id' => $importId,
+                'error' => $e->getMessage()
+            ]);
             
-            return back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+            return back()->with('error', 'Erreur: ' . $e->getMessage());
         }
     }
-    
+
+    /**
+     * ✅ NOUVEAU: Transfert fichiers FastAPI → Laravel Storage
+     */
+    private function transferFilesToLaravel(int $importId, array $files): array
+    {
+        $transferredFiles = [];
+        
+        try {
+            foreach ($files as $fileInfo) {
+                // Télécharger depuis FastAPI
+                $fileResponse = Http::withToken($this->getJwtToken())
+                    ->get("{$this->getFastApiUrl()}/api/v1/files/{$importId}/{$fileInfo['name']}");
+                
+                if (!$fileResponse->successful()) {
+                    Log::warning('Impossible de télécharger fichier TopoManager', [
+                        'import_id' => $importId,
+                        'file' => $fileInfo['name']
+                    ]);
+                    continue;
+                }
+                
+                // Générer nom unique
+                $extension = $fileInfo['extension'] ?? pathinfo($fileInfo['name'], PATHINFO_EXTENSION);
+                $storedName = uniqid('topo_') . '.' . $extension;
+                $relativePath = 'temp/topo_imports/' . date('Y/m/') . $storedName;
+                
+                // Sauvegarder dans Laravel storage
+                Storage::disk('public')->put($relativePath, $fileResponse->body());
+                
+                $transferredFiles[] = [
+                    'original_name' => $fileInfo['name'],
+                    'stored_name' => $storedName,
+                    'path' => $relativePath,
+                    'size' => $fileInfo['size'],
+                    'extension' => $extension,
+                    'category' => $fileInfo['category'] ?? 'document'
+                ];
+                
+                Log::info('Fichier TopoManager transféré', [
+                    'import_id' => $importId,
+                    'file' => $fileInfo['name'],
+                    'stored_as' => $storedName
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur transfert fichiers TopoManager', [
+                'import_id' => $importId,
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return $transferredFiles;
+    }
+
     /**
      * Rejeter un import
      */
@@ -185,253 +225,54 @@ class TopoFluxController extends Controller
             'rejection_reason' => 'required|string|min:10'
         ]);
         
-        $import = TopoImport::findOrFail($importId);
-        
-        // Vérifier permissions
         if (!$user->isAdminDistrict() && !$user->isUserDistrict()) {
             return back()->with('error', 'Permissions insuffisantes');
         }
         
-        if ($import->target_district_id != $user->id_district) {
-            return back()->with('error', 'Import hors de votre district');
-        }
-        
-        $import->update([
-            'status' => 'rejected',
-            'processed_at' => now(),
-            'processed_by' => $user->id,
-            'rejection_reason' => $request->rejection_reason
-        ]);
-        
-        // Activity::causedBy($user)
-        //     ->performedOn($import)
-        //     ->withProperties(['reason' => $request->rejection_reason])
-        //     ->log("Import TopoManager rejeté");
-        
-        return redirect()->route('topo-flux.index')
-            ->with('success', 'Import rejeté');
-    }
-    
-    /**
-     * Ouvrir formulaire pré-rempli pour propriété
-     */
-    public function openProprieteForm($importId)
-    {
-        $import = TopoImport::findOrFail($importId);
-        
-        if ($import->entity_type !== 'propriete') {
-            return back()->with('error', 'Cet import n\'est pas une propriété');
-        }
-        
-        $rawData = $import->raw_data;
-        $dossier = $import->dossier;
-        
-        // Rediriger vers formulaire création/édition
-        if ($import->action_suggested === 'update' && $import->matched_entity_id) {
-            return redirect()->route('proprietes.edit', $import->matched_entity_id)
-                ->with('topo_data', $rawData);
-        } else {
-            return redirect()->route('proprietes.create', $dossier->id)
-                ->with('topo_data', $rawData);
-        }
-    }
-    
-    /**
-     * Ouvrir formulaire pré-rempli pour demandeur
-     */
-    public function openDemandeurForm($importId)
-    {
-        $import = TopoImport::findOrFail($importId);
-        
-        if ($import->entity_type !== 'demandeur') {
-            return back()->with('error', 'Cet import n\'est pas un demandeur');
-        }
-        
-        $rawData = $import->raw_data;
-        $dossier = $import->dossier;
-        
-        if ($import->action_suggested === 'update' && $import->matched_entity_id) {
-            return redirect()->route('demandeurs.edit', $import->matched_entity_id)
-                ->with('topo_data', $rawData);
-        } else {
-            return redirect()->route('demandeurs.create', $dossier->id)
-                ->with('topo_data', $rawData);
-        }
-    }
-    
-    /**
-     * Télécharger un fichier temporaire
-     */
-    public function downloadFile($fileId)
-    {
-        $file = TopoFile::findOrFail($fileId);
-        $import = TopoImport::findOrFail($file->import_id);
-        
-        /** @var User $user */
-        $user = Auth::user();
-        
-        // Vérifier permissions
-        if (!$user->isSuperAdmin() && !$user->isCentralUser()) {
-            if ($import->target_district_id != $user->id_district) {
-                abort(403);
+        try {
+            $response = Http::withToken($this->getJwtToken())
+                ->put("{$this->getFastApiUrl()}/api/v1/staging/{$importId}/validate", [
+                    'action' => 'reject',
+                    'rejection_reason' => $request->rejection_reason
+                ]);
+            
+            if (!$response->successful()) {
+                throw new \Exception('Erreur API FastAPI');
             }
+            
+            Log::info('Import TopoManager rejeté', [
+                'import_id' => $importId,
+                'user_id' => $user->id,
+                'reason' => $request->rejection_reason
+            ]);
+            
+            return back()->with('success', 'Import rejeté');
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur rejet import', [
+                'import_id' => $importId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return back()->with('error', 'Erreur lors du rejet');
         }
-        
-        // Télécharger le fichier
-        if (file_exists($file->storage_path)) {
-            return response()->download($file->storage_path, $file->original_name);
-        }
-        
-        abort(404, 'Fichier introuvable');
     }
-    
-    /**
-     * Prévisualiser une image
-     */
-    public function previewFile($fileId)
-    {
-        $file = TopoFile::findOrFail($fileId);
-        $import = TopoImport::findOrFail($file->import_id);
-        
-        /** @var User $user */
-        $user = Auth::user();
-        
-        // Vérifier permissions
-        if (!$user->isSuperAdmin() && !$user->isCentralUser()) {
-            if ($import->target_district_id != $user->id_district) {
-                abort(403);
-            }
-        }
-        
-        // Vérifier que c'est une image
-        if (!in_array($file->file_extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-            abort(400, 'Pas une image');
-        }
-        
-        if (file_exists($file->storage_path)) {
-            return response()->file($file->storage_path);
-        }
-        
-        abort(404);
-    }
-    
+
     /**
      * Statistiques globales
      */
     public function getStats()
     {
-        $user = Auth::user();
-        
-        return response()->json($this->getStatsData($user));
-    }
-    
-    // ============================================
-    // MÉTHODES PRIVÉES
-    // ============================================
-    
-    private function getStatsData($user)
-    {
-        $query = DB::table('topo_imports');
-        
-        if (!$user->isSuperAdmin() && !$user->isCentralUser()) {
-            $query->where('target_district_id', $user->id_district);
-        }
-        
-        return [
-            'total' => (clone $query)->count(),
-            'pending' => (clone $query)->where('status', 'pending')->count(),
-            'validated' => (clone $query)->where('status', 'validated')->count(),
-            'rejected' => (clone $query)->where('status', 'rejected')->count(),
-            'with_warnings' => (clone $query)->where('has_warnings', true)->count(),
-        ];
-    }
-    
-    private function processProprieteCreation($import, $rawData, $user)
-    {
-        $dossier = $import->dossier;
-        
-        if ($import->action_suggested === 'update' && $import->matched_entity_id) {
-            // Mise à jour
-            $propriete = Propriete::findOrFail($import->matched_entity_id);
-            $propriete->update(array_merge($rawData, [
-                'id_user' => $user->id
-            ]));
-        } else {
-            // Création
-            $propriete = Propriete::create(array_merge($rawData, [
-                'id_dossier' => $dossier->id,
-                'id_user' => $user->id
-            ]));
-        }
-        
-        // Transférer les fichiers vers pièces jointes
-        $this->transferFilesToPiecesJointes($import, 'App\Models\Propriete', $propriete->id);
-        
-        return $propriete;
-    }
-    
-    private function processDemandeurCreation($import, $rawData, $user)
-    {
-        if ($import->action_suggested === 'update' && $import->matched_entity_id) {
-            // Mise à jour
-            $demandeur = Demandeur::findOrFail($import->matched_entity_id);
-            $demandeur->update(array_merge($rawData, [
-                'id_user' => $user->id
-            ]));
-        } else {
-            // Création
-            $demandeur = Demandeur::create(array_merge($rawData, [
-                'id_user' => $user->id
-            ]));
+        try {
+            $response = Http::withToken($this->getJwtToken())
+                ->get("{$this->getFastApiUrl()}/api/v1/staging/stats");
             
-            // Lier au dossier via table contenir
-            DB::table('contenir')->insert([
-                'id_dossier' => $import->target_dossier_id,
-                'id_demandeur' => $demandeur->id,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-        }
-        
-        // Transférer fichiers
-        $this->transferFilesToPiecesJointes($import, 'App\Models\Demandeur', $demandeur->id);
-        
-        return $demandeur;
-    }
-    
-    private function transferFilesToPiecesJointes($import, $attachableType, $attachableId)
-    {
-        $files = TopoFile::where('import_id', $import->id)->get();
-        
-        foreach ($files as $file) {
-            // Copier le fichier vers storage définitif
-            $newPath = "pieces_jointes/" . date('Y/m/') . $file->stored_name;
-            $fullNewPath = storage_path('app/' . $newPath);
+            return response()->json($response->json());
             
-            // Créer répertoires si nécessaire
-            if (!file_exists(dirname($fullNewPath))) {
-                mkdir(dirname($fullNewPath), 0755, true);
-            }
-            
-            // Copier fichier
-            copy($file->storage_path, $fullNewPath);
-            
-            // Créer pièce jointe
-            PieceJointe::create([
-                'attachable_type' => $attachableType,
-                'attachable_id' => $attachableId,
-                'nom_original' => $file->original_name,
-                'nom_fichier' => $file->stored_name,
-                'chemin' => $newPath,
-                'type_mime' => $file->mime_type,
-                'taille' => $file->file_size,
-                'extension' => $file->file_extension,
-                'categorie' => $file->category,
-                'type_document' => $file->category,
-                'description' => $file->description,
-                'id_user' => Auth::id(),
-                'id_district' => $import->target_district_id
-            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur récupération stats'
+            ], 500);
         }
     }
 }

@@ -1,6 +1,4 @@
 // pages/proprietes/components/SmartDeleteProprieteDialog.tsx
-// ✅ INTERFACE ATTENDUE
-
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import {

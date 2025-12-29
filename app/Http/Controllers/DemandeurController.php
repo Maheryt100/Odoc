@@ -620,4 +620,83 @@ class DemandeurController extends Controller
             return back()->with('error', $result['message']);
         }
     }
+
+    public function searchByCin2(string $cin)
+    {
+        // Validation format CIN
+        if (!preg_match('/^\d{12}$/', $cin)) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Format CIN invalide (12 chiffres requis)'
+            ], 400);
+        }
+        
+        // Rechercher demandeur (GLOBAL - tous districts)
+        $demandeur = Demandeur::where('cin', $cin)
+            ->with('dossiers.district') // Charger relations
+            ->first();
+        
+        if (!$demandeur) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Aucun demandeur trouvé avec ce CIN'
+            ]);
+        }
+        
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Déterminer si même district
+        $sameDistrict = false;
+        $districtInfo = null;
+        
+        if ($demandeur->dossiers && $demandeur->dossiers->isNotEmpty()) {
+            $firstDossier = $demandeur->dossiers->first();
+            $sameDistrict = ($firstDossier->id_district === $user->id_district);
+            
+            $districtInfo = [
+                'district_id' => $firstDossier->id_district,
+                'district_nom' => $firstDossier->district->nom_district ?? null
+            ];
+        }
+        
+        // Message personnalisé
+        $message = $sameDistrict 
+            ? '✅ Demandeur trouvé dans votre district' 
+            : '⚠️ Attention : Ce demandeur provient d\'un autre district';
+        
+        return response()->json([
+            'found' => true,
+            'message' => $message,
+            'demandeur' => [
+                'id' => $demandeur->id,
+                'titre_demandeur' => $demandeur->titre_demandeur,
+                'nom_demandeur' => $demandeur->nom_demandeur,
+                'prenom_demandeur' => $demandeur->prenom_demandeur,
+                'date_naissance' => $demandeur->date_naissance,
+                'lieu_naissance' => $demandeur->lieu_naissance,
+                'sexe' => $demandeur->sexe,
+                'occupation' => $demandeur->occupation,
+                'nom_pere' => $demandeur->nom_pere,
+                'nom_mere' => $demandeur->nom_mere,
+                'cin' => $demandeur->cin,
+                'date_delivrance' => $demandeur->date_delivrance,
+                'lieu_delivrance' => $demandeur->lieu_delivrance,
+                'date_delivrance_duplicata' => $demandeur->date_delivrance_duplicata,
+                'lieu_delivrance_duplicata' => $demandeur->lieu_delivrance_duplicata,
+                'domiciliation' => $demandeur->domiciliation,
+                'nationalite' => $demandeur->nationalite ?? 'Malagasy',
+                'situation_familiale' => $demandeur->situation_familiale,
+                'regime_matrimoniale' => $demandeur->regime_matrimoniale,
+                'date_mariage' => $demandeur->date_mariage,
+                'lieu_mariage' => $demandeur->lieu_mariage,
+                'marie_a' => $demandeur->marie_a,
+                'telephone' => $demandeur->telephone
+            ],
+            'meta' => [
+                'same_district' => $sameDistrict,
+                ...$districtInfo
+            ]
+        ]);
+    }
 }

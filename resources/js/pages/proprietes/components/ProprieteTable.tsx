@@ -1,4 +1,4 @@
-// pages/proprietes/components/ProprieteTable.tsx - ✅ PAGINATION CORRIGÉE
+// pages/proprietes/components/ProprieteTable.tsx 
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';

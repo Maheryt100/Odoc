@@ -1,3 +1,4 @@
+// resources/js/pages/demandeurs/components/DemandeurDetailDialog.tsx   
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +29,7 @@ interface DemandeurDetailDialogProps {
         type: 'from-demandeur' | 'from-propriete'
     ) => void;
 }
-
+ 
 export default function DemandeurDetailDialog({
     demandeur,
     open,

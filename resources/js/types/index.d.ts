@@ -1,4 +1,4 @@
-// js/types/index.d.ts - VERSION AVEC DATE_DEMANDE
+// js/types/index.d.ts 
 
 import { LucideIcon } from 'lucide-react';
 import type { Config } from 'ziggy-js';

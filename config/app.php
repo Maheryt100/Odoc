@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | JWT Secret for GeODOC Tokens
+    |--------------------------------------------------------------------------
+    |
+    | Cette clé est utilisée par Laravel pour GÉNÉRER des tokens JWT
+    | qui seront envoyés à FastAPI pour s'authentifier.
+    |
+    |
+    */
+
+    'jwt_secret' => env('JWT_SECRET_KEY'),
+
 ];

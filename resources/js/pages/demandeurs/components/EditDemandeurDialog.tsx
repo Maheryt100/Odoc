@@ -1,5 +1,4 @@
 // pages/demandeurs/components/EditDemandeurDialog.tsx
-// ✅ CONFLIT D'IMPORT RÉSOLU
 
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';

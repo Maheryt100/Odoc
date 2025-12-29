@@ -1,5 +1,5 @@
 <?php
-// Migration complète de la base de données avec optimisations PostgreSQL
+// Migration complète de la base de données de geodoc
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -811,3 +811,5 @@ return new class extends Migration
         return !empty($result);
     }
 };
+
+

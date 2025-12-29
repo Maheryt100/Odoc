@@ -1,13 +1,16 @@
-// admin/activity-logs/components/StatsCards.tsx
+// admin/activity-logs/components/StatsCards.tsx - VERSION RESPONSIVE
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Calendar, FileText, TrendingUp } from 'lucide-react';
 import { ActivityStats } from '../types';
+import { useIsMobile } from '@/hooks/useResponsive';
 
 interface StatsCardsProps {
     stats: ActivityStats;
 }
 
 export const StatsCards = ({ stats }: StatsCardsProps) => {
+    const isMobile = useIsMobile();
+
     // Fournir des valeurs par défaut pour éviter les erreurs null
     const safeStats = {
         total_actions: stats?.total_actions ?? 0,
@@ -23,116 +26,102 @@ export const StatsCards = ({ stats }: StatsCardsProps) => {
 
     const todayPercentage = calculatePercentage(safeStats.today_actions, safeStats.total_actions);
 
+    const statsData = [
+        {
+            label: 'Total',
+            value: safeStats.total_actions,
+            icon: Activity,
+            subtitle: 'Actions totales',
+            bgColor: 'bg-slate-50/50 dark:bg-slate-950/20',
+            borderColor: 'border-slate-100 dark:border-slate-900',
+            iconColor: 'text-slate-600 dark:text-slate-400',
+            iconBg: 'bg-slate-100 dark:bg-slate-900/30',
+            gradientFrom: 'from-slate-600',
+            gradientTo: 'to-gray-600',
+        },
+        {
+            label: 'Aujourd\'hui',
+            value: safeStats.today_actions,
+            icon: Calendar,
+            subtitle: null,
+            bgColor: 'bg-blue-50/50 dark:bg-blue-950/20',
+            borderColor: 'border-blue-100 dark:border-blue-900',
+            iconColor: 'text-blue-600 dark:text-blue-400',
+            iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+            gradientFrom: 'from-blue-600',
+            gradientTo: 'to-indigo-600',
+        },
+        {
+            label: 'Cette semaine',
+            value: safeStats.week_actions,
+            icon: Calendar,
+            subtitle: '7 derniers jours',
+            bgColor: 'bg-green-50/50 dark:bg-green-950/20',
+            borderColor: 'border-green-100 dark:border-green-900',
+            iconColor: 'text-green-600 dark:text-green-400',
+            iconBg: 'bg-green-100 dark:bg-green-900/30',
+            gradientFrom: 'from-green-600',
+            gradientTo: 'to-emerald-600',
+        },
+        {
+            label: 'Ce mois',
+            value: safeStats.month_actions,
+            icon: Calendar,
+            subtitle: 'Mois en cours',
+            bgColor: 'bg-purple-50/50 dark:bg-purple-950/20',
+            borderColor: 'border-purple-100 dark:border-purple-900',
+            iconColor: 'text-purple-600 dark:text-purple-400',
+            iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+            gradientFrom: 'from-purple-600',
+            gradientTo: 'to-pink-600',
+        },
+        {
+            label: 'Documents',
+            value: safeStats.total_documents,
+            icon: FileText,
+            subtitle: 'Générés/téléchargés',
+            bgColor: 'bg-orange-50/50 dark:bg-orange-950/20',
+            borderColor: 'border-orange-100 dark:border-orange-900',
+            iconColor: 'text-orange-600 dark:text-orange-400',
+            iconBg: 'bg-orange-100 dark:bg-orange-900/30',
+            gradientFrom: 'from-orange-600',
+            gradientTo: 'to-amber-600',
+        },
+    ];
+
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {/* Total */}
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                <div className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total</CardTitle>
-                        <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg">
-                            <Activity className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+            {statsData.map((stat) => {
+                const Icon = stat.icon;
+                
+                return (
+                    <Card
+                        key={stat.label}
+                        className={`border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden ${stat.borderColor} border`}
+                    >
+                        <div className={`${stat.bgColor}`}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-xs sm:text-sm font-medium truncate pr-2">
+                                    {stat.label}
+                                </CardTitle>
+                                <div className={`p-2 ${stat.iconBg} rounded-lg flex-shrink-0`}>
+                                    <Icon className={`h-4 w-4 ${stat.iconColor}`} />
+                                </div>
+                            </CardHeader>
                         </div>
-                    </CardHeader>
-                </div>
-                <CardContent className="pt-4">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent">
-                        {safeStats.total_actions.toLocaleString()}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        Actions totales
-                    </p>
-                </CardContent>
-            </Card>
-
-            {/* Aujourd'hui */}
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Aujourd'hui</CardTitle>
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                    </CardHeader>
-                </div>
-                <CardContent className="pt-4">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                        {safeStats.today_actions.toLocaleString()}
-                    </div>
-                    {/* <div className="flex items-center gap-2 mt-2">
-                        <TrendingUp className="h-3 w-3 text-blue-500" />
-                        <p className="text-xs text-muted-foreground">
-                            {todayPercentage}% du total
-                        </p>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-3">
-                        <div
-                            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
-                            style={{ width: `${Math.min(todayPercentage, 100)}%` }}
-                        />
-                    </div> */}
-                </CardContent>
-            </Card>
-
-            {/* Cette semaine */}
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Cette semaine</CardTitle>
-                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                            <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        </div>
-                    </CardHeader>
-                </div>
-                <CardContent className="pt-4">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                        {safeStats.week_actions.toLocaleString()}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        7 derniers jours
-                    </p>
-                </CardContent>
-            </Card>
-
-            {/* Ce mois */}
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Ce mois</CardTitle>
-                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                            <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        </div>
-                    </CardHeader>
-                </div>
-                <CardContent className="pt-4">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                        {safeStats.month_actions.toLocaleString()}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        Mois en cours
-                    </p>
-                </CardContent>
-            </Card>
-
-            {/* Documents */}
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Documents</CardTitle>
-                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                            <FileText className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                        </div>
-                    </CardHeader>
-                </div>
-                <CardContent className="pt-4">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                        {safeStats.total_documents.toLocaleString()}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        Générés/téléchargés
-                    </p>
-                </CardContent>
-            </Card>
+                        <CardContent className="pt-4">
+                            <div className={`text-2xl sm:text-3xl font-bold bg-gradient-to-r ${stat.gradientFrom} ${stat.gradientTo} bg-clip-text text-transparent`}>
+                                {stat.value.toLocaleString()}
+                            </div>
+                            {!isMobile && stat.subtitle && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    {stat.subtitle}
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                );
+            })}
         </div>
     );
-};
+}

@@ -1,4 +1,4 @@
-// pages/demandeurs/components/SmartDeleteDemandeurDialog.tsx - VERSION SÉCURISÉE
+// pages/demandeurs/components/SmartDeleteDemandeurDialog.tsx
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import {

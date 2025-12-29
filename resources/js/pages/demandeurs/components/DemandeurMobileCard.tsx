@@ -1,3 +1,4 @@
+// resources/js/pages/demandeurs/components/DemandeurMobileCard.tsx 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

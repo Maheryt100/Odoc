@@ -33,13 +33,3 @@ class CheckRole
     }
 }
 
-// ============================================
-// ENREGISTREMENT DU MIDDLEWARE
-// ============================================
-
-// app/Http/Kernel.php (Laravel 10) ou bootstrap/app.php (Laravel 11)
-// Ajouter dans $middlewareAliases ou équivalent :
-
-/*
-'role' => \App\Http\Middleware\CheckRole::class,
-*/

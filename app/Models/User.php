@@ -146,6 +146,44 @@ class User extends Authenticatable
         return $this->isSuperAdmin() || $this->isCentralUser();
     }
 
+    /**
+     * Vérifie si l'utilisateur peut voir tous les districts
+     */
+    public function canViewAllDistricts(): bool
+    {
+        return $this->isSuperAdmin() || $this->isCentralUser();
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut valider des imports TopoManager
+     */
+    public function canValidateTopoImports(): bool
+    {
+        return $this->isAdminDistrict() || $this->isUserDistrict();
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut gérer les utilisateurs TopoManager
+     */
+    public function canManageTopoUsers(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    /**
+     * Retourne le nom du rôle formaté
+     */
+    public function getRoleLabel(): string
+    {
+        return match($this->role) {
+            'super_admin' => 'Super Administrateur',
+            'central_user' => 'Utilisateur Central',
+            'admin_district' => 'Administrateur District',
+            'user_district' => 'Utilisateur District',
+            default => 'Inconnu'
+        };
+    }
+
     // ============ PERMISSIONS MÉTIER (CREATE/UPDATE/DELETE) ============
 
     /**
@@ -743,10 +781,10 @@ class User extends Authenticatable
         return [];
     }
 
-    public function getRoleLabel(): string
-    {
-        return $this->role_name;
-    }
+    // public function getRoleLabel(): string
+    // {
+    //     return $this->role_name;
+    // }
 
     /**
      * Vérifier si l'utilisateur peut accéder à la recherche avancée

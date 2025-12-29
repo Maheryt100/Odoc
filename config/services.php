@@ -14,6 +14,12 @@ return [
     |
     */
 
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+    ],
+
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -33,6 +39,13 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    // FastAPI
+    'fastapi' => [
+        'url' => env('FASTAPI_URL', 'http://127.0.0.1:8000'),
+        'topomanager_jwt_secret' => env('TOPOMANAGER_JWT_SECRET'),
+        'timeout' => 30,
     ],
 
 ];

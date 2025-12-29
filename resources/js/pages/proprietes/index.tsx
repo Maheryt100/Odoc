@@ -1,4 +1,4 @@
-// pages/proprietes/index.tsx - ✅ VERSION AVEC NETTOYAGE D'OVERLAY
+// pages/proprietes/index.tsx 
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';

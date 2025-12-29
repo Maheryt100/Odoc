@@ -16,7 +16,7 @@ export function DossiersTab({ dossiers, charts }: Props) {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Cards de statistiques - Responsive */}
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
                 <StatCard 
                     icon={Folder}
                     title="Total dossiers"

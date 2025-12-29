@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Symfony\Component\HttpFoundation\Response;
 
+
 /**
  * Middleware pour logger les accès utilisateurs
  */

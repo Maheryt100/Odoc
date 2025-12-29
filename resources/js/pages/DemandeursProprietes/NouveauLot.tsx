@@ -1,12 +1,12 @@
-// pages/DemandeursProprietes/NouveauLot.tsx - ✅ VALIDATION CORRIGÉE
+// pages/DemandeursProprietes/NouveauLot.tsx 
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast, Toaster } from 'sonner';
-import { Save, Plus, ArrowLeft, LandPlot, Users, Sparkles, CheckCircle2, FileText } from 'lucide-react';
+import { Save, Plus, ArrowLeft, LandPlot, Users, Sparkles, CheckCircle2, FileText, Info } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -15,11 +15,16 @@ import type { BreadcrumbItem, Dossier } from '@/types';
 import ProprieteCreate, { ProprieteFormData, emptyPropriete } from '@/pages/proprietes/create';
 import DemandeurCreate, { DemandeurFormData, emptyDemandeur } from '@/pages/demandeurs/create';
 import DatePickerDemande from '@/components/DatePickerDemande';
+import { useTopoImport, topoDataToProprieteForm, topoDataToDemandeurForm } from '@/hooks/useTopoImport';
 
 type CreationMode = 'lot-demandeur' | 'lots-only' | 'demandeurs-only';
 
 export default function NouveauLot() {
     const { dossier } = usePage<{ dossier: Dossier }>().props;
+    
+    // ✅ Hook TopoManager
+    const { hasTopoData, topoData, matchInfo, isUpdate } = useTopoImport();
+    
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
     
@@ -34,6 +39,40 @@ export default function NouveauLot() {
     
     const [demandeurs, setDemandeurs] = useState<DemandeurFormData[]>([{ ...emptyDemandeur }]);
     const [selectedChargesByPropriete, setSelectedChargesByPropriete] = useState<Record<number, string[]>>({ 0: [] });
+
+    // ✅ Pré-remplir depuis TopoManager
+    useEffect(() => {
+        if (hasTopoData && topoData) {
+            console.log('📥 Données TopoManager reçues:', topoData);
+            
+            if (topoData.entity_type === 'propriete' || topoData.lot) {
+                // C'est une propriété
+                const proprieteData = topoDataToProprieteForm(topoData);
+                proprieteData.id_dossier = dossier.id;
+                setProprietes([proprieteData]);
+                setCreationMode('lots-only');
+                
+                // Pré-remplir les charges si disponibles
+                if (topoData.charge) {
+                    const charges = topoData.charge.split(',').map((c: string) => c.trim());
+                    setSelectedChargesByPropriete({ 0: charges });
+                }
+                
+                toast.success('Données de propriété chargées depuis TopoManager', {
+                    description: isUpdate ? 'Entité existante détectée' : 'Nouvelle propriété'
+                });
+            } else if (topoData.entity_type === 'demandeur' || topoData.cin) {
+                // C'est un demandeur
+                const demandeurData = topoDataToDemandeurForm(topoData);
+                setDemandeurs([demandeurData]);
+                setCreationMode('demandeurs-only');
+                
+                toast.success('Données de demandeur chargées depuis TopoManager', {
+                    description: isUpdate ? 'Entité existante détectée' : 'Nouveau demandeur'
+                });
+            }
+        }
+    }, [hasTopoData, topoData, dossier.id, isUpdate]);
 
     // ========== GESTION DES PROPRIÉTÉS ==========
     const addPropriete = () => {
@@ -141,7 +180,7 @@ export default function NouveauLot() {
         setDateDemandeError('');
     };
 
-    // ========== ✅ VALIDATION CORRIGÉE ==========
+    // ========== VALIDATION ==========
     const validateProprietes = (): boolean => {
         for (let i = 0; i < proprietes.length; i++) {
             const p = proprietes[i];
@@ -166,12 +205,10 @@ export default function NouveauLot() {
         return true;
     };
 
-    // ✅ VALIDATION DEMANDEUR ALLÉGÉE : Seulement les champs CRITIQUES
     const validateDemandeurs = (): boolean => {
         for (let i = 0; i < demandeurs.length; i++) {
             const d = demandeurs[i];
             
-            // ✅ CHAMPS OBLIGATOIRES MINIMUM
             if (!d.titre_demandeur?.trim()) {
                 toast.error(`Demandeur ${i + 1}: Le titre de civilité est obligatoire`);
                 return false;
@@ -189,7 +226,6 @@ export default function NouveauLot() {
                 return false;
             }
             
-            // ✅ CIN : OBLIGATOIRE et 12 chiffres
             if (!d.cin) {
                 toast.error(`Demandeur ${i + 1}: Le CIN est obligatoire`);
                 return false;
@@ -199,7 +235,6 @@ export default function NouveauLot() {
                 return false;
             }
             
-            // ✅ Vérifier unicité CIN dans le formulaire (pas de doublons internes)
             const cinDuplicates = demandeurs.filter((dem, idx) => idx !== i && dem.cin === d.cin);
             if (cinDuplicates.length > 0) {
                 toast.error(`Demandeur ${i + 1}: Ce CIN est utilisé plusieurs fois dans le formulaire`);
@@ -315,6 +350,26 @@ export default function NouveauLot() {
                             <span className="text-gray-400">•</span>
                             <span>{dossier.commune}</span>
                         </div>
+                        
+                        {/* ✅ Indicateur TopoManager */}
+                        {hasTopoData && (
+                            <Alert className="bg-blue-50 border-blue-200 mt-4">
+                                <Info className="h-4 w-4 text-blue-600" />
+                                <AlertDescription className="text-sm">
+                                    <span className="font-semibold text-blue-900">
+                                        {isUpdate 
+                                            ? '✅ Données TopoManager chargées - Mise à jour d\'entité existante'
+                                            : '✅ Données TopoManager chargées - Nouvelle entité'
+                                        }
+                                    </span>
+                                    {matchInfo.matchedFields && matchInfo.matchedFields.length > 0 && (
+                                        <span className="block text-blue-700 mt-1">
+                                            Champs pré-remplis: {matchInfo.matchedFields.join(', ')}
+                                        </span>
+                                    )}
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     </div>
                     
                     <Button 
@@ -415,7 +470,6 @@ export default function NouveauLot() {
                         <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b">
                             <CardHeader>
                                 <CardTitle className="text-lg">Date de la demande</CardTitle>
-                               
                             </CardHeader>
                         </div>
                         <CardContent className="pt-6">

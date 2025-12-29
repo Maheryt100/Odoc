@@ -18,7 +18,7 @@ export function OverviewTab({ stats, charts }: Props) {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Cards principales - Responsive */}
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
                 <StatCard 
                     icon={Activity}
                     title="Total dossiers"

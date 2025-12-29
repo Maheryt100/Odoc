@@ -1,4 +1,4 @@
-// pages/demandeurs/index.tsx - ✅ VERSION COMPACTE
+// pages/demandeurs/index.tsx 
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';

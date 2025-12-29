@@ -1,4 +1,4 @@
-// pages/demandeurs/components/DemandeurTable.tsx - ✅ PAGINATION CORRIGÉE
+// pages/demandeurs/components/DemandeurTable.tsx 
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

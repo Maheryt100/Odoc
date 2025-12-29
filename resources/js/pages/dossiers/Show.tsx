@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/Show.tsx - ✅ VERSION RESPONSIVE COMPLÈTE
+// resources/js/pages/dossiers/Show.tsx 
 
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';

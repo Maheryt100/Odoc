@@ -15,7 +15,8 @@ import {
     UserCog,
     Activity,
     BarChart3,
-    Shield
+    Shield,
+    RefreshCw
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -35,11 +36,11 @@ export function AppSidebar() {
             href: '/dossiers',
             icon: Folders,
         },
-        // {
-        //     title: 'Statistiques',
-        //     href: '/statistiques',
-        //     icon: BarChart3,
-        // },
+        {
+            title: 'Flux TopoManager',
+            href: '/topo-flux',
+            icon: RefreshCw,
+        },
     ];
 
     // ============ CONFIGURATION (Admin uniquement) ============
@@ -141,11 +142,6 @@ export function AppSidebar() {
 
             <SidebarContent>
                 {/* Navigation principale */}
-                <div className="px-3 py-2">
-                    {/* <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Menu Principal
-                    </div> */}
-                </div>
                 <NavMain items={mainNavItems} />
                 
                 {/* Séparateur si items de configuration */}
@@ -158,12 +154,6 @@ export function AppSidebar() {
                 {/* Section Configuration (si items disponibles) */}
                 {configNavItems.length > 0 && (
                     <div>
-                        {/* <div className="px-3 py-2">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                <Settings className="h-3.5 w-3.5" />
-                                Configuration
-                            </div>
-                        </div> */}
                         <NavMain items={configNavItems} />
                     </div>
                 )}

@@ -1,4 +1,4 @@
-// Fichier: pages/proprietes/components/ProprieteMobileCard.tsx (NOUVEAU)
+// pages/proprietes/components/ProprieteMobileCard.tsx
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

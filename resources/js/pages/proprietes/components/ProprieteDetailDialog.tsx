@@ -1,6 +1,4 @@
 // proprietes/components/ProprieteDetailDialog.tsx
-// ✅ VERSION FINALE OPTIMISÉE AVEC NOUVELLES DATES
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -13,68 +11,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Demandeur, Propriete } from '@/types';
-
-
-// interface Propriete {
-//     id: number;
-//     lot: string;
-//     titre?: string;
-//     titre_complet?: string;
-//     type_operation: string;
-//     contenance?: number;
-//     proprietaire?: string;
-//     propriete_mere?: string;
-//     titre_mere?: string;
-//     nature?: string;
-//     vocation?: string;
-//     situation?: string;
-//     charge?: string;
-//     numero_FN?: string;
-//     numero_requisition?: string;
-    
-//     // ✅ DATES CORRIGÉES
-//     date_requisition?: string;
-//     date_depot_1?: string;              // ✅ Ancien date_inscription
-//     date_depot_2?: string;              // ✅ NOUVEAU
-//     date_approbation_acte?: string;     // ✅ NOUVEAU
-    
-//     // Dep/Vol
-//     dep_vol_inscription?: string;
-//     numero_dep_vol_inscription?: string;
-//     dep_vol_inscription_complet?: string;
-//     dep_vol_requisition?: string;
-//     numero_dep_vol_requisition?: string;
-//     dep_vol_requisition_complet?: string;
-    
-//     // Status
-//     is_archived?: boolean;
-//     status_label?: string;
-//     can_generate_document?: boolean;
-//     document_block_reason?: string;
-    
-//     // Relations
-//     demandes?: Array<{
-//         id: number;
-//         ordre: number;
-//         status: 'active' | 'archive';
-//         total_prix: number;
-//         demandeur?: {
-//             id: number;
-//             titre_demandeur: string;
-//             nom_demandeur: string;
-//             prenom_demandeur?: string;
-//             cin: string;
-//         };
-//     }>;
-// }
-
-// interface Demandeur {
-//     id: number;
-//     titre_demandeur: string;
-//     nom_demandeur: string;
-//     prenom_demandeur?: string;
-//     cin: string;
-// }
 
 interface ProprieteDetailDialogProps {
     propriete: Propriete | null;
