@@ -1,402 +1,205 @@
 // resources/js/pages/TopoFlux/Index.tsx
-import { useState, useEffect } from 'react';
-import { Head, usePage, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
-import { 
-    CheckCircle, 
-    XCircle, 
-    Clock, 
-    AlertTriangle, 
-    RefreshCw,
-    Filter,
-    Search,
-    Loader2
-} from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import AuthenticatedLayout from '@/layouts/AuthenticatedLayout';
+import { useState } from 'react';
 
-import ImportCard from './components/ImportCard';
-import ImportDetailsDialog from './components/ImportDetailsDialog';
-import RejectDialog from './components/RejectDialog';
-import { TopoImport, TopoFluxStats } from './types';
-
-import TopoSimulator from './components/TopoSimulator';
-
-// Dans le JSX principal, après les cards d'import
-<TopoSimulator />
-
-
-interface TopoFluxIndexProps {
-    fastapi_url: string;
-    jwt_token: string;
+interface Import {
+    id: number;
+    entity_type: 'demandeur' | 'propriete';
+    batch_id: string;
+    status: string;
+    target_dossier_id: number;
+    target_district_id: number;
+    topo_user_name: string;
+    created_at: string;
+    files_count: number;
+    payload: any;
 }
 
-export default function TopoFluxIndex() {
-    const { auth, fastapi_url, jwt_token } = usePage<any>().props;
-    
-    // États
-    const [imports, setImports] = useState<TopoImport[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState<TopoFluxStats>({ 
-        total: 0, 
-        pending: 0, 
-        validated: 0, 
-        rejected: 0,
-        with_warnings: 0
-    });
-    
-    // Filtres
-    const [statusFilter, setStatusFilter] = useState<'pending' | 'validated' | 'rejected'>('pending');
-    const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all');
-    const [searchQuery, setSearchQuery] = useState('');
-    
-    // Dialogues
-    const [selectedImport, setSelectedImport] = useState<TopoImport | null>(null);
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const [rejectDialog, setRejectDialog] = useState({
-        open: false,
-        importId: null as number | null,
-        reason: ''
-    });
-
-    // Chargement des données
-    useEffect(() => {
-        loadImports();
-        loadStats();
-    }, [statusFilter, entityTypeFilter]);
-
-    const loadImports = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams({
-                status: statusFilter,
-                ...(entityTypeFilter !== 'all' && { entity_type: entityTypeFilter }),
-                limit: '50'
-            });
-
-            const response = await fetch(
-                `${fastapi_url}/api/v1/staging/?${params}`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Erreur chargement imports');
-            }
-
-            const data = await response.json();
-            setImports(data);
-        } catch (error) {
-            console.error('Erreur:', error);
-            toast.error('Impossible de charger les imports');
-        } finally {
-            setLoading(false);
-        }
+interface Props {
+    imports: Import[];
+    stats: {
+        total: number;
+        pending: number;
     };
-
-    const loadStats = async () => {
-        try {
-            const response = await fetch(
-                `${fastapi_url}/api/v1/staging/stats`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`
-                    }
-                }
-            );
-            const data = await response.json();
-            setStats({
-                total: data.total || 0,
-                pending: data.pending || 0,
-                validated: data.validated || 0,
-                rejected: data.rejected || 0,
-                with_warnings: data.with_warnings || 0
-            });
-        } catch (error) {
-            console.error('Erreur stats:', error);
-        }
+    filters: {
+        status: string;
+        entity_type: string | null;
     };
+}
 
-    // Actions
-    const handleValidate = (importItem: TopoImport) => {
-        if (importItem.entity_type === 'propriete') {
-            const route_name = importItem.action_suggested === 'update' && importItem.matched_entity_id
-                ? 'proprietes.edit'
-                : 'nouveau-lot.create';
-            
-            const route_params = importItem.action_suggested === 'update' && importItem.matched_entity_id
-                ? { id_dossier: importItem.dossier_id, id_propriete: importItem.matched_entity_id }
-                : { id: importItem.dossier_id };
+export default function Index({ imports, stats, filters }: Props) {
+    const [statusFilter, setStatusFilter] = useState(filters.status);
+    const [typeFilter, setTypeFilter] = useState(filters.entity_type || '');
 
-            router.visit(window.route(route_name, route_params), {
-                data: {
-                    topo_import_id: importItem.id,
-                    topo_data: importItem.raw_data,
-                    match_info: importItem.matched_entity_details
-                }
-            });
-        } else if (importItem.entity_type === 'demandeur') {
-            const route_name = importItem.action_suggested === 'update' && importItem.matched_entity_id
-                ? 'demandeurs.edit'
-                : 'demandeurs.create';
-            
-            const route_params = importItem.action_suggested === 'update' && importItem.matched_entity_id
-                ? { id_dossier: importItem.dossier_id, id_demandeur: importItem.matched_entity_id }
-                : { id: importItem.dossier_id };
-
-            router.visit(window.route(route_name, route_params), {
-                data: {
-                    topo_import_id: importItem.id,
-                    topo_data: importItem.raw_data,
-                    match_info: importItem.matched_entity_details
-                }
-            });
-        }
-    };
-
-    const openRejectDialog = (importId: number) => {
-        setRejectDialog({
-            open: true,
-            importId,
-            reason: ''
+    const applyFilters = () => {
+        router.get(route('topo-flux.index'), {
+            status: statusFilter,
+            entity_type: typeFilter || undefined
+        }, {
+            preserveState: true
         });
     };
 
-    const handleReject = async () => {
-        if (!rejectDialog.importId || rejectDialog.reason.length < 10) {
-            toast.error('Motif de rejet requis (minimum 10 caractères)');
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                `${fastapi_url}/api/v1/staging/${rejectDialog.importId}/validate`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'reject',
-                        rejection_reason: rejectDialog.reason
-                    })
-                }
-            );
-
-            if (!response.ok) throw new Error('Erreur rejet');
-
-            toast.success('Import rejeté');
-            setRejectDialog({ open: false, importId: null, reason: '' });
-            loadImports();
-            loadStats();
-        } catch (error) {
-            toast.error('Erreur lors du rejet');
-        }
+    const getStatusBadge = (status: string) => {
+        const colors: Record<string, string> = {
+            'PENDING': 'bg-yellow-100 text-yellow-800',
+            'APPROVED': 'bg-green-100 text-green-800',
+            'REJECTED': 'bg-red-100 text-red-800'
+        };
+        return colors[status] || 'bg-gray-100 text-gray-800';
     };
 
-    const openDetails = (importItem: TopoImport) => {
-        setSelectedImport(importItem);
-        setShowDetailsDialog(true);
+    const getEntityBadge = (type: string) => {
+        return type === 'demandeur' 
+            ? 'bg-blue-100 text-blue-800' 
+            : 'bg-purple-100 text-purple-800';
     };
 
-    // Filtrage
-    const filteredImports = imports.filter(imp => {
-        if (!searchQuery) return true;
-        
-        const query = searchQuery.toLowerCase();
-        return (
-            imp.dossier_nom.toLowerCase().includes(query) ||
-            imp.dossier_numero_ouverture.toString().includes(query) ||
-            imp.district_nom.toLowerCase().includes(query) ||
-            (imp.entity_type === 'propriete' && imp.raw_data.lot?.toLowerCase().includes(query)) ||
-            (imp.entity_type === 'demandeur' && imp.raw_data.nom_demandeur?.toLowerCase().includes(query))
-        );
-    });
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
 
-    const canValidate = auth.user.role === 'admin_district' || auth.user.role === 'user_district';
+    const getMainInfo = (imp: Import) => {
+        if (imp.entity_type === 'demandeur') {
+            const p = imp.payload;
+            return `${p.nom_demandeur || '(sans nom)'} ${p.prenom_demandeur || ''} - CIN: ${p.cin || 'N/A'}`;
+        } else {
+            const p = imp.payload;
+            return `Lot ${p.lot || '?'} - ${p.nature || 'N/A'} (${p.type_operation || 'N/A'})`;
+        }
+    };
 
     return (
-        <AppLayout>
-            <Head title="Flux TopoManager" />
-
-            <div className="container mx-auto p-6 space-y-6">
-                {/* Header */}
+        <AuthenticatedLayout
+            header={
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-2">
-                            <RefreshCw className="h-8 w-8 text-primary" />
-                            Flux TopoManager
-                        </h1>
-                        <p className="text-muted-foreground mt-1">
-                            Validation des imports terrain
-                        </p>
-                    </div>
-                    <Button onClick={() => { loadImports(); loadStats(); }} variant="outline">
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Actualiser
-                    </Button>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid gap-4 md:grid-cols-5">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Total</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.total}</div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card className="border-orange-200 bg-orange-50 cursor-pointer hover:shadow-md transition" 
-                          onClick={() => setStatusFilter('pending')}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <Clock className="h-4 w-4" />
-                                En attente
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card className="border-green-200 bg-green-50 cursor-pointer hover:shadow-md transition" 
-                          onClick={() => setStatusFilter('validated')}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4" />
-                                Validés
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{stats.validated}</div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card className="border-red-200 bg-red-50 cursor-pointer hover:shadow-md transition" 
-                          onClick={() => setStatusFilter('rejected')}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <XCircle className="h-4 w-4" />
-                                Rejetés
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-amber-200 bg-amber-50">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4" />
-                                Warnings
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-amber-600">{stats.with_warnings}</div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Filtres */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Filter className="h-5 w-5" />
-                            Filtres
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col md:flex-row gap-4">
-                            {/* Recherche */}
-                            <div className="flex-1">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Rechercher (dossier, lot, nom...)"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-10"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Type d'entité */}
-                            <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Tous les types</SelectItem>
-                                    <SelectItem value="propriete">Propriétés</SelectItem>
-                                    <SelectItem value="demandeur">Demandeurs</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            {/* Statut */}
-                            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="w-auto">
-                                <TabsList>
-                                    <TabsTrigger value="pending">En attente</TabsTrigger>
-                                    <TabsTrigger value="validated">Validés</TabsTrigger>
-                                    <TabsTrigger value="rejected">Rejetés</TabsTrigger>
-                                </TabsList>
-                            </Tabs>
+                    <h2 className="text-xl font-semibold">TopoFlux - Imports Terrain</h2>
+                    <div className="flex gap-4 text-sm">
+                        <div className="px-3 py-1 bg-yellow-100 rounded">
+                            En attente: {stats.pending}
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Liste des imports */}
-                {loading ? (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <div className="px-3 py-1 bg-gray-100 rounded">
+                            Total: {stats.total}
+                        </div>
                     </div>
-                ) : filteredImports.length === 0 ? (
-                    <Alert>
-                        <AlertDescription>Aucun import à afficher</AlertDescription>
-                    </Alert>
-                ) : (
-                    <div className="space-y-4">
-                        {filteredImports.map(imp => (
-                            <ImportCard
-                                key={imp.id}
-                                import={imp}
-                                canValidate={canValidate && statusFilter === 'pending'}
-                                onValidate={() => handleValidate(imp)}
-                                onReject={() => openRejectDialog(imp.id)}
-                                onViewDetails={() => openDetails(imp)}
-                            />
-                        ))}
+                </div>
+            }
+        >
+            <Head title="TopoFlux" />
+
+            <div className="py-6">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    
+                    {/* Filtres */}
+                    <div className="mb-6 bg-white rounded-lg shadow p-4">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Statut</label>
+                                <select 
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="w-full rounded border-gray-300"
+                                >
+                                    <option value="PENDING">En attente</option>
+                                    <option value="APPROVED">Approuvé</option>
+                                    <option value="REJECTED">Rejeté</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select 
+                                    value={typeFilter}
+                                    onChange={(e) => setTypeFilter(e.target.value)}
+                                    className="w-full rounded border-gray-300"
+                                >
+                                    <option value="">Tous</option>
+                                    <option value="demandeur">Demandeurs</option>
+                                    <option value="propriete">Propriétés</option>
+                                </select>
+                            </div>
+                            <div className="flex items-end">
+                                <button
+                                    onClick={applyFilters}
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                    Appliquer
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                )}
 
-                {/* Dialogues */}
-                <RejectDialog
-                    open={rejectDialog.open}
-                    reason={rejectDialog.reason}
-                    onReasonChange={(reason) => setRejectDialog({ ...rejectDialog, reason })}
-                    onConfirm={handleReject}
-                    onCancel={() => setRejectDialog({ open: false, importId: null, reason: '' })}
-                />
-
-                <ImportDetailsDialog
-                    import={selectedImport}
-                    open={showDetailsDialog}
-                    onOpenChange={setShowDetailsDialog}
-                />
+                    {/* Liste */}
+                    <div className="bg-white rounded-lg shadow overflow-hidden">
+                        {imports.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                Aucun import trouvé
+                            </div>
+                        ) : (
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Informations</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Opérateur</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fichiers</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {imports.map((imp) => (
+                                        <tr key={`${imp.entity_type}-${imp.id}`} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 text-xs rounded ${getEntityBadge(imp.entity_type)}`}>
+                                                    {imp.entity_type === 'demandeur' ? 'Demandeur' : 'Propriété'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {getMainInfo(imp)}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    Dossier #{imp.target_dossier_id}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {imp.topo_user_name}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {formatDate(imp.created_at)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {imp.files_count} fichier(s)
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 text-xs rounded ${getStatusBadge(imp.status)}`}>
+                                                    {imp.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                <Link
+                                                    href={route('topo-flux.show', [imp.entity_type, imp.id])}
+                                                    className="text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Voir détails
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
             </div>
-        </AppLayout>
+        </AuthenticatedLayout>
     );
 }

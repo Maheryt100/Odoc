@@ -43,8 +43,7 @@ return [
 
     // FastAPI
     'fastapi' => [
-        'url' => env('FASTAPI_URL', 'http://127.0.0.1:8000'),
-        'topomanager_jwt_secret' => env('TOPOMANAGER_JWT_SECRET'),
+        'url' => env('FASTAPI_URL', 'http://localhost:8000'),
         'timeout' => 30,
     ],
 

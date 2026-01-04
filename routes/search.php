@@ -2,11 +2,12 @@
 
 use App\Http\Controllers\DemandeurController;
 use App\Http\Controllers\AdvancedSearchController;
+use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Routes de Recherche Globale
+| Routes de Recherche Globale pour la recherche aprofondie des dossiers dans Geodoc, rien à avoir avec le fastAPI (topo)
 |--------------------------------------------------------------------------
 | Routes accessibles par tous les utilisateurs authentifiés.
 | Logging activé pour suivre les performances.
@@ -38,38 +39,26 @@ Route::middleware(['auth', 'search.log'])->prefix('search')->name('search.')->gr
 
 /*
 |--------------------------------------------------------------------------
-| Routes API pour recherche (sans middleware 'search.log')
+| Routes API pour recherche (sans middleware 'search.log') des donnees venant de fastapi (topo)
 |--------------------------------------------------------------------------
 | Utilisées par les composants React et FastAPI
 */
 
 Route::middleware('auth')->prefix('api/search')->name('api.search.')->group(function () {
     
-    // ✅ Recherche demandeur par CIN (format JSON pour React)
-    Route::get('/demandeur/cin/{cin}', function($cin) {
-        return app(DemandeurController::class)->searchByCin2($cin);
-    })
-    ->name('demandeur.cin')
-    ->where('cin', '[0-9]{12}');
+    // ✅ Recherche demandeur par CIN (format JSON)
+    Route::get('/demandeur/cin', [SearchController::class, 'searchDemandeurByCin'])
+        ->name('demandeur.cin');
     
-    // ✅ Recherche propriété par lot dans un dossier
-    Route::get('/propriete/lot/{id_dossier}/{lot}', function($id_dossier, $lot) {
-        $propriete = \App\Models\Propriete::where('id_dossier', $id_dossier)
-            ->where('lot', strtoupper(trim($lot)))
-            ->first();
-        
-        if (!$propriete) {
-            return response()->json([
-                'found' => false,
-                'message' => 'Aucune propriété trouvée avec ce lot'
-            ]);
-        }
-        
-        return response()->json([
-            'found' => true,
-            'message' => 'Propriété existante détectée',
-            'propriete' => $propriete
-        ]);
-    })
-    ->name('propriete.lot');
+    // ✅ Recherche propriété par lot
+    Route::get('/propriete/lot', [SearchController::class, 'searchProprieteByLot'])
+        ->name('propriete.lot');
+    
+    // ✅ Recherche dossier
+    Route::get('/dossier/numero', [SearchController::class, 'searchDossierByNumero'])
+        ->name('dossier.numero');
+    
+    // ✅ Autocomplete
+    Route::get('/autocomplete', [SearchController::class, 'autocomplete'])
+        ->name('autocomplete');
 });

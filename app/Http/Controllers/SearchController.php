@@ -4,52 +4,65 @@ namespace App\Http\Controllers;
 
 use App\Models\Demandeur;
 use App\Models\Propriete;
+use App\Models\Dossier;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SearchController extends Controller
 {
     /**
-     * Recherche globale d'un demandeur par CIN
-     * (tous districts - pas de filtre)
+     * ✅ Recherche demandeur par CIN (TOUS DISTRICTS)
+     * 
+     * Utilisé dans DemandeurCreate.tsx pour vérifier les doublons
+     * 
+     * Route: GET /search/demandeur/cin?cin=123456789012
      */
-    public function searchDemandeurByCin($cin)
+    public function searchDemandeurByCin(Request $request): JsonResponse
     {
-        // Valider format CIN
-        if (!preg_match('/^\d{12}$/', $cin)) {
-            return response()->json([
-                'found' => false,
-                'message' => 'Format CIN invalide (12 chiffres requis)'
-            ], 400);
-        }
+        $request->validate([
+            'cin' => 'required|string|size:12|regex:/^\d{12}$/'
+        ]);
         
-        // Rechercher demandeur
+        $cin = $request->input('cin');
+        $currentDistrictId = Auth::user()->district_id;
+        
+        Log::info('🔍 Recherche CIN globale', [
+            'cin' => $cin,
+            'user_district' => $currentDistrictId
+        ]);
+        
+        // ✅ Chercher dans TOUS les districts
         $demandeur = Demandeur::where('cin', $cin)->first();
         
         if (!$demandeur) {
+            Log::info('❌ CIN non trouvé', ['cin' => $cin]);
+            
             return response()->json([
                 'found' => false,
-                'message' => 'Aucun demandeur trouvé avec ce CIN'
+                'message' => 'Nouveau demandeur - CIN non trouvé dans la base'
             ]);
         }
         
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        // ✅ CIN trouvé - vérifier le district
+        $sameDistrict = $demandeur->district_id === $currentDistrictId;
         
-        // Vérifier si même district
-        $sameDistrict = false;
-        if ($demandeur->dossiers && $demandeur->dossiers->isNotEmpty()) {
-            $dossier = $demandeur->dossiers->first();
-            $sameDistrict = ($dossier->id_district === $user->id_district);
-        }
+        Log::info('✅ CIN trouvé', [
+            'cin' => $cin,
+            'demandeur_id' => $demandeur->id,
+            'same_district' => $sameDistrict,
+            'district_name' => $demandeur->district->nom ?? 'N/A'
+        ]);
         
         return response()->json([
             'found' => true,
             'message' => $sameDistrict 
-                ? 'Demandeur trouvé dans votre district' 
-                : '⚠️ Demandeur trouvé dans un autre district',
+                ? 'Demandeur existant trouvé dans votre district'
+                : 'Demandeur existant trouvé dans un autre district',
             'demandeur' => [
                 'id' => $demandeur->id,
+                'cin' => $demandeur->cin,
                 'titre_demandeur' => $demandeur->titre_demandeur,
                 'nom_demandeur' => $demandeur->nom_demandeur,
                 'prenom_demandeur' => $demandeur->prenom_demandeur,
@@ -59,7 +72,6 @@ class SearchController extends Controller
                 'occupation' => $demandeur->occupation,
                 'nom_pere' => $demandeur->nom_pere,
                 'nom_mere' => $demandeur->nom_mere,
-                'cin' => $demandeur->cin,
                 'date_delivrance' => $demandeur->date_delivrance,
                 'lieu_delivrance' => $demandeur->lieu_delivrance,
                 'date_delivrance_duplicata' => $demandeur->date_delivrance_duplicata,
@@ -71,36 +83,154 @@ class SearchController extends Controller
                 'date_mariage' => $demandeur->date_mariage,
                 'lieu_mariage' => $demandeur->lieu_mariage,
                 'marie_a' => $demandeur->marie_a,
-                'telephone' => $demandeur->telephone
+                'telephone' => $demandeur->telephone,
             ],
             'meta' => [
                 'same_district' => $sameDistrict,
-                'district_id' => $dossier->id_district ?? null,
-                'district_nom' => $dossier->district->nom_district ?? null
+                'district_name' => $demandeur->district->nom ?? null,
+                'district_id' => $demandeur->district_id
             ]
         ]);
     }
     
     /**
-     * Recherche propriété par lot dans un dossier
+     * ✅ Recherche propriété par lot (TOUS DISTRICTS)
      */
-    public function searchProprieteByLot($id_dossier, $lot)
+    public function searchProprieteByLot(Request $request): JsonResponse
     {
-        $propriete = Propriete::where('id_dossier', $id_dossier)
-            ->where('lot', strtoupper(trim($lot)))
-            ->first();
+        $request->validate([
+            'lot' => 'required|string|max:50',
+            'dossier_id' => 'nullable|integer|exists:dossiers,id'
+        ]);
         
-        if (!$propriete) {
+        $lot = $request->input('lot');
+        $dossierId = $request->input('dossier_id');
+        $currentDistrictId = Auth::user()->district_id;
+        
+        $query = Propriete::where('lot', $lot);
+        
+        if ($dossierId) {
+            $query->where('id_dossier', $dossierId);
+        }
+        
+        $proprietes = $query->with('dossier.district')->get();
+        
+        if ($proprietes->isEmpty()) {
             return response()->json([
                 'found' => false,
-                'message' => 'Aucune propriété trouvée avec ce lot'
+                'message' => 'Aucune propriété avec ce lot'
             ]);
         }
         
         return response()->json([
             'found' => true,
-            'message' => 'Propriété existante détectée',
-            'propriete' => $propriete
+            'message' => 'Propriété(s) trouvée(s)',
+            'proprietes' => $proprietes->map(fn($p) => [
+                'id' => $p->id,
+                'lot' => $p->lot,
+                'nature' => $p->nature,
+                'vocation' => $p->vocation,
+                'dossier_nom' => $p->dossier->nom_dossier ?? null,
+                'district_nom' => $p->dossier->district->nom ?? null,
+                'same_district' => $p->dossier->district_id === $currentDistrictId
+            ])
         ]);
+    }
+    
+    /**
+     * ✅ Recherche dossier par numéro (TOUS DISTRICTS)
+     */
+    public function searchDossierByNumero(Request $request): JsonResponse
+    {
+        $request->validate([
+            'numero' => 'required|integer'
+        ]);
+        
+        $numero = $request->input('numero');
+        $currentDistrictId = Auth::user()->district_id;
+        
+        $dossier = Dossier::where('numero_ouverture', $numero)
+            ->with('district')
+            ->first();
+        
+        if (!$dossier) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Dossier non trouvé'
+            ]);
+        }
+        
+        return response()->json([
+            'found' => true,
+            'message' => 'Dossier trouvé',
+            'dossier' => [
+                'id' => $dossier->id,
+                'numero_ouverture' => $dossier->numero_ouverture,
+                'nom_dossier' => $dossier->nom_dossier,
+                'commune' => $dossier->commune,
+                'district_nom' => $dossier->district->nom ?? null,
+                'same_district' => $dossier->district_id === $currentDistrictId
+            ]
+        ]);
+    }
+    
+    /**
+     * ✅ Recherche générale (autocomplete)
+     */
+    public function autocomplete(Request $request): JsonResponse
+    {
+        $request->validate([
+            'q' => 'required|string|min:2',
+            'type' => 'nullable|in:demandeur,propriete,dossier'
+        ]);
+        
+        $query = $request->input('q');
+        $type = $request->input('type');
+        $results = [];
+        
+        if (!$type || $type === 'demandeur') {
+            $demandeurs = Demandeur::where(function($q) use ($query) {
+                $q->where('cin', 'like', "%{$query}%")
+                  ->orWhere('nom_demandeur', 'like', "%{$query}%")
+                  ->orWhere('prenom_demandeur', 'like', "%{$query}%");
+            })
+            ->limit(10)
+            ->get();
+            
+            $results['demandeurs'] = $demandeurs->map(fn($d) => [
+                'id' => $d->id,
+                'label' => "{$d->nom_demandeur} {$d->prenom_demandeur} - CIN: {$d->cin}",
+                'type' => 'demandeur'
+            ]);
+        }
+        
+        if (!$type || $type === 'propriete') {
+            $proprietes = Propriete::where('lot', 'like', "%{$query}%")
+                ->limit(10)
+                ->get();
+            
+            $results['proprietes'] = $proprietes->map(fn($p) => [
+                'id' => $p->id,
+                'label' => "Lot {$p->lot} - {$p->nature}",
+                'type' => 'propriete'
+            ]);
+        }
+        
+        if (!$type || $type === 'dossier') {
+            $dossiers = Dossier::where(function($q) use ($query) {
+                $q->where('nom_dossier', 'like', "%{$query}%")
+                  ->orWhere('numero_ouverture', 'like', "%{$query}%");
+            })
+            ->limit(10)
+            ->get();
+            
+            $results['dossiers'] = $dossiers->map(fn($d) => [
+                'id' => $d->id,
+                'label' => "N°{$d->numero_ouverture} - {$d->nom_dossier}",
+                'type' => 'dossier'
+            ]);
+        }
+        
+        return response()->json($results);
     }
 }

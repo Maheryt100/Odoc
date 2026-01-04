@@ -16,3 +16,5 @@ indent_size = 2
 
 [docker-compose.yml]
 indent_size = 4
+
+raw_data: {"cin":"123456789012","nom_demandeur":"RAKOTO","prenom_demandeur":"Jean","date_naissance":"1990-01-15","occupation":"Agriculteur"}

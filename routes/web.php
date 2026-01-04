@@ -83,3 +83,9 @@ Route::middleware('auth')->group(function () {
         require __DIR__.'/topo-flux.php';
     });
 });
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // TopoFlux - Imports terrain
+    require __DIR__.'/topo-flux.php';
+    
+});
