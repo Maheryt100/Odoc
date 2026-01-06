@@ -1,8 +1,8 @@
-// pages/documents/types.ts 
+// pages/documents/types.ts - VERSION SANS REÇU GÉNÉRÉ
 import { Demandeur, Propriete, Dossier } from '@/types';
 
 /**
- * ✅ Métadonnées d'un document (pour régénération)
+ * ✅ Métadonnées d'un document
  */
 export interface DocumentMetadata {
     needs_regeneration?: boolean;
@@ -20,14 +20,16 @@ export interface DocumentMetadata {
     regeneration_failed?: boolean;
     last_error?: string;
     failed_at?: string;
+    recu_reference_id?: number;
+    recu_numero?: string;
 }
 
 /**
- * ✅ Document généré (référence dans la base)
+ * ✅ Document généré
  */
 export interface DocumentGenere {
     id: number;
-    type_document: 'RECU' | 'ADV' | 'CSF' | 'REQ';
+    type_document: 'ADV' | 'CSF' | 'REQ'; // RECU retiré
     id_propriete: number;
     id_demandeur?: number;
     id_dossier: number;
@@ -39,6 +41,12 @@ export interface DocumentGenere {
     date_document?: string;
     has_consorts: boolean;
     demandeurs_ids?: number[];
+    
+    // ✅ NOUVEAU : Numéro de reçu externe
+    numero_recu_externe?: string;
+    numero_recu_saisi_at?: string;
+    numero_recu_saisi_by?: number;
+    
     metadata?: DocumentMetadata; 
     generated_by: string;
     generated_at: string;
@@ -48,23 +56,25 @@ export interface DocumentGenere {
 }
 
 /**
- * ✅ Reçu de paiement (ancienne table - compatibilité)
+ * ✅ Référence de reçu externe (nouveau)
  */
-export interface RecuPaiement {
+export interface RecuReference {
     id: number;
+    id_propriete: number;
+    id_demandeur: number;
+    id_dossier: number;
     numero_recu: string;
-    montant: string;
-    date_recu: string;
-    status: 'draft' | 'confirmed';
-    generated_by: string;
-    generated_at: string;
-    download_count: number;
-    source?: 'old_table' | 'documents_generes';
+    montant?: number;
+    date_recu?: string;
+    notes?: string;
+    created_by: number;
+    updated_by?: number;
+    created_at: string;
+    updated_at: string;
 }
 
 /**
- * ✅ CORRECTION CRITIQUE : total_prix garanti non-null
- * L'Observer backend garantit toujours un prix calculé
+ * ✅ Demandeur lié avec prix garanti
  */
 export interface DemandeurLie {
     id: number;
@@ -75,37 +85,28 @@ export interface DemandeurLie {
     ordre: number;
     status: 'active' | 'archive';
     status_consort: boolean;
-    total_prix: number; // ✅ Garanti par Observer
-}
-
-/**
- * ✅ Demandeur avec ordre pour affichage
- */
-export interface DemandeurWithOrder {
-    demandeur: Demandeur;
-    ordre: number;
-    status: 'active' | 'archive';
     total_prix: number;
-    is_principal?: boolean;
 }
 
 /**
- * ✅ CORRECTION : Propriété avec relation dossier explicite
- * Pour éviter l'erreur "Property 'dossier' does not exist"
+ * ✅ Propriété avec relation dossier explicite
  */
 export interface ProprieteWithDemandeurs extends Propriete {
+    [x: string]: any;
     demandeurs_lies: DemandeurLie[];
-    has_recu?: boolean;
-    dernier_recu?: RecuPaiement | null;
     
-    // ✅ AJOUT : Relation dossier explicite
+    // ✅ Relation dossier explicite
     dossier: Dossier;
     
+    // ✅ RETIRÉ : document_recu
     // Documents générés
-    document_recu?: DocumentGenere | null;
     document_adv?: DocumentGenere | null;
     document_csf?: DocumentGenere | null;
     document_requisition?: DocumentGenere | null;
+    
+    // ✅ NOUVEAU : Référence reçu externe
+    recu_reference?: RecuReference | null;
+    has_recu_reference?: boolean;
 }
 
 /**
@@ -116,12 +117,12 @@ export interface DemandeurWithCSF extends Demandeur {
 }
 
 /**
- * ✅ Types de documents
+ * ✅ Types de documents (RECU retiré)
  */
-export type DocumentType = 'recu' | 'acte_vente' | 'csf' | 'requisition';
+export type DocumentType = 'acte_vente' | 'csf' | 'requisition';
 
 /**
- * ✅ État d'un document (pour l'UI)
+ * ✅ État d'un document
  */
 export interface DocumentState {
     exists: boolean;
@@ -140,18 +141,31 @@ export interface DocumentConfig {
     description: string;
     color: string;
     buttonText: string;
-    requiresRecu: boolean;
+    requiresRecuReference: boolean; // Changé de requiresRecu
     requiresDemandeur: boolean;
 }
 
 /**
- * ✅ NOUVEAU : Stats pour les cartes
+ * ✅ Stats pour les cartes (sans reçu)
  */
 export interface DocumentStats {
     totalProprietes: number;
-    proprietesAvecRecu: number;
+    proprietesAvecRecuReference: number; // ✅ NOUVEAU
     proprietesAvecAdv: number;
     totalDemandeurs: number;
     demandeursAvecCsf: number;
     requisitionsGenerees: number;
+}
+
+/**
+ * ✅ Validation des champs manquants
+ */
+export interface ValidationResult {
+    isValid: boolean;
+    missingFields: {
+        propriete: string[];
+        demandeur: string[];
+        general: string[];
+    };
+    errorMessage: string | null;
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Documents;
 use App\Http\Controllers\Controller;
 use App\Models\Dossier;
 use App\Models\Propriete;
+use App\Models\RecuReference;
 use App\Models\DocumentGenere;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -50,13 +51,11 @@ class DocumentGenerationController extends Controller
                     ];
                 });
 
-                // Charger les documents générés
-                $propriete->document_recu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
-                    ->where('id_propriete', $propriete->id)
-                    ->where('id_district', $dossier->id_district)
-                    ->where('status', DocumentGenere::STATUS_ACTIVE)
+                // ✅ NOUVEAU : Charger la référence de reçu externe
+                $propriete->recu_reference = RecuReference::where('id_propriete', $propriete->id)
                     ->first();
 
+                // Charger les documents générés
                 $propriete->document_adv = DocumentGenere::where('type_document', DocumentGenere::TYPE_ADV)
                     ->where('id_propriete', $propriete->id)
                     ->where('id_district', $dossier->id_district)
@@ -69,26 +68,9 @@ class DocumentGenerationController extends Controller
                     ->where('status', DocumentGenere::STATUS_ACTIVE)
                     ->first();
 
-                // Compatibilité avec ancien système
-                $propriete->has_recu = !!$propriete->document_recu;
-                // ✅ CORRECTION : Vérifier que date_document n'est pas null
-                if ($propriete->document_recu) {
-                    $propriete->dernier_recu = [
-                        'id' => $propriete->document_recu->id,
-                        'numero_recu' => $propriete->document_recu->numero_document,
-                        'montant' => $propriete->document_recu->montant,
-                        'date_recu' => $propriete->document_recu->date_document 
-                            ? $propriete->document_recu->date_document->format('d/m/Y')
-                            : 'N/A',
-                        'generated_by' => $propriete->document_recu->generatedBy->name ?? 'Inconnu',
-                        'generated_at' => $propriete->document_recu->generated_at->format('d/m/Y H:i'),
-                        'download_count' => $propriete->document_recu->download_count,
-                        'source' => 'documents_generes',
-                    ];
-                }
-
                 $propriete->has_active_demandeurs = $propriete->demandesActives->count() > 0;
                 $propriete->has_archived_demandeurs = $propriete->demandesArchivees()->count() > 0;
+                $propriete->has_recu_reference = !!$propriete->recu_reference;
 
                 return $propriete;
             })
@@ -225,7 +207,7 @@ class DocumentGenerationController extends Controller
     }
 
     /**
-     * ✅ STATISTIQUES : Obtenir les stats globales de génération
+     * ✅ STATISTIQUES
      */
     public function getStats($id_dossier)
     {
@@ -233,10 +215,6 @@ class DocumentGenerationController extends Controller
         
         return response()->json([
             'total_proprietes' => $dossier->proprietes()->count(),
-            'recus_generes' => DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
-                ->where('id_dossier', $id_dossier)
-                ->where('status', DocumentGenere::STATUS_ACTIVE)
-                ->count(),
             'adv_generes' => DocumentGenere::where('type_document', DocumentGenere::TYPE_ADV)
                 ->where('id_dossier', $id_dossier)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
@@ -249,6 +227,7 @@ class DocumentGenerationController extends Controller
                 ->where('id_dossier', $id_dossier)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
                 ->count(),
+            'recu_references' => RecuReference::where('id_dossier', $id_dossier)->count(),
         ]);
     }
 }

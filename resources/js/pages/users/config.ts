@@ -8,7 +8,7 @@ export const ROLE_BADGE_CONFIG: Record<UserRole, { variant: any; label: string; 
     super_admin: {
         variant: 'destructive',
         label: 'Super Admin',
-        description: '👁️ LECTURE SEULE sur tous les districts. Peut créer des admin_district uniquement.',
+        description: '👁️ LECTURE SEULE sur tous les districts. Peut créer : super_admin, central_user, admin_district.',
     },
     central_user: {
         variant: 'default',
@@ -53,7 +53,7 @@ export const ROLE_PERMISSIONS = {
         canDelete: false,           // ❌ LECTURE SEULE
         canArchive: false,          // ❌ LECTURE SEULE
         canExport: true,            // ✅ Peut exporter
-        canManageUsers: true,       // ✅ Peut créer admin_district uniquement
+        canManageUsers: true,       // ✅ Peut créer super_admin, central_user, admin_district
         canConfigurePrices: false,  // ❌ LECTURE SEULE
         canGenerateDocuments: false,// ❌ LECTURE SEULE
         canCloseDossier: false,     // ❌ LECTURE SEULE
@@ -168,13 +168,13 @@ export const ROLES_WITH_GLOBAL_ACCESS: UserRole[] = ['super_admin', 'central_use
 export const READ_ONLY_ROLES: UserRole[] = ['super_admin', 'central_user'];
 
 /**
- * Hiérarchie des rôles pour les créations autorisées
+ * ✅ Hiérarchie des rôles pour les créations autorisées - CORRIGÉE
  */
 export const ROLE_CREATION_HIERARCHY: Record<UserRole, UserRole[]> = {
-    super_admin: ['admin_district'],        // Super admin peut créer admin_district uniquement
-    central_user: [],                       // Central user ne peut créer personne
-    admin_district: ['user_district'],      // Admin district peut créer user_district uniquement
-    user_district: [],                      // User district ne peut créer personne
+    super_admin: ['super_admin', 'central_user', 'admin_district'],  // ✅ Super admin peut créer ces 3 rôles
+    central_user: [],                                                 // ❌ Central user ne peut créer personne
+    admin_district: ['user_district'],                                // ✅ Admin district peut créer user_district uniquement
+    user_district: [],                                                // ❌ User district ne peut créer personne
 };
 
 /**

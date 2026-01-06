@@ -1,12 +1,9 @@
 <?php
-// ============================================
 // app/Services/FastApiService.php
-// VERSION CORRIGÉE AVEC LOGS DÉTAILLÉS
-// ============================================
+// ✅ VERSION CORRIGÉE - VARIABLE $filters DÉFINIE
 
 namespace App\Services;
 
-use App\Models\User;
 use Illuminate\Support\Facades\{Http, Log};
 use App\Services\JwtService;
 use Exception;
@@ -19,15 +16,7 @@ class FastApiService
     public function __construct()
     {
         $this->baseUrl = config('services.fastapi.url', 'http://localhost:8000');
-        
-        Log::debug('FastApiService initialisé', [
-            'base_url' => $this->baseUrl
-        ]);
     }
-    
-    // ========================================
-    // MÉTHODE PRIVÉE : OBTENIR TOKEN
-    // ========================================
     
     private function getAuthHeaders(): array
     {
@@ -40,12 +29,6 @@ class FastApiService
             }
             
             $token = JwtService::generateToken($user);
-            
-            Log::debug('✅ Token JWT généré', [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'token_preview' => substr($token, 0, 30) . '...'
-            ]);
             
             return [
                 'Authorization' => "Bearer {$token}",
@@ -67,20 +50,20 @@ class FastApiService
     public function getImports(array $filters = []): array
     {
         try {
-            Log::info('📡 FastAPI: Récupération imports', [
-                'filters' => $filters,
-                'url' => "{$this->baseUrl}/api/imports"
-            ]);
+            // ✅ CORRECTION : Ne pas envoyer 'archived' à FastAPI
+            $fastApiFilters = [];
+            
+            foreach ($filters as $key => $value) {
+                // Exclure le filtre 'archived' et 'status' si = 'archived'
+                if ($key === 'status' && $value === 'archived') {
+                    continue;
+                }
+                $fastApiFilters[$key] = $value;
+            }
             
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
-                ->get("{$this->baseUrl}/api/imports", $filters);
-            
-            Log::debug('📡 FastAPI: Réponse brute', [
-                'status' => $response->status(),
-                'successful' => $response->successful(),
-                'body_preview' => substr($response->body(), 0, 200)
-            ]);
+                ->get("{$this->baseUrl}/api/imports", $fastApiFilters);
             
             if (!$response->successful()) {
                 Log::error('❌ FastAPI getImports error', [
@@ -90,20 +73,11 @@ class FastApiService
                 return [];
             }
             
-            $data = $response->json();
-            
-            Log::info('✅ FastAPI: Imports récupérés', [
-                'total' => $data['total'] ?? count($data),
-                'data_count' => isset($data['data']) ? count($data['data']) : 0
-            ]);
-            
-            // Retourner le tableau complet (pas juste ['data'])
-            return $data;
+            return $response->json();
             
         } catch (Exception $e) {
             Log::error('❌ FastAPI getImports failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
             return [];
         }
@@ -112,11 +86,6 @@ class FastApiService
     public function getImport(int $importId): ?array
     {
         try {
-            Log::info('📡 FastAPI: Récupération import', [
-                'import_id' => $importId,
-                'url' => "{$this->baseUrl}/api/imports/{$importId}"
-            ]);
-            
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
                 ->get("{$this->baseUrl}/api/imports/{$importId}");
@@ -124,21 +93,12 @@ class FastApiService
             if (!$response->successful()) {
                 Log::error('❌ FastAPI getImport error', [
                     'import_id' => $importId,
-                    'status' => $response->status(),
-                    'body' => $response->body()
+                    'status' => $response->status()
                 ]);
                 return null;
             }
             
-            $data = $response->json();
-            
-            Log::info('✅ FastAPI: Import récupéré', [
-                'import_id' => $importId,
-                'entity_type' => $data['import']['entity_type'] ?? 'N/A',
-                'status' => $data['import']['status'] ?? 'N/A'
-            ]);
-            
-            return $data;
+            return $response->json();
                 
         } catch (Exception $e) {
             Log::error("❌ FastAPI getImport {$importId} failed", [
@@ -155,8 +115,6 @@ class FastApiService
     public function validateImport(int $importId): bool
     {
         try {
-            Log::info("📡 FastAPI: Validation import #{$importId}");
-            
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
                 ->asForm()
@@ -164,17 +122,7 @@ class FastApiService
                     'action' => 'validate'
                 ]);
             
-            if ($response->successful()) {
-                Log::info("✅ FastAPI: Import #{$importId} validé");
-                return true;
-            }
-            
-            Log::error("❌ FastAPI validateImport error", [
-                'import_id' => $importId,
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-            return false;
+            return $response->successful();
             
         } catch (Exception $e) {
             Log::error("❌ FastAPI validateImport {$importId} failed", [
@@ -187,10 +135,6 @@ class FastApiService
     public function rejectImport(int $importId, string $reason): bool
     {
         try {
-            Log::info("📡 FastAPI: Rejet import #{$importId}", [
-                'reason' => substr($reason, 0, 50)
-            ]);
-            
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
                 ->asForm()
@@ -199,16 +143,7 @@ class FastApiService
                     'rejection_reason' => $reason
                 ]);
             
-            if ($response->successful()) {
-                Log::info("✅ FastAPI: Import #{$importId} rejeté");
-                return true;
-            }
-            
-            Log::error("❌ FastAPI rejectImport error", [
-                'import_id' => $importId,
-                'status' => $response->status()
-            ]);
-            return false;
+            return $response->successful();
             
         } catch (Exception $e) {
             Log::error("❌ FastAPI rejectImport {$importId} failed", [
@@ -225,28 +160,17 @@ class FastApiService
     public function downloadFile(int $fileId): ?array
     {
         try {
-            Log::info("📡 FastAPI: Téléchargement fichier #{$fileId}");
-            
             $response = Http::timeout(60)
                 ->withHeaders($this->getAuthHeaders())
                 ->get("{$this->baseUrl}/api/files/{$fileId}");
             
             if (!$response->successful()) {
-                Log::error("❌ FastAPI downloadFile error", [
-                    'file_id' => $fileId,
-                    'status' => $response->status()
-                ]);
                 return null;
             }
             
             $contentDisposition = $response->header('Content-Disposition');
             preg_match('/filename="(.+)"/', $contentDisposition, $matches);
             $filename = $matches[1] ?? "file_{$fileId}";
-            
-            Log::info("✅ FastAPI: Fichier téléchargé", [
-                'file_id' => $fileId,
-                'filename' => $filename
-            ]);
             
             return [
                 'content' => $response->body(),
@@ -259,74 +183,6 @@ class FastApiService
                 'error' => $e->getMessage()
             ]);
             return null;
-        }
-    }
-    
-    public function cleanupFiles(int $importId): bool
-    {
-        try {
-            Log::info("📡 FastAPI: Nettoyage fichiers import #{$importId}");
-            
-            $response = Http::timeout($this->timeout)
-                ->withHeaders($this->getAuthHeaders())
-                ->delete("{$this->baseUrl}/api/imports/{$importId}/files");
-            
-            if ($response->successful()) {
-                Log::info("✅ FastAPI: Fichiers nettoyés pour import #{$importId}");
-                return true;
-            }
-            
-            return false;
-            
-        } catch (Exception $e) {
-            Log::error("❌ FastAPI cleanupFiles {$importId} failed", [
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
-    
-    // ========================================
-    // STATISTIQUES
-    // ========================================
-    
-    public function getStats(): array
-    {
-        try {
-            Log::info('📡 FastAPI: Récupération stats');
-            
-            $response = Http::timeout(10)
-                ->withHeaders($this->getAuthHeaders())
-                ->get("{$this->baseUrl}/api/stats");
-            
-            if ($response->successful()) {
-                $stats = $response->json();
-                Log::info('✅ FastAPI: Stats récupérées', $stats);
-                return $stats;
-            }
-            
-            Log::error('❌ FastAPI getStats error', [
-                'status' => $response->status()
-            ]);
-            
-            return [
-                'total' => 0, 
-                'pending' => 0, 
-                'validated' => 0, 
-                'rejected' => 0
-            ];
-                
-        } catch (Exception $e) {
-            Log::error('❌ FastAPI getStats failed', [
-                'error' => $e->getMessage()
-            ]);
-            
-            return [
-                'total' => 0, 
-                'pending' => 0, 
-                'validated' => 0, 
-                'rejected' => 0
-            ];
         }
     }
 }

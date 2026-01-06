@@ -1,4 +1,4 @@
-// documents/hooks/useDocumentStats.ts - ✅ HOOK POUR STATISTIQUES
+// documents/hooks/useDocumentStats.ts - ✅ SANS REÇU
 
 import { useMemo } from 'react';
 import { ProprieteWithDemandeurs, DemandeurWithCSF } from '../types';
@@ -11,7 +11,7 @@ interface UseDocumentStatsParams {
 interface DocumentStats {
     // Propriétés
     totalProprietes: number;
-    proprietesAvecRecu: number;
+    proprietesAvecRecuReference: number; // ✅ NOUVEAU : Référence reçu externe
     proprietesAvecAdv: number;
     requisitionsGenerees: number;
     
@@ -20,13 +20,13 @@ interface DocumentStats {
     demandeursAvecCsf: number;
     
     // Pourcentages
-    pourcentageRecu: number;
+    pourcentageRecuReference: number; // ✅ CHANGÉ
     pourcentageAdv: number;
     pourcentageCsf: number;
     pourcentageRequisition: number;
     
     // Manquants
-    recuManquants: number;
+    recuReferencesManquantes: number; // ✅ CHANGÉ
     advManquants: number;
     csfManquants: number;
     requisitionsManquantes: number;
@@ -34,13 +34,6 @@ interface DocumentStats {
 
 /**
  * Hook pour calculer les statistiques de génération de documents
- * 
- * @example
- * ```tsx
- * const stats = useDocumentStats({ proprietes, demandeurs });
- * console.log(stats.proprietesAvecAdv); // 5
- * console.log(stats.pourcentageAdv);     // 50
- * ```
  */
 export function useDocumentStats({ 
     proprietes, 
@@ -50,7 +43,10 @@ export function useDocumentStats({
     return useMemo(() => {
         // Compteurs propriétés
         const totalProprietes = proprietes.length;
-        const proprietesAvecRecu = proprietes.filter(p => p.document_recu).length;
+        
+        // ✅ CHANGÉ : Compter les références de reçu au lieu des reçus générés
+        const proprietesAvecRecuReference = proprietes.filter(p => p.recu_reference).length;
+        
         const proprietesAvecAdv = proprietes.filter(p => p.document_adv).length;
         const requisitionsGenerees = proprietes.filter(p => p.document_requisition).length;
         
@@ -59,8 +55,8 @@ export function useDocumentStats({
         const demandeursAvecCsf = demandeurs.filter(d => d.document_csf).length;
         
         // Calcul des pourcentages
-        const pourcentageRecu = totalProprietes > 0 
-            ? Math.round((proprietesAvecRecu / totalProprietes) * 100) 
+        const pourcentageRecuReference = totalProprietes > 0 
+            ? Math.round((proprietesAvecRecuReference / totalProprietes) * 100) 
             : 0;
         
         const pourcentageAdv = totalProprietes > 0 
@@ -76,23 +72,23 @@ export function useDocumentStats({
             : 0;
         
         // Calcul des manquants
-        const recuManquants = totalProprietes - proprietesAvecRecu;
+        const recuReferencesManquantes = totalProprietes - proprietesAvecRecuReference;
         const advManquants = totalProprietes - proprietesAvecAdv;
         const csfManquants = totalDemandeurs - demandeursAvecCsf;
         const requisitionsManquantes = totalProprietes - requisitionsGenerees;
         
         return {
             totalProprietes,
-            proprietesAvecRecu,
+            proprietesAvecRecuReference,
             proprietesAvecAdv,
             requisitionsGenerees,
             totalDemandeurs,
             demandeursAvecCsf,
-            pourcentageRecu,
+            pourcentageRecuReference,
             pourcentageAdv,
             pourcentageCsf,
             pourcentageRequisition,
-            recuManquants,
+            recuReferencesManquantes,
             advManquants,
             csfManquants,
             requisitionsManquantes,
@@ -102,18 +98,17 @@ export function useDocumentStats({
 
 /**
  * Hook alternatif pour les stats par type de document
- * Utile pour afficher des métriques détaillées
  */
 export function useDocumentStatsByType({ proprietes, demandeurs }: UseDocumentStatsParams) {
     
     return useMemo(() => {
         return {
-            recu: {
+            recu_reference: { // ✅ CHANGÉ
                 total: proprietes.length,
-                generes: proprietes.filter(p => p.document_recu).length,
-                manquants: proprietes.filter(p => !p.document_recu).length,
+                generes: proprietes.filter(p => p.recu_reference).length,
+                manquants: proprietes.filter(p => !p.recu_reference).length,
                 pourcentage: proprietes.length > 0 
-                    ? Math.round((proprietes.filter(p => p.document_recu).length / proprietes.length) * 100)
+                    ? Math.round((proprietes.filter(p => p.recu_reference).length / proprietes.length) * 100)
                     : 0
             },
             adv: {

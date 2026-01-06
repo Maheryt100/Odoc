@@ -13,7 +13,7 @@ use App\Observers\DossierObserver;
 use App\Observers\DemandeurObserver;
 
 class AppServiceProvider extends ServiceProvider
-{
+{ 
     public function register(): void
     {
         //

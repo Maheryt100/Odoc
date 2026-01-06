@@ -1,4 +1,4 @@
-// documents/components/DocumentTabs.tsx - ✅ TABS OPTIMISÉES
+// documents/components/DocumentTabs.tsx - ✅ SANS REÇU
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,6 @@ interface DocumentTabsProps {
     stats: {
         proprietesAvecAdv: number;
         totalProprietes: number;
-        proprietesAvecRecu: number;
         demandeursAvecCsf: number;
         totalDemandeurs: number;
         requisitionsGenerees: number;
@@ -66,7 +65,6 @@ export function DocumentTabs({ activeTab, onTabChange, stats }: DocumentTabsProp
     const ActiveIcon = activeConfig.icon;
 
     if (isMobile) {
-        // ✅ DROPDOWN MOBILE
         return (
             <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b p-3">
                 <DropdownMenu>
@@ -120,7 +118,6 @@ export function DocumentTabs({ activeTab, onTabChange, stats }: DocumentTabsProp
         );
     }
 
-    // ✅ TABS DESKTOP
     return (
         <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b">
             <div className="flex">

@@ -1,4 +1,4 @@
-// pages/admin/activity-logs/components/ActivityFilters.tsx - VERSION SERVEUR
+// pages/admin/activity-logs/components/ActivityFilters.tsx - VERSION CORRIGÉE
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,7 +28,7 @@ interface ActivityFiltersProps {
     filteredCount: number;
     
     onClearFilters: () => void;
-    onApplyFilters: () => void; // ✅ NOUVEAU
+    onApplyFilters: () => void; // ✅ MAINTENANT FONCTIONNEL
 }
 
 export default function ActivityFilters({
@@ -100,11 +100,33 @@ export default function ActivityFilters({
         dateTo !== ''
     ].filter(Boolean).length;
 
-    // ✅ Appliquer les filtres avec Enter
+    // ✅ CORRECTION : Appliquer les filtres avec Enter
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
+            e.preventDefault();
             onApplyFilters();
         }
+    };
+
+    // ✅ CORRECTION : Gestion du changement de recherche avec debounce
+    const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
+    
+    const handleSearchChange = (value: string) => {
+        onSearchChange(value);
+        
+        // Clear existing timeout
+        if (searchDebounce) {
+            clearTimeout(searchDebounce);
+        }
+        
+        // Auto-recherche après 800ms de pause
+        const timeout = setTimeout(() => {
+            if (value.length >= 2 || value.length === 0) {
+                onApplyFilters();
+            }
+        }, 800);
+        
+        setSearchDebounce(timeout);
     };
 
     return (
@@ -116,9 +138,9 @@ export default function ActivityFilters({
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="text"
-                            placeholder="Rechercher dans les logs..."
+                            placeholder="Rechercher par nom, email, action, entité..."
                             value={search}
-                            onChange={(e) => onSearchChange(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             onKeyPress={handleKeyPress}
                             className="pl-9 pr-9 h-9 bg-white dark:bg-gray-950"
                         />
@@ -126,7 +148,10 @@ export default function ActivityFilters({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => onSearchChange('')}
+                                onClick={() => {
+                                    onSearchChange('');
+                                    onApplyFilters();
+                                }}
                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                             >
                                 <X className="h-3.5 w-3.5" />
@@ -150,11 +175,11 @@ export default function ActivityFilters({
                         )}
                     </Button>
 
-                    {/* ✅ Bouton Appliquer (visible si filtres modifiés) */}
+                    {/* ✅ Bouton Appliquer toujours visible si filtres actifs */}
                     {hasActiveFilters && (
                         <Button
                             onClick={onApplyFilters}
-                            className="h-9 px-3 gap-2 flex-shrink-0"
+                            className="h-9 px-3 gap-2 flex-shrink-0 bg-blue-600 hover:bg-blue-700"
                         >
                             <Search className="h-4 w-4" />
                             <span className="hidden sm:inline">Rechercher</span>
@@ -168,6 +193,20 @@ export default function ActivityFilters({
                         <span className="text-xs font-medium text-muted-foreground">
                             Filtres actifs :
                         </span>
+                        {search && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                                Recherche: "{search.substring(0, 20)}{search.length > 20 ? '...' : ''}"
+                                <button
+                                    onClick={() => {
+                                        onSearchChange('');
+                                        onApplyFilters();
+                                    }}
+                                    className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        )}
                         {userId !== 'all' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 text-xs rounded-full">
                                 User: {users.find(u => u.id.toString() === userId)?.name || userId}
@@ -212,7 +251,7 @@ export default function ActivityFilters({
                         )}
                         {(dateFrom || dateTo) && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs rounded-full">
-                                Période
+                                Période: {dateFrom} → {dateTo}
                                 <button
                                     onClick={() => {
                                         onDateFromChange('');
@@ -352,6 +391,7 @@ export default function ActivityFilters({
                                     setShowFilters(false);
                                 }}
                                 size="sm"
+                                className="bg-blue-600 hover:bg-blue-700"
                             >
                                 Appliquer
                             </Button>

@@ -72,35 +72,37 @@ export default function SecureDownloadButton({
 
             const contentType = response.headers.get('content-type') || '';
 
-            // ❌ Vérifier si c'est une erreur JSON
-            if (contentType.includes('application/json')) {
-                const errorData = await response.json();
+            // ✅ CORRECTION : Vérifier le statut HTTP AVANT de parser
+            if (!response.ok) {
+                // Si c'est du JSON, c'est une erreur structurée
+                if (contentType.includes('application/json')) {
+                    const errorData = await response.json();
+                    
+                    setErrorDetails({
+                        message: errorData.message || 'Erreur inconnue',
+                        details: errorData.details || null,
+                        canRegenerate: errorData.can_regenerate === true,
+                    });
 
-                setErrorDetails({
-                    message: errorData.message || 'Fichier introuvable',
-                    details: errorData.details || null,
-                    canRegenerate: errorData.can_regenerate === true,
-                });
+                    // ✅ Afficher le dialog SEULEMENT si régénération possible
+                    if (errorData.error === 'file_missing' && errorData.can_regenerate) {
+                        setIsDownloading(false);
+                        setShowRegenerateDialog(true);
+                        return;
+                    }
 
-                // ✅ Afficher le dialog IMMÉDIATEMENT si régénération possible
-                if (errorData.error === 'file_missing' && errorData.can_regenerate) {
+                    toast.error(errorData.message || 'Erreur lors du téléchargement', {
+                        description: errorData.details || undefined,
+                    });
                     setIsDownloading(false);
-                    setShowRegenerateDialog(true);
                     return;
                 }
-
-                toast.error(errorData.message || 'Erreur lors du téléchargement', {
-                    description: errorData.details || undefined,
-                });
-                setIsDownloading(false);
-                return;
-            }
-
-            // ✅ C'est un fichier Word, télécharger
-            if (!response.ok) {
+                
+                // Erreur HTTP non-JSON
                 throw new Error(`Erreur HTTP ${response.status}`);
             }
 
+            // ✅ OK : C'est un fichier Word valide
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = window.document.createElement('a');

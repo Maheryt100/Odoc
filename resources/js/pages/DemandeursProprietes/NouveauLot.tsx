@@ -1,6 +1,7 @@
-// pages/DemandeursProprietes/NouveauLot.tsx - ✅ VALIDATION CORRIGÉE
+// pages/DemandeursProprietes/NouveauLot.tsx 
+// ✅ VERSION AVEC CLÉS REACT UNIQUES
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -19,27 +20,72 @@ import DatePickerDemande from '@/components/DatePickerDemande';
 type CreationMode = 'lot-demandeur' | 'lots-only' | 'demandeurs-only';
 
 export default function NouveauLot() {
-    const { dossier } = usePage<{ dossier: Dossier }>().props;
+    const { dossier, session } = usePage<{ 
+        dossier: Dossier;
+        session?: {
+            preloadDemandeur?: DemandeurFormData;
+            preloadPropriete?: ProprieteFormData;
+        }
+    }>().props;
+    
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
+    
+    // ✅ ID Generator pour garantir l'unicité
+    const [nextTempId, setNextTempId] = useState(() => Date.now());
+    const generateTempId = useCallback(() => {
+        const id = nextTempId;
+        setNextTempId(prev => prev + 1);
+        return id;
+    }, [nextTempId]);
     
     const today = new Date().toISOString().split('T')[0];
     const [dateDemande, setDateDemande] = useState<string>(today);
     const [dateDemandeError, setDateDemandeError] = useState<string>('');
     
-    const [proprietes, setProprietes] = useState<ProprieteFormData[]>([{
+    const [proprietes, setProprietes] = useState<ProprieteFormData[]>(() => [{
         ...emptyPropriete,
-        id_dossier: dossier.id
+        id_dossier: dossier.id,
+        _tempId: generateTempId()
     }]);
     
-    const [demandeurs, setDemandeurs] = useState<DemandeurFormData[]>([{ ...emptyDemandeur }]);
+    const [demandeurs, setDemandeurs] = useState<DemandeurFormData[]>(() => [{ 
+        ...emptyDemandeur,
+        _tempId: generateTempId()
+    }]);
+    
     const [selectedChargesByPropriete, setSelectedChargesByPropriete] = useState<Record<number, string[]>>({ 0: [] });
+
+    // ✅ Charger les données de session
+    useEffect(() => {
+        if (session?.preloadDemandeur) {
+            console.log('📥 Chargement demandeur depuis TopoFlux', session.preloadDemandeur);
+            setDemandeurs([{
+                ...session.preloadDemandeur,
+                _tempId: generateTempId()
+            }]);
+        }
+        
+        if (session?.preloadPropriete) {
+            console.log('📥 Chargement propriété depuis TopoFlux', session.preloadPropriete);
+            setProprietes([{
+                ...session.preloadPropriete,
+                id_dossier: dossier.id,
+                _tempId: generateTempId()
+            }]);
+        }
+    }, [session?.preloadDemandeur, session?.preloadPropriete]);
 
     // ========== GESTION DES PROPRIÉTÉS ==========
     const addPropriete = () => {
+        const newId = generateTempId();
         setProprietes([
             ...proprietes, 
-            { ...emptyPropriete, id_dossier: dossier.id }  
+            { 
+                ...emptyPropriete, 
+                id_dossier: dossier.id,
+                _tempId: newId
+            }
         ]);
         setSelectedChargesByPropriete({
             ...selectedChargesByPropriete,
@@ -95,7 +141,14 @@ export default function NouveauLot() {
 
     // ========== GESTION DES DEMANDEURS ==========
     const addDemandeur = () => {
-        setDemandeurs([...demandeurs, { ...emptyDemandeur }]);
+        const newId = generateTempId();
+        setDemandeurs([
+            ...demandeurs, 
+            { 
+                ...emptyDemandeur,
+                _tempId: newId
+            }
+        ]);
     };
 
     const removeDemandeur = (index: number) => {
@@ -141,7 +194,7 @@ export default function NouveauLot() {
         setDateDemandeError('');
     };
 
-    // ========== ✅ VALIDATION CORRIGÉE ==========
+    // ========== VALIDATION ==========
     const validateProprietes = (): boolean => {
         for (let i = 0; i < proprietes.length; i++) {
             const p = proprietes[i];
@@ -166,12 +219,10 @@ export default function NouveauLot() {
         return true;
     };
 
-    // ✅ VALIDATION DEMANDEUR ALLÉGÉE : Seulement les champs CRITIQUES
     const validateDemandeurs = (): boolean => {
         for (let i = 0; i < demandeurs.length; i++) {
             const d = demandeurs[i];
             
-            // ✅ CHAMPS OBLIGATOIRES MINIMUM
             if (!d.titre_demandeur?.trim()) {
                 toast.error(`Demandeur ${i + 1}: Le titre de civilité est obligatoire`);
                 return false;
@@ -189,7 +240,6 @@ export default function NouveauLot() {
                 return false;
             }
             
-            // ✅ CIN : OBLIGATOIRE et 12 chiffres
             if (!d.cin) {
                 toast.error(`Demandeur ${i + 1}: Le CIN est obligatoire`);
                 return false;
@@ -199,7 +249,6 @@ export default function NouveauLot() {
                 return false;
             }
             
-            // ✅ Vérifier unicité CIN dans le formulaire (pas de doublons internes)
             const cinDuplicates = demandeurs.filter((dem, idx) => idx !== i && dem.cin === d.cin);
             if (cinDuplicates.length > 0) {
                 toast.error(`Demandeur ${i + 1}: Ce CIN est utilisé plusieurs fois dans le formulaire`);
@@ -229,15 +278,19 @@ export default function NouveauLot() {
         setProcessing(true);
 
         if (creationMode === 'lot-demandeur') {
-            const proprieteData = {
-                ...proprietes[0],
-                id_dossier: dossier.id
-            };
+            const cleanPropriete = { ...proprietes[0] };
+            delete cleanPropriete._tempId;
+            
+            const cleanDemandeurs = demandeurs.map(d => {
+                const clean = { ...d };
+                delete clean._tempId;
+                return clean;
+            });
 
             router.post(route('nouveau-lot.store'), {
-                ...proprieteData,
+                ...cleanPropriete,
                 date_demande: dateDemande,
-                demandeurs_json: JSON.stringify(demandeurs)
+                demandeurs_json: JSON.stringify(cleanDemandeurs)
             }, {
                 onError: (errors) => {
                     console.error('❌ Erreurs backend:', errors);
@@ -255,14 +308,15 @@ export default function NouveauLot() {
                 }
             });
         } else if (creationMode === 'lots-only') {
-            const proprietesAvecDossier = proprietes.map(p => ({
-                ...p,
-                id_dossier: dossier.id
-            }));
+            const cleanProprietes = proprietes.map(p => {
+                const clean = { ...p, id_dossier: dossier.id };
+                delete clean._tempId;
+                return clean;
+            });
 
             router.post(route('proprietes.store-multiple'), {
                 id_dossier: dossier.id,
-                proprietes: JSON.stringify(proprietesAvecDossier)
+                proprietes: JSON.stringify(cleanProprietes)
             }, {
                 onError: (errors) => {
                     console.error('❌ Erreurs backend:', errors);
@@ -275,9 +329,15 @@ export default function NouveauLot() {
                 }
             });
         } else if (creationMode === 'demandeurs-only') {
+            const cleanDemandeurs = demandeurs.map(d => {
+                const clean = { ...d };
+                delete clean._tempId;
+                return clean;
+            });
+            
             router.post(route('demandeurs.store-multiple'), {
                 id_dossier: dossier.id,
-                demandeurs: JSON.stringify(demandeurs)
+                demandeurs: JSON.stringify(cleanDemandeurs)
             }, {
                 onError: (errors) => {
                     console.error('❌ Erreurs backend:', errors);
@@ -415,7 +475,6 @@ export default function NouveauLot() {
                         <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b">
                             <CardHeader>
                                 <CardTitle className="text-lg">Date de la demande</CardTitle>
-                               
                             </CardHeader>
                         </div>
                         <CardContent className="pt-6">
@@ -479,7 +538,7 @@ export default function NouveauLot() {
                         </div>
                         <CardContent className="p-6 space-y-8">
                             {proprietes.map((propriete, index) => (
-                                <div key={index} className="pb-8 border-b last:border-b-0 last:pb-0">
+                                <div key={`propriete-${propriete._tempId}`} className="pb-8 border-b last:border-b-0 last:pb-0">
                                     <ProprieteCreate
                                         data={propriete}
                                         onChange={(field, value) => updatePropriete(index, field, value)}
@@ -538,7 +597,7 @@ export default function NouveauLot() {
                         </div>
                         <CardContent className="p-6 space-y-8">
                             {demandeurs.map((demandeur, index) => (
-                                <div key={index} className="pb-8 border-b last:border-b-0 last:pb-0">
+                                <div key={`demandeur-${demandeur._tempId}`} className="pb-8 border-b last:border-b-0 last:pb-0">
                                     <DemandeurCreate
                                         data={demandeur}
                                         onChange={(field, value) => updateDemandeur(index, field, value)}

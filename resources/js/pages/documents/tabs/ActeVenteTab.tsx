@@ -1,5 +1,3 @@
-// documents/tabs/ActeVenteTab.tsx - ✅ VERSION AMÉLIORÉE AVEC INFOS
-
 import React, { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,29 +6,35 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { AlertCircle, CheckCircle2, Clock, Crown, Users, XCircle, MapPin, Ruler, Building2, Coins } from 'lucide-react';
-import { Demandeur, Dossier } from '@/types';
-import { ProprieteWithDemandeurs, DemandeurWithCSF } from '../types';
-import { getDemandeurPrincipal, getConsorts, getMissingProprieteFields, getMissingDemandeurFields } from '../validation';
-import { safePrix, formatMontant } from '../helpers';
+import { AlertCircle, Crown, Users, MapPin, Ruler, Building2, Coins, FileText, CheckCircle2 } from 'lucide-react';
+import { ProprieteSelect } from '../components/DocumentSelects';
 import DocumentStatusBadge from '../components/DocumentStatusBadge';
 import SecureDownloadButton from '../components/SecureDownloadButton';
-import { ProprieteSelect } from '../components/DocumentSelects';
+import NumeroRecuModal from '../components/NumeroRecuModal';
 import { StickyActionFooter } from '../components/StickyActionFooter';
 import { useIsMobile } from '@/hooks/useResponsive';
+import { 
+    getDemandeurPrincipal, 
+    getConsorts, 
+    validateForActeVente,
+    getCompactValidationMessage
+} from '../validation';
+import { safePrix, formatMontant } from '../helpers';
 
 interface ActeVenteTabProps {
-    proprietes: ProprieteWithDemandeurs[];
-    demandeurs: DemandeurWithCSF[];
-    dossier: Dossier;
+    proprietes: any[];
+    demandeurs: any[];
+    dossier: any;
 }
 
 export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVenteTabProps) {
     const [selectedPropriete, setSelectedPropriete] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [showRecuModal, setShowRecuModal] = useState(false);
     const isMobile = useIsMobile();
 
     const selectedProprieteData = proprietes.find(p => p.id === Number(selectedPropriete));
+    
     const demandeurPrincipal = useMemo(() => {
         if (!selectedProprieteData?.demandeurs_lies) return null;
         return getDemandeurPrincipal(selectedProprieteData.demandeurs_lies);
@@ -41,103 +45,121 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
         return getConsorts(selectedProprieteData.demandeurs_lies);
     }, [selectedProprieteData]);
 
-    const documentRecu = selectedProprieteData?.document_recu;
     const documentAdv = selectedProprieteData?.document_adv;
-    const hasRecu = !!documentRecu;
     const hasAdv = !!documentAdv;
 
-    const canGenerateRecu = useMemo(() => {
-        if (!selectedPropriete || !demandeurPrincipal || hasRecu) return false;
-        if (!selectedProprieteData) return false;
+    // Validation STRICTE
+    const validation = useMemo(() => {
+        const demandeurData = demandeurPrincipal 
+            ? demandeurs.find(d => d.id === demandeurPrincipal.id) || null
+            : null;
         
-        const missingPropFields = getMissingProprieteFields(selectedProprieteData);
-        if (missingPropFields.length > 0) return false;
-        
-        const demandeurData = demandeurs.find(d => d.id === demandeurPrincipal.id);
-        if (!demandeurData) return false;
-        
-        const missingDemFields = getMissingDemandeurFields(demandeurData);
-        return missingDemFields.length === 0;
-    }, [selectedPropriete, demandeurPrincipal, hasRecu, selectedProprieteData, demandeurs]);
+        return validateForActeVente(
+            selectedProprieteData || null,
+            demandeurData,
+            null // Pas encore de numéro de reçu saisi
+        );
+    }, [selectedPropriete, selectedProprieteData, demandeurPrincipal, demandeurs]);
 
-    const canGenerateActeVente = useMemo(() => {
-        if (!selectedPropriete || !demandeurPrincipal || hasAdv || !hasRecu) return false;
-        if (!selectedProprieteData) return false;
-        
-        const missingPropFields = getMissingProprieteFields(selectedProprieteData);
-        if (missingPropFields.length > 0) return false;
-        
-        const demandeurData = demandeurs.find(d => d.id === demandeurPrincipal.id);
-        if (!demandeurData) return false;
-        
-        const missingDemFields = getMissingDemandeurFields(demandeurData);
-        return missingDemFields.length === 0;
-    }, [selectedPropriete, demandeurPrincipal, hasAdv, hasRecu, selectedProprieteData, demandeurs]);
+    const canGenerateActeVente = useMemo((): boolean => {
+        if (!selectedPropriete || !demandeurPrincipal) return false;
+        if (hasAdv) return false;
+        return validation.isValid;
+    }, [hasAdv, selectedPropriete, demandeurPrincipal, validation.isValid]);
 
     const validationMessage = useMemo(() => {
         if (!selectedPropriete) return "Sélectionnez une propriété";
         if (!demandeurPrincipal) return "Aucun demandeur principal trouvé";
         
-        const missingPropFields = getMissingProprieteFields(selectedProprieteData!);
-        const demandeurData = demandeurs.find(d => d.id === demandeurPrincipal.id);
-        const missingDemFields = demandeurData ? getMissingDemandeurFields(demandeurData) : [];
-        
-        if (missingPropFields.length > 0 && missingDemFields.length > 0) {
-            return `Manquant: ${missingPropFields.join(', ')}, ${missingDemFields.join(', ')}`;
-        } else if (missingPropFields.length > 0) {
-            return `Propriété: ${missingPropFields.join(', ')}`;
-        } else if (missingDemFields.length > 0) {
-            return `Demandeur: ${missingDemFields.join(', ')}`;
-        }
-        return null;
-    }, [selectedPropriete, selectedProprieteData, demandeurPrincipal, demandeurs]);
+        return isMobile 
+            ? getCompactValidationMessage(selectedProprieteData || null, demandeurs.find(d => d.id === demandeurPrincipal.id) || null, null)
+            : validation.errorMessage;
+    }, [selectedPropriete, selectedProprieteData, demandeurPrincipal, demandeurs, validation, isMobile]);
 
-    const handleGenerate = async (type: 'recu' | 'acte_vente') => {
-        if (type === 'recu' && !canGenerateRecu) {
-            toast.error('Impossible de générer le reçu', { description: validationMessage || 'Données incomplètes' });
-            return;
-        }
-
-        if (type === 'acte_vente' && !canGenerateActeVente) {
-            toast.error('Impossible de générer l\'acte de vente', { description: validationMessage || 'Reçu manquant' });
-            return;
-        }
-
+    /**
+     * ✅ GÉNÉRATION AVEC NUMÉRO DE REÇU - Méthode POST corrigée
+     */
+    const handleGenerate = async (numeroRecu: string, notes?: string) => {
         if (!selectedPropriete || !demandeurPrincipal || isGenerating) return;
 
         setIsGenerating(true);
+        setShowRecuModal(false);
 
         try {
-            const params = new URLSearchParams({
-                id_propriete: selectedPropriete,
-                id_demandeur: String(demandeurPrincipal.id),
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            if (!csrfToken) throw new Error('Token CSRF manquant');
+
+            // ✅ CORRECTION : Utiliser POST au lieu de GET
+            const response = await fetch(route('documents.acte-vente.generate'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    id_propriete: selectedPropriete,
+                    id_demandeur: demandeurPrincipal.id,
+                    numero_recu: numeroRecu,
+                    notes: notes,
+                }),
             });
 
-            const baseUrl = type === 'recu' 
-                ? route('documents.recu.generate')
-                : route('documents.acte-vente.generate');
-            
-            window.location.href = `${baseUrl}?${params.toString()}`;
-            
-            toast.success(type === 'recu' ? 'Génération du reçu...' : 'Génération de l\'ADV...');
-            
-            setTimeout(() => {
-                router.reload({ 
-                    only: ['proprietes'],
-                    preserveUrl: true,
-                    onSuccess: () => {
-                        toast.success(`${type === 'recu' ? 'Reçu' : 'Acte de vente'} généré !`);
-                        setIsGenerating(false);
-                    },
-                    onError: () => {
-                        toast.error('Erreur lors de la mise à jour');
-                        setIsGenerating(false);
-                    }
+            const contentType = response.headers.get('content-type') || '';
+
+            // Si c'est du JSON, c'est une erreur
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                
+                if (!data.success) {
+                    toast.error(data.message || 'Erreur lors de la génération', {
+                        description: data.error,
+                    });
+                    setIsGenerating(false);
+                    return;
+                }
+            }
+
+            // Si c'est un fichier Word, télécharger
+            if (contentType.includes('application/vnd.openxmlformats')) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Extraire le nom du fichier depuis les headers
+                const disposition = response.headers.get('content-disposition');
+                const filenameMatch = disposition?.match(/filename="(.+)"/);
+                const filename = filenameMatch ? filenameMatch[1] : `ADV_${Date.now()}.docx`;
+                
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                toast.success('Acte de vente généré avec succès !', {
+                    description: `Numéro de reçu : ${numeroRecu}`,
                 });
-            }, 2500);
+
+                // Recharger les données après un court délai
+                setTimeout(() => {
+                    router.reload({ 
+                        only: ['proprietes'],
+                        preserveUrl: true,
+                        onFinish: () => {
+                            setIsGenerating(false);
+                        }
+                    });
+                }, 1000);
+            }
             
-        } catch (error) {
-            toast.error('Erreur de génération');
+        } catch (error: any) {
+            console.error('❌ Erreur génération ADV:', error);
+            toast.error('Erreur de génération', {
+                description: error.message,
+            });
             setIsGenerating(false);
         }
     };
@@ -159,7 +181,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
 
     return (
         <div className="space-y-4">
-            {/* ✅ Sélection avec largeur limitée */}
+            {/* Sélection */}
             <div className="space-y-2">
                 <Label className="text-sm font-semibold">Propriété</Label>
                 <div className="max-w-2xl">
@@ -173,7 +195,7 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                 </div>
             </div>
 
-            {/* ✅ Infos détaillées propriété + demandeur */}
+            {/* Infos détaillées */}
             {selectedPropriete && selectedProprieteData && demandeurPrincipal && (
                 <Card className="border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20">
                     <CardContent className="p-4 sm:p-6 space-y-4">
@@ -246,134 +268,101 @@ export default function ActeVenteTab({ proprietes, demandeurs, dossier }: ActeVe
                             </div>
                         </div>
 
-                        {/* Status documents */}
+                        {/* Status document */}
                         <div className="pt-3 border-t border-violet-200 dark:border-violet-800">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex items-center gap-2 text-xs">
-                                    <span className="text-muted-foreground">Reçu:</span>
-                                    <DocumentStatusBadge document={documentRecu} />
-                                </div>
-                                <div className="flex items-center gap-2 text-xs">
-                                    <span className="text-muted-foreground">ADV:</span>
-                                    <DocumentStatusBadge document={documentAdv} />
-                                </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground">Acte de Vente:</span>
+                                <DocumentStatusBadge document={documentAdv} />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Alertes */}
-            {selectedPropriete && validationMessage && !hasRecu && !hasAdv && (
+            {/* Alertes validation */}
+            {selectedPropriete && !validation.isValid && !hasAdv && (
                 <Alert variant="destructive" className="py-2">
-                    <XCircle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">{validationMessage}</AlertDescription>
-                </Alert>
-            )}
-
-            {selectedPropriete && !hasRecu && !validationMessage && (
-                <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 py-2">
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
-                        Générez d'abord le reçu
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                        {validationMessage}
                     </AlertDescription>
                 </Alert>
             )}
 
-            {hasRecu && documentRecu && (
+            {selectedPropriete && validation.isValid && !hasAdv && (
                 <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 py-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-xs text-green-800 dark:text-green-200">
-                        Reçu N°{documentRecu.numero_document} confirmé
+                        ✅ Toutes les données sont complètes. Vous pouvez générer l'acte de vente.
                     </AlertDescription>
                 </Alert>
             )}
 
-            {/* Boutons Desktop - Centrés */}
+            {/* Boutons Desktop */}
             {!isMobile && selectedPropriete && demandeurPrincipal && (
                 <div className="flex flex-col items-center space-y-3 pt-2">
-                    <div className="w-full max-w-md space-y-3">
-                        {hasRecu && documentRecu ? (
+                    <div className="w-full max-w-md">
+                        {hasAdv && documentAdv ? (
                             <SecureDownloadButton
-                                document={documentRecu}
-                                downloadRoute={route('documents.recu.download', documentRecu.id)}
-                                regenerateRoute={route('documents.recu.regenerate', documentRecu.id)}
-                                typeName="Reçu"
-                                variant="outline"
+                                document={documentAdv}
+                                downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
+                                regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
+                                typeName="Acte de Vente"
                             />
                         ) : (
                             <Button
-                                onClick={() => handleGenerate('recu')}
-                                disabled={!canGenerateRecu || isGenerating}
-                                className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
+                                onClick={() => setShowRecuModal(true)}
+                                disabled={!canGenerateActeVente || isGenerating}
+                                className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 h-12"
+                                size="lg"
                             >
-                                Générer le Reçu
+                                <FileText className="h-4 w-4 mr-2" />
+                                Générer l'Acte de Vente
+                                {consorts.length > 0 && (
+                                    <Badge variant="secondary" className="ml-2">
+                                        {consorts.length + 1} demandeurs
+                                    </Badge>
+                                )}
                             </Button>
-                        )}
-
-                        {hasRecu && (
-                            hasAdv && documentAdv ? (
-                                <SecureDownloadButton
-                                    document={documentAdv}
-                                    downloadRoute={route('documents.acte-vente.download', documentAdv.id)}
-                                    regenerateRoute={route('documents.acte-vente.regenerate', documentAdv.id)}
-                                    typeName="Acte de Vente"
-                                />
-                            ) : (
-                                <Button
-                                    onClick={() => handleGenerate('acte_vente')}
-                                    disabled={!canGenerateActeVente || isGenerating}
-                                    className="w-full bg-gradient-to-r from-violet-600 to-purple-600"
-                                >
-                                    Générer l'Acte de Vente
-                                    {consorts.length > 0 && (
-                                        <Badge variant="secondary" className="ml-2">
-                                            {consorts.length + 1} demandeurs
-                                        </Badge>
-                                    )}
-                                </Button>
-                            )
                         )}
                     </div>
                 </div>
             )}
 
             {/* Footer Mobile */}
-            {isMobile && selectedPropriete && demandeurPrincipal && (
-                <>
-                    {!hasRecu ? (
-                        <StickyActionFooter
-                            activeTab="acte_vente"
-                            isGenerating={isGenerating}
-                            canGenerate={canGenerateRecu}
-                            hasDocument={false}
-                            onGenerate={() => handleGenerate('recu')}
-                            validationMessage={validationMessage}
-                            documentType="recu"
-                        />
-                    ) : hasRecu && documentRecu && !hasAdv ? (
-                        <StickyActionFooter
-                            activeTab="acte_vente"
-                            isGenerating={isGenerating}
-                            canGenerate={canGenerateActeVente}
-                            hasDocument={false}
-                            onGenerate={() => handleGenerate('acte_vente')}
-                            validationMessage={validationMessage}
-                            documentType="adv"
-                        />
-                    ) : hasAdv && documentAdv && (
-                        <StickyActionFooter
-                                    activeTab="acte_vente"
-                                    isGenerating={false}
-                                    canGenerate={true}
-                                    hasDocument={true}
-                                    onDownload={() => window.location.href = route('documents.acte-vente.download', documentAdv.id)}
-                                    documentType="adv" onGenerate={function (): void {
-                                        throw new Error('Function not implemented.');
-                                    } }                        />
-                    )}
-                </>
+            {isMobile && selectedPropriete && demandeurPrincipal && !hasAdv && (
+                <StickyActionFooter
+                    activeTab="acte_vente"
+                    isGenerating={isGenerating}
+                    canGenerate={canGenerateActeVente}
+                    hasDocument={false}
+                    onGenerate={() => setShowRecuModal(true)}
+                    validationMessage={validationMessage}
+                    documentType="adv"
+                />
             )}
+
+            {isMobile && hasAdv && documentAdv && (
+                <StickyActionFooter
+                    activeTab="acte_vente"
+                    isGenerating={false}
+                    canGenerate={true}
+                    hasDocument={true}
+                    onDownload={() => window.location.href = route('documents.acte-vente.download', documentAdv.id)}
+                    documentType="adv"
+                    onGenerate={() => {}}
+                />
+            )}
+
+            {/* Modal Numéro de Reçu */}
+            <NumeroRecuModal
+                isOpen={showRecuModal}
+                onClose={() => setShowRecuModal(false)}
+                onConfirm={handleGenerate}
+                propriete={selectedProprieteData || null}
+                validation={validation}
+                isGenerating={isGenerating}
+            />
         </div>
     );
 }

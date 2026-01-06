@@ -1,4 +1,4 @@
-// pages/admin/activity-logs/Index.tsx - PAGINATION SERVEUR
+// pages/admin/activity-logs/Index.tsx - VERSION CORRIGÉE
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -30,11 +30,17 @@ export default function ActivityLogsIndex({
     const [dateFrom, setDateFrom] = useState(initialFilters.date_from || '');
     const [dateTo, setDateTo] = useState(initialFilters.date_to || '');
 
-    // ✅ Fonction pour appliquer les filtres (requête serveur)
-    const applyFilters = () => {
+    // ✅ CORRECTION : Fonction pour appliquer les filtres (requête serveur)
+    const applyFilters = (resetPage: boolean = true) => {
         const params: Record<string, any> = {};
 
-        if (search) params.search = search;
+        // Ajouter la page seulement si on ne reset pas
+        if (!resetPage && logs.current_page > 1) {
+            params.page = logs.current_page;
+        }
+
+        // Ajouter les filtres actifs
+        if (search.trim()) params.search = search.trim();
         if (userId !== 'all') params.user_id = userId;
         if (action !== 'all') params.action = action;
         if (documentType !== 'all') params.document_type = documentType;
@@ -44,10 +50,11 @@ export default function ActivityLogsIndex({
         router.get('/admin/activity-logs', params, {
             preserveState: true,
             preserveScroll: true,
+            only: ['logs', 'filters'], // Ne recharger que les données nécessaires
         });
     };
 
-    // ✅ Réinitialiser les filtres
+    // ✅ CORRECTION : Réinitialiser les filtres
     const handleClearFilters = () => {
         setSearch('');
         setUserId('all');
@@ -56,18 +63,20 @@ export default function ActivityLogsIndex({
         setDateFrom('');
         setDateTo('');
         
+        // Requête sans paramètres
         router.get('/admin/activity-logs', {}, {
             preserveState: false,
         });
     };
 
-    // ✅ Changer de page (pagination serveur)
+    // ✅ CORRECTION : Changer de page en conservant les filtres
     const handlePageChange = (page: number) => {
         const params: Record<string, any> = {
             page,
         };
 
-        if (search) params.search = search;
+        // Conserver tous les filtres actifs
+        if (search.trim()) params.search = search.trim();
         if (userId !== 'all') params.user_id = userId;
         if (action !== 'all') params.action = action;
         if (documentType !== 'all') params.document_type = documentType;
@@ -77,6 +86,7 @@ export default function ActivityLogsIndex({
         router.get('/admin/activity-logs', params, {
             preserveState: true,
             preserveScroll: true,
+            only: ['logs'], // Ne recharger que les logs
         });
     };
 
@@ -126,7 +136,7 @@ export default function ActivityLogsIndex({
                 {/* Stats */}
                 <StatsCards stats={stats} />
 
-                {/* Alert Info */}
+                {/* Alert Info avec résumé des filtres */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20">
                     <div className="flex items-start sm:items-center gap-2 sm:gap-3">
                         <div className="p-1.5 sm:p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg shrink-0">
@@ -135,11 +145,12 @@ export default function ActivityLogsIndex({
                         <AlertDescription className="text-xs sm:text-sm text-slate-900 dark:text-slate-100">
                             <span className="font-semibold flex items-center gap-1.5 sm:gap-2">
                                 <Sparkles className="h-3 w-3" />
-                                Traçabilité complète du système
+                                {hasActiveFilters ? 'Résultats filtrés' : 'Traçabilité complète du système'}
                             </span>
                             <span className="text-slate-700 dark:text-slate-300 block sm:inline">
                                 <span className="hidden sm:inline"> — </span>
-                                Affichage de {logs.from} à {logs.to} sur {logs.total} logs
+                                Affichage de {logs.from} à {logs.to} sur {logs.total} log{logs.total > 1 ? 's' : ''}
+                                {hasActiveFilters && ' (filtrés)'}
                             </span>
                         </AlertDescription>
                     </div>
@@ -160,12 +171,13 @@ export default function ActivityLogsIndex({
                                     </CardTitle>
                                     <p className="text-xs text-muted-foreground">
                                         Page {logs.current_page} sur {logs.last_page}
+                                        {hasActiveFilters && ' • Filtres actifs'}
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Filtres */}
+                        {/* ✅ Filtres avec onApplyFilters correctement passé */}
                         <ActivityFilters
                             search={search}
                             onSearchChange={setSearch}
@@ -184,16 +196,16 @@ export default function ActivityLogsIndex({
                             documentTypes={documentTypes}
                             totalLogs={logs.total}
                             filteredCount={logs.total}
-                            onClearFilters={handleClearFilters} onApplyFilters={function (): void {
-                                throw new Error('Function not implemented.');
-                            } }                        />
+                            onClearFilters={handleClearFilters}
+                            onApplyFilters={() => applyFilters(true)} // ✅ CORRECTION
+                        />
                     </div>
 
                     {/* Table */}
                     <CardContent className="p-0">
                         <LogsTable logs={logs.data} actions={actions} />
 
-                        {/* Pagination serveur */}
+                        {/* ✅ Pagination serveur avec conservation des filtres */}
                         {logs.last_page > 1 && (
                             <div className="p-4 border-t">
                                 <Pagination

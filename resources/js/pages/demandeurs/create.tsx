@@ -1,4 +1,4 @@
-// pages/demandeurs/create.tsx 
+// pages/demandeurs/create.tsx - VERSION CORRIGEE
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import { useState, useCallback } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 
-// Composant Alert amélioré
 export function DemandeurExistantAlert({ 
     cinSearchStatus, 
     searchMessage 
@@ -27,7 +26,7 @@ export function DemandeurExistantAlert({
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <p className="font-semibold text-green-900 dark:text-green-100 text-base">
-                                ✓ Demandeur existant trouvé
+                                Demandeur existant trouvé
                             </p>
                         </div>
 
@@ -88,6 +87,7 @@ export function DemandeurExistantAlert({
 }
 
 export interface DemandeurFormData {
+    _tempId?: number;
     titre_demandeur: string;
     nom_demandeur: string;
     prenom_demandeur: string;
@@ -110,6 +110,8 @@ export interface DemandeurFormData {
     lieu_mariage: string;
     marie_a: string;
     telephone: string;
+    _is_update?: boolean;
+    _existing_id?: number;
     [key: string]: any;
 }
 
@@ -177,88 +179,84 @@ export default function DemandeurCreate({
         }
     }, [onChange]);
 
-    // ✅ CORRECTION : URL avec /api/ explicite
     const searchDemandeurByCin = async (cin: string) => {
-    if (isSearching) return;
-    
-    setIsSearching(true);
-    setCinSearchStatus('searching');
-    setSearchMessage('Recherche en cours...');
+        if (isSearching) return;
+        
+        setIsSearching(true);
+        setCinSearchStatus('searching');
+        setSearchMessage('Recherche en cours...');
 
-    try {
-        // ✅ Utiliser la nouvelle route de recherche globale
-        const url = window.route('search.demandeur.cin', { cin });
-        
-        console.log('🔍 Recherche CIN globale');
-        console.log('📍 URL:', url);
-        console.log('🔢 CIN:', cin);
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'same-origin',
-        });
-
-        console.log('📡 Status:', response.status);
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('Session expirée. Veuillez vous reconnecter.');
-            }
-            if (response.status === 403) {
-                throw new Error('Accès refusé. Permissions insuffisantes.');
-            }
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('📦 Résultat:', result);
-
-        if (result.found) {
-            setCinSearchStatus('found');
+        try {
+            const url = window.route('search.demandeur.cin', { cin });
             
-            // ✅ Message personnalisé si autre district
-            let displayMessage = result.message || 'Demandeur trouvé';
+            console.log('Recherche CIN globale');
+            console.log('URL:', url);
+            console.log('CIN:', cin);
             
-            if (result.meta && !result.meta.same_district) {
-                displayMessage += '\n⚠️ Attention : Ce demandeur provient d\'un autre district.';
-            }
-            
-            setSearchMessage(displayMessage);
-            
-            const demandeur = result.demandeur;
-            
-            console.log('✅ Chargement des données');
-            console.log('📊 Même district?', result.meta?.same_district);
-            
-            // ✅ Charger TOUTES les données
-            Object.keys(demandeur).forEach((key) => {
-                if (key !== 'cin') {
-                    const value = demandeur[key];
-                    onChange(key as keyof DemandeurFormData, value ?? '');
-                }
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
             });
+
+            console.log('Status:', response.status);
             
-            console.log('✓ Données chargées avec succès');
-        } else {
-            setCinSearchStatus('not-found');
-            setSearchMessage(result.message || 'Nouveau demandeur - Remplissez les informations');
-            console.log('ℹ️ Demandeur non trouvé - création d\'un nouveau');
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Session expirée. Veuillez vous reconnecter.');
+                }
+                if (response.status === 403) {
+                    throw new Error('Accès refusé. Permissions insuffisantes.');
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log('Résultat:', result);
+
+            if (result.found) {
+                setCinSearchStatus('found');
+                
+                let displayMessage = result.message || 'Demandeur trouvé';
+                
+                if (result.meta && !result.meta.same_district) {
+                    displayMessage += '\nAttention : Ce demandeur provient d\'un autre district.';
+                }
+                
+                setSearchMessage(displayMessage);
+                
+                const demandeur = result.demandeur;
+                
+                console.log('Chargement des données');
+                console.log('Même district?', result.meta?.same_district);
+                
+                Object.keys(demandeur).forEach((key) => {
+                    if (key !== 'cin') {
+                        const value = demandeur[key];
+                        onChange(key as keyof DemandeurFormData, value ?? '');
+                    }
+                });
+                
+                console.log('Données chargées avec succès');
+            } else {
+                setCinSearchStatus('not-found');
+                setSearchMessage(result.message || 'Nouveau demandeur - Remplissez les informations');
+                console.log('Demandeur non trouvé - création d\'un nouveau');
+            }
+        } catch (error) {
+            console.error('Erreur recherche CIN:', error);
+            setCinSearchStatus('idle');
+            
+            const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la recherche';
+            setSearchMessage(errorMessage);
+        } finally {
+            setIsSearching(false);
         }
-    } catch (error) {
-        console.error('❌ Erreur recherche CIN:', error);
-        setCinSearchStatus('idle');
-        
-        const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la recherche';
-        setSearchMessage(errorMessage);
-    } finally {
-        setIsSearching(false);
-    }
-};
+    };
 
     const handleManualSearch = () => {
         if (data.cin.length === 12) {
@@ -268,7 +266,6 @@ export default function DemandeurCreate({
     
     return (
         <div className="space-y-8">
-            {/* HEADER */}
             {showRemoveButton && onRemove && (
                 <div className="flex justify-between items-center pb-6 border-b-2 border-emerald-200 dark:border-emerald-800">
                     <div className="flex items-center gap-3">
@@ -292,7 +289,6 @@ export default function DemandeurCreate({
                 </div>
             )}
 
-            {/* SECTION CIN */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-violet-200 dark:border-violet-800">
                     <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
@@ -372,7 +368,6 @@ export default function DemandeurCreate({
                 )}
             </div>
 
-            {/* SECTION IDENTITÉ */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-blue-200 dark:border-blue-800">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -469,7 +464,6 @@ export default function DemandeurCreate({
                 </div>
             </div>
 
-            {/* SECTION DÉLIVRANCE CIN */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-200 dark:border-indigo-800">
                     <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -527,7 +521,6 @@ export default function DemandeurCreate({
                 </div>
             </div>
 
-            {/* SECTION CONTACT */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b-2 border-green-200 dark:border-green-800">
                     <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -630,7 +623,6 @@ export default function DemandeurCreate({
                 </div>
             </div>
 
-            {/* SECTION MARIAGE */}
             {data.situation_familiale === 'Marié(e)' && (
                 <div className="space-y-4 p-6 bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 rounded-xl border-2 border-pink-200 dark:border-pink-800 shadow-md">
                     <div className="flex items-center gap-3 pb-3 border-b-2 border-pink-300 dark:border-pink-700">

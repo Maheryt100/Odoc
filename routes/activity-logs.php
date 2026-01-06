@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Activity Logs Routes
 |--------------------------------------------------------------------------
-| Gestion complète des logs avec export et suppression
+| Gestion complète des logs avec export, suppression et détection de surcharge
 */
 
 Route::prefix('admin/activity-logs')
@@ -16,7 +16,7 @@ Route::prefix('admin/activity-logs')
     ->middleware('auth')
     ->group(function () {
 
-        // ========== CONSULTATION ==========
+        // ========== CONSULTATION (Tous utilisateurs autorisés) ==========
         Route::middleware('district.access:manage_users')->group(function () {
 
             Route::get('/', [ActivityLogController::class, 'index'])
@@ -29,27 +29,41 @@ Route::prefix('admin/activity-logs')
                 ->name('user-activity');
         });
 
-        // ========== SUPER ADMIN ==========
+        // ========== SUPER ADMIN UNIQUEMENT ==========
         Route::middleware('super.admin')->group(function () {
 
+            // Paramètres
             Route::get('/settings', [LogsSettingsController::class, 'index'])
                 ->name('settings');
 
             Route::put('/settings', [LogsSettingsController::class, 'update'])
                 ->name('settings.update');
 
+            // Export manuel
             Route::post('/export', [LogsSettingsController::class, 'export'])
                 ->name('export');
 
+            // Téléchargement
             Route::get('/download/{filename}', [LogsSettingsController::class, 'download'])
                 ->name('download');
 
+            // Suppression d'export manuel
             Route::delete('/exports/{filename}', [LogsSettingsController::class, 'deleteExport'])
                 ->name('exports.delete');
 
+            // Nettoyage/Archivage automatique (intelligent selon surcharge)
             Route::post('/cleanup', [LogsSettingsController::class, 'cleanup'])
                 ->name('cleanup');
 
+            // ✅ NOUVEAU : Suppression manuelle de logs spécifiques
+            Route::delete('/delete-manually', [LogsSettingsController::class, 'deleteManually'])
+                ->name('delete-manually');
+
+            // ✅ NOUVEAU : Suppression manuelle par filtres (date, action, user...)
+            Route::post('/delete-by-filters', [LogsSettingsController::class, 'deleteByFilters'])
+                ->name('delete-by-filters');
+
+            // Prévisualisation avant nettoyage
             Route::get('/preview-cleanup', [LogsSettingsController::class, 'previewCleanup'])
                 ->name('preview-cleanup');
         });

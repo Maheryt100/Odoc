@@ -1,29 +1,52 @@
 // resources/js/pages/TopoFlux/Show.tsx
+// ✅ VERSION CORRIGÉE - Compatible avec nouvelle structure API
+
 import { Head, Link, router } from '@inertiajs/react';
-import AuthenticatedLayout from '@/layouts/AuthenticatedLayout';
+import AppLayout from '@/layouts/app-layout';
 import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    ArrowLeft,
+    FileText,
+    User,
+    MapPin,
+    Calendar,
+    Paperclip,
+    CheckCircle2,
+    XCircle,
+    AlertTriangle
+} from 'lucide-react';
+import type { BreadcrumbItem, PageProps } from '@/types';
 
 interface Import {
     id: number;
     entity_type: 'demandeur' | 'propriete';
     batch_id: string;
-    status: string;
-    target_dossier_id: number;
-    target_district_id: number;
+    status: 'pending' | 'validated' | 'rejected';
+    dossier_id: number;
+    dossier_nom: string;
+    dossier_numero_ouverture: number;
+    district_id: number;
+    district_nom: string;
     topo_user_name: string;
-    created_at: string;
-    payload: any;
-    error_reason: string | null;
+    import_date: string;
+    raw_data: Record<string, any>;  // ✅ CHANGÉ : raw_data au lieu de payload
+    rejection_reason?: string;
+    processed_at?: string;
 }
 
 interface File {
     id: number;
-    original_name: string;
-    file_size: number;
+    name: string;
+    size: number;
     mime_type: string;
+    category: string;
 }
 
-interface Props {
+interface Props extends PageProps {
     import: Import;
     files: File[];
 }
@@ -38,9 +61,13 @@ export default function Show({ import: imp, files }: Props) {
             return;
         }
 
-        router.post(route('topo-flux.reject', [imp.entity_type, imp.id]), {
-            error_reason: rejectReason
+        router.post(route('topo-flux.reject', imp.id), {
+            rejection_reason: rejectReason
         });
+    };
+
+    const handleValidate = () => {
+        router.post(route('topo-flux.approve', imp.id));
     };
 
     const renderField = (label: string, value: any) => {
@@ -57,183 +84,263 @@ export default function Show({ import: imp, files }: Props) {
     };
 
     const renderPayload = () => {
-        const p = imp.payload;
+        // ✅ CORRECTION : Utiliser raw_data au lieu de payload
+        const data = imp.raw_data;
+        
+        if (!data) {
+            return (
+                <div className="text-center py-8 text-muted-foreground">
+                    Aucune donnée disponible
+                </div>
+            );
+        }
         
         if (imp.entity_type === 'demandeur') {
             return (
                 <dl className="divide-y divide-gray-200">
-                    {renderField('CIN', p.cin)}
-                    {renderField('Titre', p.titre_demandeur)}
-                    {renderField('Nom', p.nom_demandeur)}
-                    {renderField('Prénom', p.prenom_demandeur)}
-                    {renderField('Date de naissance', p.date_naissance)}
-                    {renderField('Lieu de naissance', p.lieu_naissance)}
-                    {renderField('Sexe', p.sexe)}
-                    {renderField('Occupation', p.occupation)}
-                    {renderField('Nom père', p.nom_pere)}
-                    {renderField('Nom mère', p.nom_mere)}
-                    {renderField('Date délivrance CIN', p.date_delivrance)}
-                    {renderField('Lieu délivrance CIN', p.lieu_delivrance)}
-                    {renderField('Domiciliation', p.domiciliation)}
-                    {renderField('Téléphone', p.telephone)}
-                    {renderField('Nationalité', p.nationalite)}
-                    {renderField('Situation familiale', p.situation_familiale)}
-                    {renderField('Régime matrimonial', p.regime_matrimoniale)}
-                    {renderField('Date mariage', p.date_mariage)}
-                    {renderField('Lieu mariage', p.lieu_mariage)}
-                    {renderField('Marié(e) à', p.marie_a)}
+                    {renderField('CIN', data.cin)}
+                    {renderField('Titre', data.titre_demandeur)}
+                    {renderField('Nom', data.nom_demandeur)}
+                    {renderField('Prénom', data.prenom_demandeur)}
+                    {renderField('Date de naissance', data.date_naissance)}
+                    {renderField('Lieu de naissance', data.lieu_naissance)}
+                    {renderField('Sexe', data.sexe)}
+                    {renderField('Occupation', data.occupation)}
+                    {renderField('Nom père', data.nom_pere)}
+                    {renderField('Nom mère', data.nom_mere)}
+                    {renderField('Date délivrance CIN', data.date_delivrance)}
+                    {renderField('Lieu délivrance CIN', data.lieu_delivrance)}
+                    {renderField('Domiciliation', data.domiciliation)}
+                    {renderField('Téléphone', data.telephone)}
+                    {renderField('Nationalité', data.nationalite)}
+                    {renderField('Situation familiale', data.situation_familiale)}
+                    {renderField('Régime matrimonial', data.regime_matrimoniale)}
+                    {renderField('Date mariage', data.date_mariage)}
+                    {renderField('Lieu mariage', data.lieu_mariage)}
+                    {renderField('Marié(e) à', data.marie_a)}
                 </dl>
             );
         } else {
             return (
                 <dl className="divide-y divide-gray-200">
-                    {renderField('Lot', p.lot)}
-                    {renderField('Nature', p.nature)}
-                    {renderField('Type opération', p.type_operation)}
-                    {renderField('Propriété mère', p.propriete_mere)}
-                    {renderField('Titre mère', p.titre_mere)}
-                    {renderField('Titre', p.titre)}
-                    {renderField('Propriétaire', p.proprietaire)}
-                    {renderField('Contenance (m²)', p.contenance)}
-                    {renderField('Charge', p.charge)}
-                    {renderField('Situation', p.situation)}
-                    {renderField('Vocation', p.vocation)}
-                    {renderField('Numéro FN', p.numero_FN)}
-                    {renderField('Numéro réquisition', p.numero_requisition)}
-                    {renderField('Date réquisition', p.date_requisition)}
-                    {renderField('Dépôt/Vol réquisition', p.dep_vol_requisition)}
-                    {renderField('Date dépôt 1', p.date_depot_1)}
-                    {renderField('Date dépôt 2', p.date_depot_2)}
-                    {renderField('Date approbation acte', p.date_approbation_acte)}
-                    {renderField('Dépôt/Vol inscription', p.dep_vol_inscription)}
+                    {renderField('Lot', data.lot)}
+                    {renderField('Nature', data.nature)}
+                    {renderField('Type opération', data.type_operation)}
+                    {renderField('Propriété mère', data.propriete_mere)}
+                    {renderField('Titre mère', data.titre_mere)}
+                    {renderField('Titre', data.titre)}
+                    {renderField('Propriétaire', data.proprietaire)}
+                    {renderField('Contenance (m²)', data.contenance)}
+                    {renderField('Charge', data.charge)}
+                    {renderField('Situation', data.situation)}
+                    {renderField('Vocation', data.vocation)}
+                    {renderField('Numéro FN', data.numero_FN)}
+                    {renderField('Numéro réquisition', data.numero_requisition)}
+                    {renderField('Date réquisition', data.date_requisition)}
+                    {renderField('Dépôt/Vol réquisition', data.dep_vol_requisition)}
+                    {renderField('Date dépôt 1', data.date_depot_1)}
+                    {renderField('Date dépôt 2', data.date_depot_2)}
+                    {renderField('Date approbation acte', data.date_approbation_acte)}
+                    {renderField('Dépôt/Vol inscription', data.dep_vol_inscription)}
                 </dl>
             );
         }
     };
 
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'pending':
+                return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
+            case 'validated':
+                return <Badge className="bg-green-100 text-green-800">Validé</Badge>;
+            case 'rejected':
+                return <Badge className="bg-red-100 text-red-800">Rejeté</Badge>;
+            default:
+                return <Badge variant="outline">{status}</Badge>;
+        }
+    };
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'TopoFlux', href: route('topo-flux.index') },
+        { title: 'Détails import', href: '#' }
+    ];
+
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">
-                        Détail Import - {imp.entity_type === 'demandeur' ? 'Demandeur' : 'Propriété'}
-                    </h2>
-                    <Link
-                        href={route('topo-flux.index')}
-                        className="text-sm text-gray-600 hover:text-gray-900"
-                    >
-                        Retour à la liste
-                    </Link>
-                </div>
-            }
-        >
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Import ${imp.entity_type} #${imp.id}`} />
 
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="container mx-auto p-6 max-w-6xl space-y-6">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.visit(route('topo-flux.index'))}
+                            className="gap-2"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Retour
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-bold">
+                                Import {imp.entity_type === 'demandeur' ? 'Demandeur' : 'Propriété'}
+                            </h1>
+                            <p className="text-sm text-muted-foreground">#{imp.id}</p>
+                        </div>
+                    </div>
                     
-                    {/* Métadonnées */}
-                    <div className="mb-6 bg-white rounded-lg shadow p-6">
-                        <h3 className="text-lg font-medium mb-4">Informations import</h3>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <span className="font-medium">Batch ID:</span> {imp.batch_id}
-                            </div>
-                            <div>
-                                <span className="font-medium">Statut:</span> {imp.status}
-                            </div>
-                            <div>
-                                <span className="font-medium">Opérateur terrain:</span> {imp.topo_user_name}
-                            </div>
-                            <div>
-                                <span className="font-medium">Date import:</span> {new Date(imp.created_at).toLocaleString('fr-FR')}
-                            </div>
-                            <div>
-                                <span className="font-medium">Dossier cible:</span> #{imp.target_dossier_id}
-                            </div>
-                            <div>
-                                <span className="font-medium">District:</span> #{imp.target_district_id}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Données */}
-                    <div className="mb-6 bg-white rounded-lg shadow p-6">
-                        <h3 className="text-lg font-medium mb-4">Données reçues</h3>
-                        {renderPayload()}
-                    </div>
-
-                    {/* Fichiers */}
-                    {files.length > 0 && (
-                        <div className="mb-6 bg-white rounded-lg shadow p-6">
-                            <h3 className="text-lg font-medium mb-4">Fichiers joints ({files.length})</h3>
-                            <ul className="divide-y">
-                                {files.map(file => (
-                                    <li key={file.id} className="py-2 flex justify-between items-center">
-                                        <span>{file.original_name}</span>
-                                        <span className="text-sm text-gray-500">
-                                            {(file.file_size / 1024).toFixed(2)} KB
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    {imp.status === 'PENDING' && (
-                        <div className="bg-white rounded-lg shadow p-6">
-                            <h3 className="text-lg font-medium mb-4">Actions</h3>
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setShowRejectModal(true)}
-                                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                                >
-                                    Rejeter
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Motif rejet */}
-                    {imp.status === 'REJECTED' && imp.error_reason && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                            <h4 className="font-medium text-red-800 mb-2">Motif de rejet</h4>
-                            <p className="text-red-700">{imp.error_reason}</p>
-                        </div>
-                    )}
+                    {getStatusBadge(imp.status)}
                 </div>
+                
+                {/* Métadonnées */}
+                <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Informations import
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span className="font-medium">Batch ID:</span>
+                            <p className="text-muted-foreground font-mono mt-1">{imp.batch_id}</p>
+                        </div>
+                        <div>
+                            <span className="font-medium">Type:</span>
+                            <p className="text-muted-foreground mt-1">
+                                {imp.entity_type === 'demandeur' ? 'Demandeur' : 'Propriété'}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="font-medium">Dossier:</span>
+                            <p className="text-muted-foreground mt-1">
+                                {imp.dossier_nom} (#{imp.dossier_numero_ouverture})
+                            </p>
+                        </div>
+                        <div>
+                            <span className="font-medium">District:</span>
+                            <p className="text-muted-foreground mt-1">{imp.district_nom}</p>
+                        </div>
+                        <div>
+                            <span className="font-medium">Opérateur terrain:</span>
+                            <p className="text-muted-foreground mt-1">{imp.topo_user_name}</p>
+                        </div>
+                        <div>
+                            <span className="font-medium">Date import:</span>
+                            <p className="text-muted-foreground mt-1">
+                                {new Date(imp.import_date).toLocaleString('fr-FR')}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Données */}
+                <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        {imp.entity_type === 'demandeur' ? (
+                            <User className="h-5 w-5" />
+                        ) : (
+                            <MapPin className="h-5 w-5" />
+                        )}
+                        Données reçues
+                    </h3>
+                    {renderPayload()}
+                </Card>
+
+                {/* Fichiers */}
+                {files && files.length > 0 && (
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <Paperclip className="h-5 w-5" />
+                            Fichiers joints ({files.length})
+                        </h3>
+                        <ul className="divide-y">
+                            {files.map(file => (
+                                <li key={file.id} className="py-3 flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                            <p className="font-medium">{file.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {(file.size / 1024).toFixed(2)} KB • {file.category}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm">
+                                        Télécharger
+                                    </Button>
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
+                )}
+
+                {/* Actions */}
+                {imp.status === 'pending' && (
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4">Actions</h3>
+                        <div className="flex gap-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowRejectModal(true)}
+                                className="gap-2 text-red-600 hover:bg-red-50"
+                            >
+                                <XCircle className="h-4 w-4" />
+                                Rejeter
+                            </Button>
+                            <Button
+                                onClick={handleValidate}
+                                className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600"
+                            >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Valider
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Motif rejet */}
+                {imp.status === 'rejected' && imp.rejection_reason && (
+                    <Card className="p-6 bg-red-50 border-red-200">
+                        <h4 className="font-semibold text-red-900 mb-2 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Motif de rejet
+                        </h4>
+                        <p className="text-red-700">{imp.rejection_reason}</p>
+                    </Card>
+                )}
             </div>
 
             {/* Modal rejet */}
             {showRejectModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h3 className="text-lg font-medium mb-4">Rejeter l'import</h3>
-                        <textarea
+                    <Card className="max-w-md w-full m-4 p-6">
+                        <h3 className="text-lg font-semibold mb-4">Rejeter l'import</h3>
+                        <Textarea
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
                             placeholder="Indiquez le motif du rejet (min 10 caractères)"
-                            className="w-full border rounded p-2 mb-4"
                             rows={4}
+                            className="mb-4"
                         />
                         <div className="flex gap-2 justify-end">
-                            <button
+                            <Button
+                                variant="outline"
                                 onClick={() => setShowRejectModal(false)}
-                                className="px-4 py-2 border rounded hover:bg-gray-50"
                             >
                                 Annuler
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                variant="destructive"
                                 onClick={handleReject}
-                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                                disabled={rejectReason.length < 10}
                             >
                                 Confirmer le rejet
-                            </button>
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
                 </div>
             )}
-        </AuthenticatedLayout>
+        </AppLayout>
     );
 }

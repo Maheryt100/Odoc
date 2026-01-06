@@ -80,7 +80,7 @@ Route::middleware('auth')->group(function () {
         require __DIR__.'/legacy.php';
 
         // Route Topo Flux
-        require __DIR__.'/topo-flux.php';
+        // require __DIR__.'/topo-flux.php';
     });
 });
 Route::middleware(['auth', 'verified'])->group(function () {

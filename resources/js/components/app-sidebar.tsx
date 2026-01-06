@@ -1,3 +1,4 @@
+// resources/js/components/app-sidebar.tsx
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -36,17 +37,21 @@ export function AppSidebar() {
             href: '/dossiers',
             icon: Folders,
         },
-        {
+    ];
+
+    // ✅ Flux TopoManager - UNIQUEMENT pour Admin District et User District
+    if (user && (user.role === 'admin_district' || user.role === 'user_district')) {
+        mainNavItems.push({
             title: 'Flux TopoManager',
             href: '/topo-flux',
             icon: RefreshCw,
-        },
-    ];
+        });
+    }
 
     // ============ CONFIGURATION (Admin uniquement) ============
     const configNavItems: NavItem[] = [];
 
-    // Gestion des localisations - accessible aux super_admin et admin_district
+    // Gestion des localisations - accessible aux super_admin, central_user et admin_district
     if (user && (user.role === 'super_admin' || user.role === 'admin_district' || user.role === 'central_user')) {
         configNavItems.push({
             title: 'Localisations',
@@ -55,8 +60,8 @@ export function AppSidebar() {
         });
     }
 
+    // Logs d'activité - super_admin et admin_district
     if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
-        // Logs d'activité
         configNavItems.push({
             title: 'Logs d\'activité',
             href: '/admin/activity-logs',
@@ -64,7 +69,7 @@ export function AppSidebar() {
         });
     }
 
- 
+    // Gestion des utilisateurs - super_admin et admin_district
     if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
         configNavItems.push({
             title: 'Utilisateurs',

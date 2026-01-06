@@ -1,4 +1,4 @@
-// users/components/UsersTable.tsx - MOBILE OPTIMIZED
+// users/components/UsersTable.tsx - AVEC CONSULTATION SEULE
 import { Link } from '@inertiajs/react';
 import {
     DropdownMenu,
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Edit, Trash2, Power, MapPin, Search, Mail } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Power, MapPin, Search, Mail, Eye } from 'lucide-react';
 import { User } from '../types';
 import { ROLE_BADGE_CONFIG, STATUS_CONFIG } from '../config';
 import { getInitials } from '../helpers';
@@ -51,6 +51,11 @@ export const UsersTable = ({ users, onToggleStatus, onDelete }: UsersTableProps)
         ];
         const index = name.charCodeAt(0) % colors.length;
         return colors[index];
+    };
+
+    // ✅ Vérifier si l'utilisateur a des actions disponibles
+    const hasActions = (user: User): boolean => {
+        return user.can_edit || user.can_delete;
     };
 
     if (users.length === 0) {
@@ -142,43 +147,51 @@ export const UsersTable = ({ users, onToggleStatus, onDelete }: UsersTableProps)
                                     </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            {user.can_edit && (
-                                                <DropdownMenuItem asChild>
-                                                    <Link href={`/users/${user.id}/edit`}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Modifier
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                            )}
-                                            {user.can_edit && (
-                                                <DropdownMenuItem onClick={() => onToggleStatus(user)}>
-                                                    <Power className="mr-2 h-4 w-4" />
-                                                    {user.status ? 'Désactiver' : 'Activer'}
-                                                </DropdownMenuItem>
-                                            )}
-                                            {user.can_delete && (
-                                                <>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => onDelete(user)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Supprimer
+                                    {/* ✅ Afficher menu UNIQUEMENT si l'utilisateur a des actions */}
+                                    {hasActions(user) ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                {user.can_edit && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/users/${user.id}/edit`}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Modifier
+                                                        </Link>
                                                     </DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                                )}
+                                                {user.can_edit && (
+                                                    <DropdownMenuItem onClick={() => onToggleStatus(user)}>
+                                                        <Power className="mr-2 h-4 w-4" />
+                                                        {user.status ? 'Désactiver' : 'Activer'}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.can_delete && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => onDelete(user)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Supprimer
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                        // ✅ Icône "Consultation seule" si pas d'actions
+                                        <div className="flex items-center justify-center">
+                                            <Eye className="h-4 w-4 text-muted-foreground/50" title="Consultation seule" />
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -207,44 +220,51 @@ export const UsersTable = ({ users, onToggleStatus, onDelete }: UsersTableProps)
                                         </div>
                                     </div>
                                     
-                                    {/* Actions */}
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            {user.can_edit && (
-                                                <DropdownMenuItem asChild>
-                                                    <Link href={`/users/${user.id}/edit`}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Modifier
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                            )}
-                                            {user.can_edit && (
-                                                <DropdownMenuItem onClick={() => onToggleStatus(user)}>
-                                                    <Power className="mr-2 h-4 w-4" />
-                                                    {user.status ? 'Désactiver' : 'Activer'}
-                                                </DropdownMenuItem>
-                                            )}
-                                            {user.can_delete && (
-                                                <>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => onDelete(user)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Supprimer
+                                    {/* Actions - Conditionnel */}
+                                    {hasActions(user) ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                {user.can_edit && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/users/${user.id}/edit`}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Modifier
+                                                        </Link>
                                                     </DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                                )}
+                                                {user.can_edit && (
+                                                    <DropdownMenuItem onClick={() => onToggleStatus(user)}>
+                                                        <Power className="mr-2 h-4 w-4" />
+                                                        {user.status ? 'Désactiver' : 'Activer'}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.can_delete && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => onDelete(user)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Supprimer
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                        // ✅ Icône consultation seule sur mobile
+                                        <div className="p-1.5">
+                                            <Eye className="h-4 w-4 text-muted-foreground/50" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Badges */}

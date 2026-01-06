@@ -1,5 +1,4 @@
-// pages/proprietes/types.ts - ✅ CORRECTION FINALE
-
+// pages/proprietes/types.ts - VERSION CORRIGEE
 import type { Dossier, Demandeur, Nature, Vocation, TypeOperation, Propriete } from '@/types';
 
 export type FiltreStatutProprieteType = 'tous' | 'actives' | 'acquises' | 'sans_demandeur';
@@ -32,10 +31,11 @@ export interface ProprietesIndexProps {
     ) => void;
 }
 
-/**
- * ✅ STRUCTURE FINALE DES DATES
- */
 export interface ProprieteFormData {
+    _tempId?: number;
+    _is_update?: boolean;
+    _existing_id?: number;
+    
     lot: string;
     type_operation: TypeOperation;
     nature: Nature | '';
@@ -50,21 +50,18 @@ export interface ProprieteFormData {
     numero_FN: string;
     numero_requisition: string;
     
-    // ✅ DATES (aligné avec migration)
-    date_requisition: string;        // Date réquisition officielle
-    date_depot_1: string;            // Date dépôt inscription (ex date_inscription)
-    date_depot_2: string;            // Date dépôt réquisition (NOUVEAU)
-    date_approbation_acte: string;   // Date approbation (OBLIGATOIRE pour doc)
+    date_requisition: string;
+    date_depot_1: string;
+    date_depot_2: string;
+    date_approbation_acte: string;
 
-    // Dep/Vol Inscription (dépôt 1)
     dep_vol_inscription: string;
     numero_dep_vol_inscription: string;
     
-    // Dep/Vol Réquisition (dépôt 2)
     dep_vol_requisition: string;
     numero_dep_vol_requisition: string;
 
-    id_dossier: number;  // ✅ CORRECTION : obligatoire, pas optionnel
+    id_dossier: number;
 }
 
 export interface ProprieteFormProps {
@@ -90,9 +87,6 @@ export const CHARGE_OPTIONS = [
     "Aucune"
 ] as const;
 
-/**
- * ✅ PROPRIÉTÉ VIDE - CORRECTION
- */
 export const EMPTY_PROPRIETE: ProprieteFormData = {
     lot: '',
     type_operation: 'immatriculation',
@@ -108,12 +102,12 @@ export const EMPTY_PROPRIETE: ProprieteFormData = {
     numero_FN: '',
     numero_requisition: '',
     date_requisition: '',
-    date_depot_1: '',             // ✅ CORRECTION : pas date_inscription
+    date_depot_1: '',
     date_depot_2: '',
     date_approbation_acte: '',
     dep_vol_inscription: '',
     numero_dep_vol_inscription: '',
     dep_vol_requisition: '',
     numero_dep_vol_requisition: '',
-    id_dossier: 0  // ✅ CORRECTION : valeur par défaut
+    id_dossier: 0
 };

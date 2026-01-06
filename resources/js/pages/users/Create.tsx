@@ -132,15 +132,15 @@ export default function UserCreateEdit({
         }
     };
 
-    // Helper pour afficher les descriptions de rôles
+    // Helper pour afficher les descriptions de rôles - ✅ CORRIGÉ
     const getRoleDescription = (role: string): string => {
         switch(role) {
             case 'super_admin':
-                return '👁️ Lecture seule sur tous les districts. Peut créer des admin_district.';
+                return '👁️ Lecture seule sur tous les districts. Peut créer : super_admin, central_user, admin_district.';
             case 'central_user':
                 return '👁️ Lecture seule sur tous les districts. Peut exporter les données.';
             case 'admin_district':
-                return '✏️ Création/Modification/Suppression dans son district. Gestion complète.';
+                return '✏️ Création/Modification/Suppression dans son district. Peut créer des user_district.';
             case 'user_district':
                 return '✏️ Création/Modification dans son district. Pas de suppression.';
             default:

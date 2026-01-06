@@ -1,4 +1,4 @@
-// documents/Generate.tsx - ✅ VERSION FINALE CORRIGÉE
+// documents/Generate.tsx - ✅ VERSION SANS REÇU
 
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Info, ArrowLeft, List, Sparkles, Menu, FileText, Receipt, FileCheck, FileOutput } from 'lucide-react';
+import { Info, ArrowLeft, List, Sparkles, Menu, FileText, FileCheck, FileOutput } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -49,7 +49,7 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
 
             <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1400px] space-y-4 sm:space-y-6">
                 
-                {/* ✅ Header Ultra-Compact */}
+                {/* ✅ Header */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent truncate">
@@ -106,22 +106,14 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
                     )}
                 </div>
 
-                {/* ✅ Stats Grid Compact avec icons directement importés */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                {/* ✅ Stats Grid - SANS REÇU */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                     <StatCard
                         title="ADV"
                         value={stats.proprietesAvecAdv}
                         total={stats.totalProprietes}
                         icon={FileText}
                         colorScheme="violet"
-                        label="propriétés"
-                    />
-                    <StatCard
-                        title="Reçus"
-                        value={stats.proprietesAvecRecu}
-                        total={stats.totalProprietes}
-                        icon={Receipt}
-                        colorScheme="green"
                         label="propriétés"
                     />
                     <StatCard
@@ -142,7 +134,7 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
                     />
                 </div>
 
-                {/* ✅ Alerte Info Compact */}
+                {/* ✅ Alerte Info - MODIFIÉE */}
                 <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 py-2 sm:py-3">
                     <div className="flex items-start gap-2">
                         <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
@@ -151,12 +143,12 @@ export default function Generate({ dossier, proprietes, demandeurs }: GeneratePr
                         <AlertDescription className="text-xs sm:text-sm text-blue-900 dark:text-blue-100">
                             <span className="font-semibold flex items-center gap-1.5">
                                 <Sparkles className="h-3 w-3" />
-                                {isMobile ? 'Génération unique' : 'Système de génération unique'}
+                                {isMobile ? 'Numéro de reçu requis' : 'Numéro de reçu externe requis'}
                             </span>
                             <span className="text-blue-700 dark:text-blue-300 block mt-0.5">
                                 {isMobile 
-                                    ? 'Docs générés 1×, puis téléchargés'
-                                    : 'Chaque document n\'est généré qu\'une fois, les suivants sont téléchargés depuis les archives'
+                                    ? 'Saisissez le N° de reçu avant de générer l\'ADV'
+                                    : 'Pour générer un acte de vente, vous devrez saisir le numéro du reçu de paiement (généré hors du système)'
                                 }
                             </span>
                         </AlertDescription>

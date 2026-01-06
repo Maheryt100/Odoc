@@ -1,4 +1,5 @@
 // js/types/index.d.ts 
+// ✅ VERSION AVEC TYPES TOPOFLUX INTÉGRÉS
 
 import { LucideIcon } from 'lucide-react';
 import type { Config } from 'ziggy-js';
@@ -162,7 +163,7 @@ export interface Demandeur {
     id: number;
     titre_demandeur: string;
     nom_demandeur: string;
-    prenom_demandeur: string | null;  // ✅ Accepte null
+    prenom_demandeur: string | null;
     date_naissance: string;
     lieu_naissance: string | null;
     sexe: string | null;
@@ -217,11 +218,9 @@ export interface Demande {
     created_at: string;
     updated_at: string;
     
-    // Relations
     propriete?: Propriete;
     demandeur?: Demandeur;
     
-    // Accessors
     is_principal?: boolean;
     is_consort?: boolean;
     is_active?: boolean;
@@ -271,6 +270,70 @@ export interface Dossier {
     can_close?: boolean;
     can_modify?: boolean;
     status_label?: string;
+}
+
+// ============================================
+// ✅ TOPOFLUX - IMPORTS TERRAIN
+// ============================================
+
+export interface TopoImport {
+    id: number;
+    batch_id: string;
+    entity_type: 'propriete' | 'demandeur';
+    raw_data: Record<string, any>;
+    status: 'pending' | 'archived' | 'validated' | 'rejected';
+    
+    dossier_id: number;
+    dossier_nom: string;
+    dossier_numero_ouverture: number;
+    district_id: number;
+    district_nom: string;
+    
+    import_date: string;
+    topo_user_name: string;
+    
+    files_count: number;
+    files?: TopoFile[];
+    
+    can_import: boolean;
+    is_archived: boolean;
+    has_errors: boolean;
+    error_summary?: string | null;
+    is_duplicate: boolean;
+    duplicate_action: string;
+    
+    rejection_reason?: string;
+    processed_at?: string;
+    
+    validation?: {
+        can_proceed: boolean;
+        errors: string[];
+        warnings: string[];
+        duplicate_info?: {
+            is_duplicate: boolean;
+            existing_entity?: any;
+            match_confidence?: number;
+            match_method?: string;
+            action?: string;
+        };
+    };
+}
+
+export interface TopoFile {
+    id: number;
+    name: string;
+    size: number;
+    mime_type: string;
+    category: string;
+    download_url?: string;
+}
+
+export interface TopoStats {
+    total: number;
+    pending: number;
+    archived: number;
+    validated: number;
+    rejected: number;
 }
 
 // ============================================

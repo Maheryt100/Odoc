@@ -244,17 +244,12 @@ return new class extends Migration
             $table->string('dep_vol_inscription', 50)->nullable();
             $table->string('numero_dep_vol_inscription', 50)->nullable();
             
-            $table->string('dep_vol', 50)->nullable();
-            $table->string('numero_dep_vol', 50)->nullable();
-            
             $table->foreignId('id_dossier')->constrained('dossiers')->onDelete('cascade');
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             $table->timestamps();
             
             $table->index('lot');
             $table->index('id_dossier');
-            $table->index('numero_dep_vol');
-            $table->index(['dep_vol', 'numero_dep_vol']);
             $table->index(['id_dossier', 'lot'], 'idx_proprietes_dossier_lot');
             $table->index(['id_dossier', 'nature'], 'idx_proprietes_dossier_nature');
             $table->index(['id_dossier', 'vocation'], 'idx_proprietes_dossier_vocation');

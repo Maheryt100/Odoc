@@ -463,16 +463,58 @@ class ActivityLogsExportService
     /**
      * Sauvegarder le spreadsheet
      */
-    private function saveSpreadsheet(Spreadsheet $spreadsheet, string $filename): string
+    private function saveSpreadsheet($spreadsheet, string $filename): string
     {
-        Storage::makeDirectory(self::EXPORT_PATH);
-        $fullPath = self::EXPORT_PATH . '/' . $filename;
-        $absolutePath = Storage::path($fullPath);
-        
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($absolutePath);
-        
-        return $fullPath;
+        try {
+            // ✅ Créer le dossier s'il n'existe pas
+            $fullPath = storage_path('app/' . self::EXPORT_PATH);
+            
+            if (!is_dir($fullPath)) {
+                mkdir($fullPath, 0775, true);
+                Log::info('Dossier logs créé', ['path' => $fullPath]);
+            }
+
+            // ✅ Vérifier les permissions
+            if (!is_writable($fullPath)) {
+                throw new \Exception("Le dossier n'est pas accessible en écriture : {$fullPath}");
+            }
+
+            // ✅ Chemin complet du fichier
+            $absolutePath = $fullPath . '/' . $filename;
+            
+            // ✅ Sauvegarder avec PhpSpreadsheet
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($absolutePath);
+
+            // ✅ Vérifier que le fichier a bien été créé
+            if (!file_exists($absolutePath)) {
+                throw new \Exception("Fichier non créé après save() : {$absolutePath}");
+            }
+
+            $fileSize = filesize($absolutePath);
+            if ($fileSize === 0) {
+                throw new \Exception("Fichier créé mais vide : {$absolutePath}");
+            }
+
+            Log::info('Export Excel créé avec succès', [
+                'filename' => $filename,
+                'path' => $absolutePath,
+                'size' => $fileSize,
+                'size_formatted' => $this->formatBytes($fileSize),
+            ]);
+
+            // ✅ Retourner le chemin relatif (sans 'app/')
+            return self::EXPORT_PATH . '/' . $filename;
+
+        } catch (\Exception $e) {
+            Log::error('Erreur sauvegarde spreadsheet', [
+                'filename' => $filename,
+                'path' => $fullPath ?? 'undefined',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
 
     /**
@@ -492,24 +534,43 @@ class ActivityLogsExportService
      */
     public function getAvailableExports(): array
     {
-        $files = Storage::files(self::EXPORT_PATH);
+        $fullPath = storage_path('app/' . self::EXPORT_PATH);
         
-        return collect($files)->map(function ($file) {
-            $filename = basename($file);
+        // ✅ Créer le dossier s'il n'existe pas
+        if (!is_dir($fullPath)) {
+            mkdir($fullPath, 0775, true);
+            Log::info('Dossier logs créé pour listing', ['path' => $fullPath]);
+            return [];
+        }
+
+        // ✅ Lister les fichiers Excel
+        $files = glob($fullPath . '/activity_logs_*.xlsx');
+        
+        if ($files === false) {
+            Log::warning('Impossible de lister les exports', ['path' => $fullPath]);
+            return [];
+        }
+
+        return collect($files)->map(function ($filePath) {
+            $filename = basename($filePath);
             $isAutoExport = strpos($filename, '_auto_') !== false;
+            $fileSize = filesize($filePath);
             
             return [
                 'filename' => $filename,
-                'path' => $file,
-                'size' => Storage::size($file),
-                'size_formatted' => $this->formatBytes(Storage::size($file)),
-                'created_at' => Storage::lastModified($file),
-                'url' => Storage::url($file),
+                'path' => self::EXPORT_PATH . '/' . $filename,
+                'size' => $fileSize,
+                'size_formatted' => $this->formatBytes($fileSize),
+                'created_at' => filemtime($filePath),
+                'url' => '/admin/activity-logs/download/' . $filename,
                 'is_auto_export' => $isAutoExport,
-                'can_delete' => !$isAutoExport, // Seuls les exports manuels sont supprimables
+                'can_delete' => !$isAutoExport,
                 'type_label' => $isAutoExport ? 'Automatique' : 'Manuel',
             ];
-        })->sortByDesc('created_at')->values()->toArray();
+        })
+        ->sortByDesc('created_at')
+        ->values()
+        ->toArray();
     }
 
     /**
@@ -517,7 +578,7 @@ class ActivityLogsExportService
      */
     public function deleteExport(string $filename): bool
     {
-        // Vérifier si c'est un export automatique
+        // ✅ Vérifier si c'est un export automatique
         if (strpos($filename, '_auto_') !== false) {
             Log::warning('Tentative de suppression d\'export automatique bloquée', [
                 'filename' => $filename
@@ -525,13 +586,31 @@ class ActivityLogsExportService
             return false;
         }
 
-        // Supprimer l'export manuel
-        $path = self::EXPORT_PATH . '/' . $filename;
-        if (Storage::exists($path)) {
-            Storage::delete($path);
-            Log::info('Export manuel supprimé', ['filename' => $filename]);
-            return true;
+        // ✅ Chemin complet
+        $path = storage_path('app/' . self::EXPORT_PATH . '/' . $filename);
+        
+        if (file_exists($path)) {
+            $deleted = unlink($path);
+            
+            if ($deleted) {
+                Log::info('Export manuel supprimé', [
+                    'filename' => $filename,
+                    'path' => $path,
+                ]);
+            } else {
+                Log::error('Échec suppression export', [
+                    'filename' => $filename,
+                    'path' => $path,
+                ]);
+            }
+            
+            return $deleted;
         }
+
+        Log::warning('Fichier export introuvable pour suppression', [
+            'filename' => $filename,
+            'path' => $path,
+        ]);
 
         return false;
     }
@@ -546,25 +625,28 @@ class ActivityLogsExportService
             ->sortByDesc('created_at')
             ->values();
         
-        if ($exports->count() <= self::MAX_AUTO_ARCHIVES) {
+        if ($exports->count() <= 12) {
             return 0;
         }
 
-        $toDelete = $exports->slice(self::MAX_AUTO_ARCHIVES);
+        $toDelete = $exports->slice(12);
         $deleted = 0;
 
         foreach ($toDelete as $export) {
-            $path = self::EXPORT_PATH . '/' . $export['filename'];
-            if (Storage::exists($path)) {
-                Storage::delete($path);
+            $path = storage_path('app/' . $export['path']);
+            
+            if (file_exists($path) && unlink($path)) {
                 $deleted++;
+                Log::info('Export automatique ancien supprimé', [
+                    'filename' => $export['filename'],
+                ]);
             }
         }
 
         if ($deleted > 0) {
-            Log::info("Nettoyage automatique des exports", [
+            Log::info("Nettoyage des exports automatiques", [
                 'deleted' => $deleted,
-                'kept' => self::MAX_AUTO_ARCHIVES
+                'kept' => 12,
             ]);
         }
 

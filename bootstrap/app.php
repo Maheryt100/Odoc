@@ -9,6 +9,7 @@ use App\Http\Middleware\LogUserAccess;
 use App\Http\Middleware\CheckDossierClosed;
 
 
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\InertiaTopoData::class,
+            \App\Http\Middleware\ShareFlashData::class,
         ]);
 
         $middleware->api(prepend: [
@@ -53,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'search.log' => \App\Http\Middleware\SearchLogger::class,
             'super.admin' => \App\Http\Middleware\CheckSuperAdmin::class,
             'role' => \App\Http\Middleware\CheckRole::class,
+            'topo.access' => \App\Http\Middleware\EnsureTopoFluxAccess::class,
 
         ]);;
     })

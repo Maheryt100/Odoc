@@ -25,9 +25,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             UserPermissionSeeder::class,
             
-            // 3. Puis les données métier
-            // DossierSeeder::class,
-            // etc.
+            TopoUserSeeder::class,
         ]);
 
         $this->command->newLine();

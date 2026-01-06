@@ -1,54 +1,104 @@
 // resources/js/pages/TopoFlux/types.ts
+// ✅ VERSION FINALE - TYPES COMPLETS ET COHÉRENTS
 
 export interface TopoImport {
     id: number;
     batch_id: string;
     entity_type: 'propriete' | 'demandeur';
-    action_suggested: 'create' | 'update';
-    raw_data: any;
-    has_warnings: boolean;
-    warnings: string[] | null;
-    matched_entity_id: number | null;
-    matched_entity_details: any;
-    match_confidence: number | null;
-    match_method: string | null;
-    import_date: string;
+    raw_data: Record<string, any>;
+    status: 'pending' | 'archived' | 'validated' | 'rejected';
+    
+    // Informations dossier et district
     dossier_id: number;
     dossier_nom: string;
     dossier_numero_ouverture: number;
     district_id: number;
     district_nom: string;
-    files_count: number;
-    files: TopoFile[];
+    
+    // Informations opérateur
+    import_date: string;
     topo_user_name: string;
-    status: 'pending' | 'validated' | 'rejected';
-    processed_at?: string;
+    
+    // Fichiers
+    files_count: number;
+    files?: TopoFile[];
+    
+    // ✅ CHAMPS REQUIS PAR ImportCard
+    can_import: boolean;
+    is_archived: boolean;
+    has_errors: boolean;
+    error_summary?: string | null;
+    is_duplicate: boolean;
+    duplicate_action: string;
+    
+    // Informations de rejet/traitement
     rejection_reason?: string;
+    processed_at?: string;
+    
+    // Validation détaillée (optionnelle)
+    validation?: {
+        can_proceed: boolean;
+        errors: string[];
+        warnings: string[];
+        duplicate_info?: {
+            is_duplicate: boolean;
+            existing_entity?: any;
+            match_confidence?: number;
+            match_method?: string;
+            action?: string;
+        };
+    };
 }
 
 export interface TopoFile {
+    id: number;
     name: string;
     size: number;
-    extension: string;
+    mime_type: string;
     category: string;
-    mime_type?: string;
-    path?: string;
+    download_url?: string;
 }
 
-export interface TopoFluxStats {
+export interface TopoStats {
     total: number;
     pending: number;
+    archived: number;
     validated: number;
     rejected: number;
-    with_warnings: number;
 }
+
+// ============================================
+// PROPS POUR LES PAGES
+// ============================================
+
+export interface TopoFluxIndexProps {
+    imports: TopoImport[];
+    stats: TopoStats;
+    filters: {
+        status: string;
+        entity_type?: string;
+    };
+    canValidate: boolean;
+}
+
+export interface TopoFluxShowProps {
+    import: TopoImport;
+    files: TopoFile[];
+}
+
+// ============================================
+// PROPS POUR LES COMPOSANTS
+// ============================================
 
 export interface ImportCardProps {
     import: TopoImport;
     canValidate: boolean;
-    onValidate: () => void;
+    onImport: () => void;
     onReject: () => void;
+    onArchive: () => void;
+    onUnarchive: () => void;
     onViewDetails: () => void;
+    onPreviewFiles: () => void;
 }
 
 export interface RejectDialogProps {
@@ -57,10 +107,17 @@ export interface RejectDialogProps {
     onReasonChange: (reason: string) => void;
     onConfirm: () => void;
     onCancel: () => void;
+    processing: boolean;
 }
 
-export interface ImportDetailsDialogProps {
-    import: TopoImport | null;
+export interface FilePreviewDialogProps {
     open: boolean;
-    onOpenChange: (open: boolean) => void;
+    import: TopoImport | null;
+    selectedFiles: number[];
+    onSelectionChange: (fileIds: number[]) => void;
+    onClose: () => void;
+}
+
+export interface StatsCardsProps {
+    stats: TopoStats;
 }

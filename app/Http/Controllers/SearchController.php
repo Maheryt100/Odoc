@@ -33,7 +33,7 @@ class SearchController extends Controller
             'user_district' => $currentDistrictId
         ]);
         
-        // ✅ Chercher dans TOUS les districts
+        // Chercher dans TOUS les districts
         $demandeur = Demandeur::where('cin', $cin)->first();
         
         if (!$demandeur) {
@@ -45,10 +45,10 @@ class SearchController extends Controller
             ]);
         }
         
-        // ✅ CIN trouvé - vérifier le district
+        // CIN trouvé - vérifier le district
         $sameDistrict = $demandeur->district_id === $currentDistrictId;
         
-        Log::info('✅ CIN trouvé', [
+        Log::info('CIN trouvé', [
             'cin' => $cin,
             'demandeur_id' => $demandeur->id,
             'same_district' => $sameDistrict,

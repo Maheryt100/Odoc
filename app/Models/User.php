@@ -9,36 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 
-/**
- * Class User - VERSION CORRIGÉE
- * 
- * RÈGLES DE PERMISSIONS FINALES:
- * 
- * 1. SUPER ADMIN:
- *    - Lecture seule sur TOUS les districts
- *    - Peut créer UNIQUEMENT des admin_district
- *    - Peut exporter les données
- *    - NE PEUT PAS créer/modifier/supprimer de données métier
- * 
- * 2. CENTRAL USER:
- *    - Lecture seule sur TOUS les districts
- *    - Peut exporter les données
- *    - NE PEUT PAS créer/modifier/supprimer
- *    - NE PEUT PAS gérer d'utilisateurs
- * 
- * 3. ADMIN DISTRICT:
- *    - Création/Modification/Suppression dans SON district uniquement
- *    - Peut créer UNIQUEMENT des user_district de son district
- *    - Peut configurer les prix de son district
- *    - Peut fermer/rouvrir les dossiers
- *    - Peut générer les documents
- * 
- * 4. USER DISTRICT:
- *    - Création/Modification dans SON district uniquement
- *    - NE PEUT PAS supprimer
- *    - NE PEUT PAS gérer d'utilisateurs
- *    - Peut générer les documents
- */
+
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
@@ -156,20 +127,53 @@ class User extends Authenticatable
 
     /**
      * Vérifie si l'utilisateur peut valider des imports TopoManager
+     * ✅ Admin District et User District UNIQUEMENT
+     * ❌ Super Admin et Central User: NE PEUVENT PAS (lecture seule)
      */
     public function canValidateTopoImports(): bool
     {
-        return $this->isAdminDistrict() || $this->isUserDistrict();
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS (lecture seule)
+        if ($this->isReadOnly()) {
+            return false;
+        }
+
+        // ✅ Admin District et User District : PEUVENT valider
+        return ($this->isAdminDistrict() || $this->isUserDistrict()) 
+            && $this->id_district !== null;
     }
 
     /**
      * Vérifie si l'utilisateur peut gérer les utilisateurs TopoManager
+     * ✅ Super Admin UNIQUEMENT
      */
     public function canManageTopoUsers(): bool
     {
         return $this->isSuperAdmin();
     }
 
+    /**
+     * Vérifie si l'utilisateur peut accéder au module TopoFlux
+     */
+    public function canAccessTopoFlux(): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ❌ Super Admin et Central User : NE PEUVENT PAS accéder
+        if ($this->isReadOnly()) {
+            return false;
+        }
+
+        // ✅ Admin District et User District : peuvent accéder
+        return ($this->isAdminDistrict() || $this->isUserDistrict()) 
+            && $this->id_district !== null;
+    }
+   
     /**
      * Retourne le nom du rôle formaté
      */
@@ -307,72 +311,7 @@ class User extends Authenticatable
         return false;
     }
 
-    /**
-     * Vérifie quel type d'utilisateur peut être créé
-     * Super Admin : UNIQUEMENT admin_district
-     * Admin District : UNIQUEMENT user_district de son district
-     */
-    public function canCreateUserRole(string $targetRole): bool
-    {
-        if (!$this->status) {
-            return false;
-        }
-
-        // Super Admin : UNIQUEMENT admin_district
-        if ($this->isSuperAdmin()) {
-            return $targetRole === self::ROLE_ADMIN_DISTRICT;
-        }
-        
-        // Admin District : UNIQUEMENT user_district
-        if ($this->isAdminDistrict()) {
-            return $targetRole === self::ROLE_USER_DISTRICT;
-        }
-        
-        // Central User et User District : RIEN
-        return false;
-    }
-
-    /**
-     * Peut modifier un utilisateur spécifique
-     */
-    public function canEditUser(User $targetUser): bool
-    {
-        if (!$this->canManageUsers()) {
-            return false;
-        }
-
-        // Ne peut pas se modifier soi-même via cette interface
-        if ($targetUser->id === $this->id) {
-            return false;
-        }
-
-        // Super Admin peut modifier les admin_district
-        if ($this->isSuperAdmin()) {
-            return $targetUser->role === self::ROLE_ADMIN_DISTRICT;
-        }
-
-        // Admin District peut modifier les user_district de son district
-        if ($this->isAdminDistrict()) {
-            return $targetUser->role === self::ROLE_USER_DISTRICT
-                && $targetUser->id_district === $this->id_district;
-        }
-
-        return false;
-    }
-
-    /**
-     * Peut supprimer un utilisateur
-     * ✅ Super Admin UNIQUEMENT
-     */
-    public function canDeleteUser(User $targetUser): bool
-    {
-        if (!$this->status || $targetUser->id === $this->id) {
-            return false;
-        }
-
-        // Seul Super Admin peut supprimer
-        return $this->isSuperAdmin();
-    }
+   
 
     // ============ CONFIGURATION & DOCUMENTS ============
 
@@ -751,40 +690,6 @@ class User extends Authenticatable
         return true;
     }
 
-    public static function getAvailableRoles(?User $forUser = null): array
-    {
-        $allRoles = [
-            self::ROLE_SUPER_ADMIN => 'Super Administrateur',
-            self::ROLE_CENTRAL_USER => 'Utilisateur Central',
-            self::ROLE_ADMIN_DISTRICT => 'Administrateur District',
-            self::ROLE_USER_DISTRICT => 'Utilisateur District',
-        ];
-
-        if (!$forUser) {
-            return $allRoles;
-        }
-
-        if ($forUser->isSuperAdmin()) {
-            // Super admin ne peut créer que des admin_district
-            return [
-                self::ROLE_ADMIN_DISTRICT => 'Administrateur District',
-            ];
-        }
-
-        if ($forUser->isAdminDistrict()) {
-            // Admin district ne peut créer que des user_district
-            return [
-                self::ROLE_USER_DISTRICT => 'Utilisateur District',
-            ];
-        }
-
-        return [];
-    }
-
-    // public function getRoleLabel(): string
-    // {
-    //     return $this->role_name;
-    // }
 
     /**
      * Vérifier si l'utilisateur peut accéder à la recherche avancée
@@ -811,5 +716,157 @@ class User extends Authenticatable
     public function canAccessAllDistricts(): bool
     {
         return $this->role === 'super_admin' || $this->role === 'central_user';
+    }
+
+    /**
+     * Vérifie quel type d'utilisateur peut être créé
+     * Super Admin : super_admin, central_user, admin_district
+     * Admin District : UNIQUEMENT user_district de son district
+     */
+    public function canCreateUserRole(string $targetRole): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ✅ Super Admin : peut créer super_admin, central_user, admin_district
+        if ($this->isSuperAdmin()) {
+            return in_array($targetRole, [
+                self::ROLE_SUPER_ADMIN,
+                self::ROLE_CENTRAL_USER,
+                self::ROLE_ADMIN_DISTRICT,
+            ]);
+        }
+        
+        // ✅ Admin District : UNIQUEMENT user_district
+        if ($this->isAdminDistrict()) {
+            return $targetRole === self::ROLE_USER_DISTRICT;
+        }
+        
+        // ❌ Central User et User District : RIEN
+        return false;
+    }
+
+   /**
+     * Peut modifier un utilisateur spécifique
+     * Super Admin peut modifier : super_admin, central_user, admin_district (PAS user_district)
+     * Admin District peut modifier : user_district de son district
+     */
+    public function canEditUser(User $targetUser): bool
+    {
+        if (!$this->canManageUsers()) {
+            return false;
+        }
+
+        // Ne peut pas se modifier soi-même via cette interface
+        if ($targetUser->id === $this->id) {
+            return false;
+        }
+
+        // ✅ Super Admin peut modifier super_admin, central_user, admin_district
+        // ❌ Super Admin NE PEUT PAS modifier user_district (juste consulter)
+        if ($this->isSuperAdmin()) {
+            return in_array($targetUser->role, [
+                self::ROLE_SUPER_ADMIN,
+                self::ROLE_CENTRAL_USER,
+                self::ROLE_ADMIN_DISTRICT,
+            ]);
+        }
+
+        // ✅ Admin District peut modifier les user_district de son district
+        if ($this->isAdminDistrict()) {
+            return $targetUser->role === self::ROLE_USER_DISTRICT
+                && $targetUser->id_district === $this->id_district;
+        }
+
+        return false;
+    }
+
+    /**
+     * Peut supprimer un utilisateur
+     * ✅ Super Admin peut supprimer : super_admin, central_user, admin_district
+     * ❌ Super Admin NE PEUT PAS supprimer : user_district (juste consulter)
+     * ✅ Admin District peut supprimer : user_district de son district
+     */
+    public function canDeleteUser(User $targetUser): bool
+    {
+        if (!$this->status || $targetUser->id === $this->id) {
+            return false;
+        }
+
+        // ✅ Super Admin peut supprimer super_admin, central_user, admin_district
+        // ❌ Super Admin NE PEUT PAS supprimer user_district (juste consulter)
+        if ($this->isSuperAdmin()) {
+            return in_array($targetUser->role, [
+                self::ROLE_SUPER_ADMIN,
+                self::ROLE_CENTRAL_USER,
+                self::ROLE_ADMIN_DISTRICT,
+            ]);
+        }
+
+        // ✅ Admin District peut supprimer user_district de son district
+        if ($this->isAdminDistrict()) {
+            return $targetUser->role === self::ROLE_USER_DISTRICT
+                && $targetUser->id_district === $this->id_district;
+        }
+
+        return false;
+    }
+    /**
+     * Peut voir la liste de TOUS les utilisateurs (pour consultation)
+     * ✅ Super Admin peut voir : super_admin, central_user, admin_district, user_district
+     * ✅ Central User peut voir : tous (lecture seule)
+     * ✅ Admin District peut voir : user_district de son district
+     */
+    public function canViewUser(User $targetUser): bool
+    {
+        if (!$this->status) {
+            return false;
+        }
+
+        // ✅ Super Admin et Central User peuvent tout voir (consultation)
+        if ($this->isSuperAdmin() || $this->isCentralUser()) {
+            return true;
+        }
+
+        // ✅ Admin District peut voir les user_district de son district
+        if ($this->isAdminDistrict()) {
+            return $targetUser->role === self::ROLE_USER_DISTRICT
+                && $targetUser->id_district === $this->id_district;
+        }
+
+        return false;
+    }
+
+    public static function getAvailableRoles(?User $forUser = null): array
+    {
+        $allRoles = [
+            self::ROLE_SUPER_ADMIN => 'Super Administrateur',
+            self::ROLE_CENTRAL_USER => 'Utilisateur Central',
+            self::ROLE_ADMIN_DISTRICT => 'Administrateur District',
+            self::ROLE_USER_DISTRICT => 'Utilisateur District',
+        ];
+
+        if (!$forUser) {
+            return $allRoles;
+        }
+
+        if ($forUser->isSuperAdmin()) {
+            // ✅ Super admin peut créer super_admin, central_user, admin_district
+            return [
+                self::ROLE_SUPER_ADMIN => 'Super Administrateur',
+                self::ROLE_CENTRAL_USER => 'Utilisateur Central',
+                self::ROLE_ADMIN_DISTRICT => 'Administrateur District',
+            ];
+        }
+
+        if ($forUser->isAdminDistrict()) {
+            // ✅ Admin district ne peut créer que des user_district
+            return [
+                self::ROLE_USER_DISTRICT => 'Utilisateur District',
+            ];
+        }
+
+        return [];
     }
 }

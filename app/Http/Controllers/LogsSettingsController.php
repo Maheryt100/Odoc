@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\SystemSettings;
 use App\Services\ActivityLogsExportService;
+use App\Services\LogCleanupService; // ✅ NOUVEAU
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,15 +17,16 @@ use Carbon\Carbon;
 class LogsSettingsController extends Controller
 {
     private ActivityLogsExportService $exportService;
+    private LogCleanupService $cleanupService; // ✅ NOUVEAU
 
-    public function __construct(ActivityLogsExportService $exportService)
-    {
-
+    public function __construct(
+        ActivityLogsExportService $exportService,
+        LogCleanupService $cleanupService // ✅ NOUVEAU
+    ) {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            
-        /** @var User $user */
-        $user = Auth::user();
+            /** @var User $user */
+            $user = Auth::user();
             if (!$user->isSuperAdmin()) {
                 abort(403, 'Seuls les Super Admins peuvent accéder aux paramètres des logs.');
             }
@@ -32,10 +34,11 @@ class LogsSettingsController extends Controller
         });
 
         $this->exportService = $exportService;
+        $this->cleanupService = $cleanupService; // ✅ NOUVEAU
     }
 
     /**
-     * Afficher les paramètres des logs
+     * Afficher les paramètres des logs avec détection de surcharge
      */
     public function index()
     {
@@ -50,31 +53,40 @@ class LogsSettingsController extends Controller
             'last_export' => SystemSettings::getLastExport(),
             'last_auto_check' => SystemSettings::getLastAutoCheck(),
             'next_cleanup_date' => SystemSettings::getNextCleanupDate()?->format('Y-m-d H:i:s'),
-
         ];
 
-        // Statistiques à 3 niveaux
-        $now = now();
-        $cutoffActive = $now->copy()->subDays($retentionDays);
-        $cutoffArchive = $now->copy()->subDays($retentionDays * 2);
+        // ✅ Statistiques détaillées avec détection de surcharge simplifiée
+        $detailedStats = $this->cleanupService->getDetailedStats();
+        $overloadStatus = $this->cleanupService->checkOverloadStatus();
         
         $statistics = [
-            // Niveau 1 : Logs actifs (0-90j)
-            'active_logs' => ActivityLog::where('created_at', '>=', $cutoffActive)->count(),
+            // Logs actifs (0-retention)
+            'active_logs' => $detailedStats['active_logs'],
             
-            // Niveau 2 : Logs à archiver (91-180j)
-            'logs_to_archive' => ActivityLog::whereBetween('created_at', [$cutoffArchive, $cutoffActive])->count(),
+            // Logs archivables (> retention)
+            'logs_to_archive' => $detailedStats['archivable_logs'],
+            
+            // Logs basse priorité
+            'low_priority_logs' => $detailedStats['low_priority_logs'],
             
             // Total en BDD
-            'total_logs' => ActivityLog::count(),
+            'total_logs' => $detailedStats['total_logs'],
+            
+            // Seuil configuré
+            'max_logs' => $detailedStats['max_logs'],
             
             // Dates
-            'oldest_log' => ActivityLog::oldest()->first()?->created_at?->format('d/m/Y H:i'),
-            'newest_log' => ActivityLog::latest()->first()?->created_at?->format('d/m/Y H:i'),
+            'oldest_log' => $detailedStats['oldest_log'],
+            'newest_log' => $detailedStats['newest_log'],
             
-            // Périodes
-            'active_period' => "0-{$retentionDays} jours",
-            'archive_period' => ($retentionDays + 1) . "-" . ($retentionDays * 2) . " jours",
+            // Période de rétention
+            'retention_days' => $detailedStats['retention_days'],
+            
+            // Par action
+            'by_action' => $detailedStats['by_action'],
+            
+            // ✅ Statut de surcharge simplifié
+            'overload_status' => $overloadStatus,
         ];
 
         // Exports disponibles avec distinction auto/manuel
@@ -88,7 +100,7 @@ class LogsSettingsController extends Controller
     }
 
     /**
-     * Mettre à jour les paramètres
+     * Mettre à jour les paramètres (avec seuil max_logs configurable)
      */
     public function update(Request $request)
     {
@@ -97,19 +109,24 @@ class LogsSettingsController extends Controller
             'retention_days' => 'required|integer|min:30|max:365',
             'cleanup_frequency' => 'required|in:daily,weekly,monthly',
             'auto_export_before_delete' => 'required|boolean',
+            'max_logs' => 'nullable|integer|min:100000|max:2000000', // ✅ NOUVEAU
         ]);
 
         SystemSettings::set('logs_auto_delete_enabled', $validated['auto_delete_enabled'], 'boolean');
         SystemSettings::set('logs_retention_days', $validated['retention_days'], 'integer');
         SystemSettings::set('logs_cleanup_frequency', $validated['cleanup_frequency']);
         SystemSettings::set('logs_auto_export_before_delete', $validated['auto_export_before_delete'], 'boolean');
+        
+        // ✅ NOUVEAU : Seuil max configurable
+        if (isset($validated['max_logs'])) {
+            SystemSettings::set('logs_max_count', $validated['max_logs'], 'integer');
+        }
 
         return back()->with('success', 'Paramètres mis à jour avec succès.');
     }
 
     /**
      * Exporter manuellement avec période personnalisée
-     * PAS de suppression des logs après export manuel
      */
     public function export(Request $request)
     {
@@ -133,10 +150,17 @@ class LogsSettingsController extends Controller
                 return back()->with('error', "Erreur lors de l'export : " . ($result['error'] ?? 'Erreur inconnue'));
             }
 
-            // Vérifier que le fichier existe
+            // ✅ CORRECTION : Vérifier le chemin complet
             $filePath = storage_path('app/' . $result['path']);
+            
             if (!file_exists($filePath)) {
-                return back()->with('error', 'Export créé mais fichier introuvable.');
+                Log::error('Fichier export introuvable', [
+                    'path' => $result['path'],
+                    'full_path' => $filePath,
+                    'storage_path' => storage_path('app/pieces_jointes/logs/'),
+                ]);
+                
+                return back()->with('error', 'Export créé mais fichier introuvable : ' . $result['path']);
             }
 
             Log::info('Export manuel des logs', [
@@ -144,19 +168,29 @@ class LogsSettingsController extends Controller
                 'filename' => $result['filename'],
                 'period' => $dateFrom->format('Y-m-d') . ' to ' . $dateTo->format('Y-m-d'),
                 'user_id' => Auth::id(),
+                'file_path' => $filePath,
+                'file_exists' => file_exists($filePath),
+                'file_size' => file_exists($filePath) ? filesize($filePath) : 0,
             ]);
 
-            // Télécharger le fichier
+            // ✅ CORRECTION : Utiliser response()->download() correctement
             return response()->download(
                 $filePath,
                 $result['filename'],
-                ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+                [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Disposition' => 'attachment; filename="' . $result['filename'] . '"',
+                    'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                    'Pragma' => 'public',
+                ]
             )->deleteFileAfterSend(false);
 
         } catch (\Exception $e) {
             Log::error('Erreur export manuel logs', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
             ]);
 
             return back()->with('error', "Erreur : " . $e->getMessage());
@@ -169,30 +203,57 @@ class LogsSettingsController extends Controller
     public function download(string $filename)
     {
         try {
-            // Sécurité : vérifier le format du nom de fichier
+            // ✅ CORRECTION : Validation stricte du nom de fichier
             if (!preg_match('/^activity_logs_(auto|manual)_.+\.xlsx$/', $filename)) {
+                Log::warning('Tentative téléchargement fichier invalide', [
+                    'filename' => $filename,
+                    'user_id' => Auth::id(),
+                ]);
                 return back()->with('error', 'Nom de fichier invalide.');
             }
 
+            // ✅ CORRECTION : Chemin absolu complet
             $path = storage_path('app/pieces_jointes/logs/' . $filename);
 
             if (!file_exists($path)) {
-                return back()->with('error', 'Fichier introuvable.');
+                Log::warning('Fichier export introuvable', [
+                    'filename' => $filename,
+                    'path' => $path,
+                    'user_id' => Auth::id(),
+                    'storage_exists' => is_dir(storage_path('app/pieces_jointes/logs/')),
+                ]);
+                return back()->with('error', 'Fichier introuvable : ' . $filename);
             }
 
+            Log::info('Téléchargement export', [
+                'filename' => $filename,
+                'path' => $path,
+                'size' => filesize($path),
+                'user_id' => Auth::id(),
+            ]);
+
+            // ✅ CORRECTION : Headers complets pour forcer le téléchargement
             return response()->download(
                 $path,
                 $filename,
-                ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+                [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                    'Content-Length' => filesize($path),
+                    'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                    'Pragma' => 'public',
+                    'Expires' => '0',
+                ]
             );
 
         } catch (\Exception $e) {
             Log::error('Erreur téléchargement export', [
                 'filename' => $filename,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->with('error', 'Erreur lors du téléchargement.');
+            return back()->with('error', 'Erreur lors du téléchargement : ' . $e->getMessage());
         }
     }
 
@@ -202,9 +263,8 @@ class LogsSettingsController extends Controller
     public function deleteExport(string $filename)
     {
         try {
-            // Vérifier si c'est un export automatique
             if (strpos($filename, '_auto_') !== false) {
-                return back()->with('error', 'Les exports automatiques ne peuvent pas être supprimés. Ils sont protégés pour la sécurité.');
+                return back()->with('error', 'Les exports automatiques ne peuvent pas être supprimés.');
             }
 
             if ($this->exportService->deleteExport($filename)) {
@@ -223,71 +283,122 @@ class LogsSettingsController extends Controller
         }
     }
 
-    /**
-     * Nettoyer les logs obsolètes (archivage automatique)
-     * Export des logs de 91j à 180j, puis suppression
-     */
     public function cleanup(Request $request)
     {
         try {
-            DB::beginTransaction();
-
-            $retentionDays = SystemSettings::getRetentionDays();
-            $dateFrom = now()->subDays($retentionDays * 2);
-            $dateTo = now()->subDays($retentionDays + 1);
+            // Vérifier l'état de surcharge
+            $overloadStatus = $this->cleanupService->checkOverloadStatus();
             
-            // Récupérer les logs à archiver (91-180j)
-            $logsToArchive = ActivityLog::whereBetween('created_at', [$dateFrom, $dateTo])->get();
-            $count = $logsToArchive->count();
-
-            if ($count === 0) {
-                return back()->with('info', 'Aucun log à archiver pour le moment.');
+            // Nettoyage d'urgence si critique
+            if ($overloadStatus['severity'] === 'critical') {
+                $result = $this->cleanupService->emergencyCleanup();
+                
+                if ($result['success']) {
+                    return back()->with('warning', $result['message']);
+                }
+                
+                return back()->with('error', $result['error']);
             }
-
-            // Export automatique
-            $result = $this->exportService->export(isAutoExport: true);
-
-            if (!$result['success']) {
-                DB::rollBack();
-                return back()->with('error', "Erreur lors de l'archivage : " . ($result['error'] ?? 'Erreur inconnue'));
+            
+            // Nettoyage standard
+            $result = $this->cleanupService->standardCleanup();
+            
+            if ($result['success']) {
+                return back()->with('success', $result['message']);
             }
-
-            // Suppression des logs archivés
-            $logsIds = $logsToArchive->pluck('id')->toArray();
-            foreach (array_chunk($logsIds, 100) as $chunk) {
-                ActivityLog::whereIn('id', $chunk)->delete();
-            }
-
-            // Nettoyer les anciens exports automatiques (garder 12)
-            $this->exportService->cleanOldAutoExports();
-
-            SystemSettings::updateLastCleanup();
-
-            Log::info('Archivage automatique des logs', [
-                'archived' => $count,
-                'filename' => $result['filename'],
-                'retention_days' => $retentionDays,
-                'user_id' => Auth::id(),
-            ]);
-
-            DB::commit();
-
-            return back()->with('success', "{$count} logs archivés avec succès. Les logs actifs (0-{$retentionDays}j) sont conservés en BDD.");
+            
+            return back()->with('error', $result['error']);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Erreur archivage automatique logs', [
+            Log::error('Erreur nettoyage logs', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return back()->with('error', 'Erreur lors de l\'archivage : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors du nettoyage : ' . $e->getMessage());
         }
     }
 
     /**
-     * Prévisualiser les logs à archiver
+     * ✅ NOUVEAU : Suppression manuelle de logs spécifiques par IDs
+     */
+    public function deleteManually(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'log_ids' => 'required|array|min:1|max:10000',
+                'log_ids.*' => 'required|integer|exists:activity_logs,id',
+                'export_before_delete' => 'nullable|boolean',
+            ]);
+
+            $result = $this->cleanupService->deleteManually(
+                $validated['log_ids'],
+                $validated['export_before_delete'] ?? true
+            );
+
+            if ($result['success']) {
+                return back()->with('success', $result['message']);
+            }
+
+            return back()->with('error', $result['error']);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur suppression manuelle', [
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->with('error', 'Erreur lors de la suppression.');
+        }
+    }
+
+    /**
+     * ✅ NOUVEAU : Suppression manuelle par filtres (date, action, utilisateur...)
+     */
+    public function deleteByFilters(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date|after_or_equal:date_from',
+                'actions' => 'nullable|array',
+                'actions.*' => 'required|string',
+                'user_id' => 'nullable|integer|exists:users,id',
+                'district_id' => 'nullable|integer|exists:districts,id',
+                'entity_type' => 'nullable|string',
+                'export_before_delete' => 'nullable|boolean',
+            ]);
+
+            $filters = array_filter([
+                'date_from' => $validated['date_from'] ?? null,
+                'date_to' => $validated['date_to'] ?? null,
+                'actions' => $validated['actions'] ?? null,
+                'user_id' => $validated['user_id'] ?? null,
+                'district_id' => $validated['district_id'] ?? null,
+                'entity_type' => $validated['entity_type'] ?? null,
+            ]);
+
+            $result = $this->cleanupService->deleteByFilters(
+                $filters,
+                $validated['export_before_delete'] ?? true
+            );
+
+            if ($result['success']) {
+                return back()->with('success', $result['message']);
+            }
+
+            return back()->with('error', $result['error']);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur suppression par filtres', [
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->with('error', 'Erreur lors de la suppression.');
+        }
+    }
+
+    /**
+     * ✅ Nettoyage selon le niveau de surcharge (automatique/standard)
      */
     public function previewCleanup()
     {
