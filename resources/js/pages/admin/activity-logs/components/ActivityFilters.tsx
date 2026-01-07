@@ -1,4 +1,4 @@
-// pages/admin/activity-logs/components/ActivityFilters.tsx - VERSION CORRIGÉE
+// pages/admin/activity-logs/components/ActivityFilters.tsx
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,7 +28,7 @@ interface ActivityFiltersProps {
     filteredCount: number;
     
     onClearFilters: () => void;
-    onApplyFilters: () => void; // ✅ MAINTENANT FONCTIONNEL
+    onApplyFilters: () => void; 
 }
 
 export default function ActivityFilters({
@@ -100,7 +100,6 @@ export default function ActivityFilters({
         dateTo !== ''
     ].filter(Boolean).length;
 
-    // ✅ CORRECTION : Appliquer les filtres avec Enter
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -108,7 +107,6 @@ export default function ActivityFilters({
         }
     };
 
-    // ✅ CORRECTION : Gestion du changement de recherche avec debounce
     const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
     
     const handleSearchChange = (value: string) => {
@@ -175,7 +173,7 @@ export default function ActivityFilters({
                         )}
                     </Button>
 
-                    {/* ✅ Bouton Appliquer toujours visible si filtres actifs */}
+                    {/* Bouton Appliquer toujours visible si filtres actifs */}
                     {hasActiveFilters && (
                         <Button
                             onClick={onApplyFilters}

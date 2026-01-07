@@ -17,11 +17,11 @@ import { Toaster } from '@/components/ui/sonner';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Paramètres',
-        href: route('settings.profile.edit'), // ✅ Corrigé
+        href: route('settings.profile.edit'),
     },
     {
         title: 'Profil',
-        href: route('settings.profile.edit'), // ✅ Corrigé
+        href: route('settings.profile.edit'),
     },
 ];
 

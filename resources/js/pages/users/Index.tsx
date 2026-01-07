@@ -1,4 +1,4 @@
-// pages/users/Index.tsx - AVEC NETTOYAGE DIALOG
+// pages/users/Index.tsx 
 import { useState, useEffect, useCallback } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
@@ -39,14 +39,14 @@ export default function UsersIndex({
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
     
-    // ✅ Dialogues
+    //  Dialogues
     const [deleteUser, setDeleteUser] = useState<User | null>(null);
     const [toggleStatusUser, setToggleStatusUser] = useState<User | null>(null);
     
-    // ✅ Hook de nettoyage pour forcer le cleanup
+    //  Hook de nettoyage pour forcer le cleanup
     const forceCleanup = useForceDialogCleanup();
     
-    // ✅ Nettoyage global au démontage du composant
+    // Nettoyage global au démontage du composant
     useEffect(() => {
         return () => {
             forceCleanup();
@@ -81,23 +81,23 @@ export default function UsersIndex({
         setCurrentPage(1);
     }, []);
 
-    // ✅ Handler pour toggle status avec cleanup
+    //  Handler pour toggle status avec cleanup
     const handleToggleStatus = useCallback((user: User) => {
         router.post(`/users/${user.id}/toggle-status`, {}, {
             preserveScroll: true,
             onFinish: () => {
-                // ✅ Force le nettoyage après la requête Inertia
+                // Force le nettoyage après la requête Inertia
                 setTimeout(() => forceCleanup(), 100);
             }
         });
     }, [forceCleanup]);
 
-    // ✅ Handler pour suppression avec cleanup
+    // Handler pour suppression avec cleanup
     const handleDelete = useCallback((user: User) => {
         router.delete(`/users/${user.id}`, {
             preserveScroll: true,
             onFinish: () => {
-                // ✅ Force le nettoyage après la requête Inertia
+                //  Force le nettoyage après la requête Inertia
                 setTimeout(() => forceCleanup(), 100);
             }
         });
@@ -219,7 +219,7 @@ export default function UsersIndex({
                 </Card>
             </div>
 
-            {/* ✅ Dialogues - Laisser Inertia gérer la fermeture après succès */}
+            {/* Dialogues - Laisser Inertia gérer la fermeture après succès */}
             <ToggleStatusDialog
                 user={toggleStatusUser}
                 onClose={() => setToggleStatusUser(null)}

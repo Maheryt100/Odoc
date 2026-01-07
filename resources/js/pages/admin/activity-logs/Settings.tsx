@@ -44,6 +44,7 @@ interface LogsSettingsProps {
         low_priority_logs: number;
         total_logs: number;
         max_logs: number;
+        db_size_mb: number; // ✅ NOUVEAU
         oldest_log: string;
         newest_log: string;
         retention_days: number;
@@ -66,6 +67,9 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
     
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    
+    // ✅ NOUVEAU : États pour l'export avec filtre par action
+    const [exportActions, setExportActions] = useState<string[]>([]);
     
     // États pour suppression manuelle
     const [deleteFilters, setDeleteFilters] = useState({
@@ -101,13 +105,18 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
         if (isExporting || !dateFrom || !dateTo) return;
         setIsExporting(true);
         router.post('/admin/activity-logs/export', 
-            { date_from: dateFrom, date_to: dateTo }, 
+            { 
+                date_from: dateFrom, 
+                date_to: dateTo,
+                actions: exportActions.length > 0 ? exportActions : undefined, // ✅ NOUVEAU
+            }, 
             {
                 preserveScroll: true,
                 onFinish: () => {
                     setIsExporting(false);
                     setDateFrom('');
                     setDateTo('');
+                    setExportActions([]); // ✅ NOUVEAU
                 }
             }
         );
@@ -177,6 +186,15 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
                 ? prev.actions.filter(a => a !== action)
                 : [...prev.actions, action]
         }));
+    };
+
+    // ✅ NOUVEAU : Toggle action pour l'export
+    const toggleExportAction = (action: string) => {
+        setExportActions(prev => 
+            prev.includes(action)
+                ? prev.filter(a => a !== action)
+                : [...prev, action]
+        );
     };
 
     return (
@@ -260,25 +278,20 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600">
-                                    {statistics.active_logs.toLocaleString()}
-                                </div>
-                                <p className="text-xs text-muted-foreground">Logs actifs (0-{data.retention_days}j)</p>
+                        {/* Taille en BDD */}
+                        <div className="pt-3 border-t">
+                            <div className="flex items-center justify-between mb-2">
+                                <Label className="text-sm font-medium flex items-center gap-2">
+                                    <HardDrive className="h-4 w-4" />
+                                    Taille en base de données
+                                </Label>
+                                <Badge variant="outline" className="font-mono">
+                                    {statistics.db_size_mb} MB
+                                </Badge>
                             </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-orange-600">
-                                    {statistics.logs_to_archive.toLocaleString()}
-                                </div>
-                                <p className="text-xs text-muted-foreground">À archiver (&gt; {data.retention_days}j)</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-blue-600">
-                                    {autoExports.length}
-                                </div>
-                                <p className="text-xs text-muted-foreground">Archives protégées</p>
-                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Espace occupé par la table activity_logs
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
@@ -367,6 +380,9 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
                             <CalendarRange className="h-5 w-5" />
                             Export Manuel
                         </CardTitle>
+                        <CardDescription>
+                            Exporter des logs d'une période spécifique (sans suppression)
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
@@ -379,9 +395,55 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
                                 <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined} />
                             </div>
                         </div>
+
+                        {/* ✅ NOUVEAU : Filtre par actions */}
+                        <div className="space-y-2">
+                            <Label className="flex items-center justify-between">
+                                <span>Filtrer par actions (optionnel)</span>
+                                {exportActions.length > 0 && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {exportActions.length} action{exportActions.length > 1 ? 's' : ''} sélectionnée{exportActions.length > 1 ? 's' : ''}
+                                    </span>
+                                )}
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2 p-3 border rounded-lg bg-muted/30 max-h-48 overflow-y-auto">
+                                {Object.entries(statistics.by_action).map(([action, count]) => (
+                                    <div key={action} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            checked={exportActions.includes(action)}
+                                            onCheckedChange={() => toggleExportAction(action)}
+                                        />
+                                        <label className="text-sm cursor-pointer" onClick={() => toggleExportAction(action)}>
+                                            {action} <span className="text-muted-foreground">({count})</span>
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                            {exportActions.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setExportActions([])}
+                                    className="w-full"
+                                >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Effacer la sélection
+                                </Button>
+                            )}
+                        </div>
+
+                        <Alert className="border-blue-200 bg-blue-50/50">
+                            <Info className="h-4 w-4 text-blue-600" />
+                            <AlertDescription className="text-xs text-blue-900">
+                                L'export inclura {exportActions.length > 0 
+                                    ? `uniquement les actions sélectionnées (${exportActions.length})` 
+                                    : 'toutes les actions'} pour la période choisie.
+                            </AlertDescription>
+                        </Alert>
+
                         <Button onClick={handleManualExport} disabled={isExporting || !dateFrom || !dateTo} variant="outline" className="w-full">
                             {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-2" />}
-                            Exporter
+                            Exporter {exportActions.length > 0 && `(${exportActions.length} action${exportActions.length > 1 ? 's' : ''})`}
                         </Button>
                     </CardContent>
                 </Card>

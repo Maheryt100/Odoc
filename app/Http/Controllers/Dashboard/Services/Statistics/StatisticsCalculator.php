@@ -51,7 +51,7 @@ class StatisticsCalculator
     }
     
     /**
-     * ✅ MISE À JOUR : Stats propriétés avec min/max et lots
+     * Stats propriétés avec min/max et lots
      */
     public function getProprietesStats(array $dates): array
     {
@@ -94,7 +94,7 @@ class StatisticsCalculator
         $superficieTotale = $proprietes->sum('contenance') ?? 0;
         $total = $proprietes->count();
         
-        // ✅ CALCUL MIN/MAX avec lots
+        // CALCUL MIN/MAX avec lots
         $proprietesAvecContenance = $proprietes->where('contenance', '>', 0);
         
         $superficieMax = 0;
@@ -123,10 +123,10 @@ class StatisticsCalculator
             'sans_demande' => $sansDemande,
             'superficie_totale' => $superficieTotale,
             'superficie_moyenne' => $total > 0 ? round($proprietes->avg('contenance'), 2) : 0,
-            'superficie_max' => $superficieMax, // ✅ NOUVEAU
-            'superficie_min' => $superficieMin, // ✅ NOUVEAU
-            'lot_max' => $lotMax, // ✅ NOUVEAU
-            'lot_min' => $lotMin, // ✅ NOUVEAU
+            'superficie_max' => $superficieMax, 
+            'superficie_min' => $superficieMin, 
+            'lot_max' => $lotMax,
+            'lot_min' => $lotMin, 
             'pourcentage_disponibles' => $total > 0 ? round(($disponiblesCount / $total) * 100, 1) : 0,
             'pourcentage_disponibles_superficie' => $superficieTotale > 0 ? round(($disponiblesSuperficie / $superficieTotale) * 100, 1) : 0,
             'pourcentage_acquises' => $total > 0 ? round(($acquisesCount / $total) * 100, 1) : 0,
@@ -203,7 +203,6 @@ class StatisticsCalculator
         $demandeurs = (clone $query)->get();
         $total = $demandeurs->count();
         
-        // FIX: Utiliser la relation demandes au lieu de proprietes
         $avecPropriete = (clone $query)
             ->whereHas('demandes')
             ->count();
@@ -614,7 +613,7 @@ class StatisticsCalculator
     }
 
     /**
-     * ✅ CORRECTION : Méthode avec 2 paramètres
+     * Méthode avec 2 paramètres
      * 
      * @param int $current Valeur actuelle
      * @param int $previous Valeur précédente

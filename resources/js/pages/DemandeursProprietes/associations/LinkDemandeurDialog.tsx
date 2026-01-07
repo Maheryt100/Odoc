@@ -1,4 +1,4 @@
-// associations/LinkDemandeurDialog.tsx - ✅ AVEC DATE_DEMANDE
+// associations/LinkDemandeurDialog.tsx 
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -31,7 +31,7 @@ export function LinkDemandeurDialog({
     const [selectedDemandeur, setSelectedDemandeur] = useState<Demandeur | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // ✅ NOUVEAU : État pour date_demande
+    // État pour date_demande
     const today = new Date().toISOString().split('T')[0];
     const [dateDemande, setDateDemande] = useState<string>(today);
     const [dateDemandeError, setDateDemandeError] = useState<string>('');
@@ -64,7 +64,7 @@ export function LinkDemandeurDialog({
         );
     });
 
-    // ✅ NOUVEAU : Validation date_demande avec cohérence date_requisition
+    // Validation date_demande avec cohérence date_requisition
     const handleDateDemandeChange = (newDate: string) => {
         setDateDemande(newDate);
         
@@ -77,8 +77,8 @@ export function LinkDemandeurDialog({
             setDateDemandeError('La date ne peut pas être antérieure au 01/01/2020');
             return;
         }
-        
-        // ✅ Vérifier cohérence avec date_requisition
+    
+        //  Vérifier cohérence avec date_requisition
         if (propriete.date_requisition) {
             const dateRequisition = new Date(propriete.date_requisition);
             if (new Date(newDate) < dateRequisition) {
@@ -90,7 +90,7 @@ export function LinkDemandeurDialog({
         setDateDemandeError('');
     };
 
-    // ✅ MISE À JOUR : Soumission avec date_demande
+    // Soumission avec date_demande
     const handleSubmit = () => {
         if (!selectedDemandeur) {
             toast.error('Veuillez sélectionner un demandeur');
@@ -108,7 +108,7 @@ export function LinkDemandeurDialog({
             id_demandeur: selectedDemandeur.id,
             id_propriete: propriete.id,
             id_dossier: dossierId,
-            date_demande: dateDemande, // ✅ NOUVEAU
+            date_demande: dateDemande, 
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -161,7 +161,7 @@ export function LinkDemandeurDialog({
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto space-y-4">
-                    {/* ✅ NOUVEAU : Section Date de demande */}
+                    {/*Section Date de demande */}
                     <div className="sticky top-0 bg-background pb-4 border-b z-10">
                         <DatePickerDemande
                             value={dateDemande}

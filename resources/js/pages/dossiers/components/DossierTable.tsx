@@ -1,4 +1,4 @@
-// DossierTable.tsx - ✅ VERSION AVEC PROTECTION BOUTON DOCUMENTS
+// DossierTable.tsx 
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -167,7 +167,7 @@ export default function DossierTable({
                                         </div>
                                     </div>
 
-                                    {/* ✅ Menu actions avec protection Documents */}
+                                    {/* Menu actions avec protection Documents */}
                                     <DossierActions 
                                         dossier={dossier} 
                                         permissions={permissions} 
@@ -307,7 +307,7 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                 
                 <DropdownMenuSeparator />
                 
-                {/* ✅ BOUTON DOCUMENTS AVEC PROTECTION */}
+                {/* BOUTON DOCUMENTS AVEC PROTECTION */}
                 {permissions.canGenerateDocuments ? (
                     <DropdownMenuItem asChild>
                         <Link href={route('documents.generate', dossier.id)} className="flex items-center text-sm">

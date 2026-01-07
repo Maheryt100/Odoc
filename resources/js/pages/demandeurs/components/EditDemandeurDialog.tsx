@@ -30,7 +30,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import type { DemandeurWithProperty } from '../types';
-import { useDialogCleanup } from '@/hooks/useDialogCleanup'; // ✅ Import du hook
+import { useDialogCleanup } from '@/hooks/useDialogCleanup'; 
 
 interface EditDemandeurDialogProps {
     demandeur: DemandeurWithProperty | null;
@@ -100,10 +100,10 @@ export default function EditDemandeurDialog({
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // ✅ Utilisation du hook pour le cleanup
+    // Utilisation du hook pour le cleanup
     useDialogCleanup(open);
 
-    // ✅ Charger les données quand le dialogue s'ouvre
+    //  Charger les données quand le dialogue s'ouvre
     useEffect(() => {
         if (open && demandeur) {
             const formatDate = (date: string | null | undefined): string => {
@@ -195,7 +195,7 @@ export default function EditDemandeurDialog({
                     onOpenChange(false);
                 },
                 onError: (errors) => {
-                    console.error('❌ Erreurs de validation:', errors);
+                    console.error('Erreurs de validation:', errors);
                     setErrors(errors);
                     toast.error('Erreur de validation', {
                         description: Object.values(errors)[0] as string

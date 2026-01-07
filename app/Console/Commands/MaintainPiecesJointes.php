@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Services\UploadService;
 use App\Models\PieceJointe;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class MaintainPiecesJointes extends Command
@@ -43,16 +43,16 @@ class MaintainPiecesJointes extends Command
             }
 
             $this->newLine();
-            $this->info('✅ Maintenance terminée avec succès');
+            $this->info('Maintenance terminée avec succès');
 
             return self::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error('❌ Erreur: ' . $e->getMessage());
-            Log::error('Erreur maintenance pièces jointes', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->error('Erreur: ' . $e->getMessage());
+            // Log::error('Erreur maintenance pièces jointes', [
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString(),
+            // ]);
             return self::FAILURE;
         }
     }
@@ -67,7 +67,7 @@ class MaintainPiecesJointes extends Command
 
     private function showStats(): void
     {
-        $this->info('📊 Statistiques des pièces jointes:');
+        $this->info('Statistiques des pièces jointes:');
         $this->newLine();
         
         $total = PieceJointe::count();
@@ -87,7 +87,7 @@ class MaintainPiecesJointes extends Command
 
         // Statistiques par catégorie
         $this->newLine();
-        $this->info('📁 Par catégorie:');
+        $this->info('Par catégorie:');
         
         $categorieStats = PieceJointe::selectRaw('categorie, COUNT(*) as count')
             ->groupBy('categorie')
@@ -101,7 +101,7 @@ class MaintainPiecesJointes extends Command
         $this->newLine();
         $stats = UploadService::getStorageStats();
         
-        $this->info('💾 Stockage:');
+        $this->info('Stockage:');
         $this->line("   Taille totale: {$stats['total_size_formatted']}");
         
         if (isset($stats['by_categorie']) && count($stats['by_categorie']) > 0) {
@@ -114,7 +114,7 @@ class MaintainPiecesJointes extends Command
 
         // Top 10 des fichiers les plus lourds
         $this->newLine();
-        $this->info('📈 Top 10 des fichiers les plus volumineux:');
+        $this->info('Top 10 des fichiers les plus volumineux:');
         
         $heavyFiles = PieceJointe::orderBy('taille', 'desc')
             ->limit(10)
@@ -136,7 +136,7 @@ class MaintainPiecesJointes extends Command
     private function cleanOrphans(): void
     {
         $this->newLine();
-        $this->info('🧹 Nettoyage des fichiers orphelins...');
+        $this->info('Nettoyage des fichiers orphelins...');
         
         $bar = $this->output->createProgressBar();
         $bar->start();
@@ -147,25 +147,25 @@ class MaintainPiecesJointes extends Command
         $this->newLine();
         
         if ($deleted > 0) {
-            $this->warn("⚠️  {$deleted} fichier(s) orphelin(s) supprimé(s)");
+            $this->warn("{$deleted} fichier(s) orphelin(s) supprimé(s)");
         } else {
-            $this->info("✅ Aucun fichier orphelin trouvé");
+            $this->info("Aucun fichier orphelin trouvé");
         }
     }
 
     private function checkIntegrity(): void
     {
         $this->newLine();
-        $this->info('🔍 Vérification de l\'intégrité des fichiers...');
+        $this->info('Vérification de l\'intégrité des fichiers...');
         
         $result = UploadService::checkIntegrity();
         
-        $this->line("✅ {$result['total_checked']} enregistrements vérifiés");
+        $this->line("{$result['total_checked']} enregistrements vérifiés");
         
         if ($result['missing_count'] === 0) {
-            $this->info('✅ Tous les fichiers référencés sont présents');
+            $this->info('Tous les fichiers référencés sont présents');
         } else {
-            $this->warn("⚠️  {$result['missing_count']} fichier(s) manquant(s) détecté(s)!");
+            $this->warn("{$result['missing_count']} fichier(s) manquant(s) détecté(s)!");
             $this->newLine();
             
             // Afficher les premiers fichiers manquants
@@ -194,13 +194,13 @@ class MaintainPiecesJointes extends Command
                         $deleted++;
                     }
                 }
-                $this->info("✅ {$deleted} enregistrement(s) supprimé(s)");
+                $this->info("{$deleted} enregistrement(s) supprimé(s)");
             }
         }
 
         // Vérifier les chemins dupliqués
         $this->newLine();
-        $this->info('🔍 Vérification des chemins dupliqués...');
+        $this->info('Vérification des chemins dupliqués...');
         
         $duplicates = PieceJointe::select('chemin')
             ->whereNotNull('chemin')
@@ -209,14 +209,14 @@ class MaintainPiecesJointes extends Command
             ->get();
         
         if ($duplicates->count() > 0) {
-            $this->warn("⚠️  {$duplicates->count()} chemin(s) dupliqué(s) trouvé(s)");
+            $this->warn("{$duplicates->count()} chemin(s) dupliqué(s) trouvé(s)");
             
             foreach ($duplicates->take(5) as $dup) {
                 $count = PieceJointe::where('chemin', $dup->chemin)->count();
                 $this->line("   • {$dup->chemin} ({$count} occurrences)");
             }
         } else {
-            $this->info('✅ Aucun chemin dupliqué');
+            $this->info('Aucun chemin dupliqué');
         }
     }
 }

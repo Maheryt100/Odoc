@@ -1,5 +1,4 @@
 // resources/js/pages/TopoFlux/components/RejectDialog.tsx
-// ✅ VERSION COMPLÈTE AVEC DialogDescription
 
 import {
     Dialog,

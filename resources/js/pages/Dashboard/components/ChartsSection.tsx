@@ -1,4 +1,4 @@
-// Dashboard/components/ChartsSection.tsx - VERSION OPTIMISÉE
+// Dashboard/components/ChartsSection.tsx 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,7 +72,7 @@ export function ChartsSection({ charts }: Props) {
     return (
         <div className="space-y-4 sm:space-y-6">
             <Tabs defaultValue="evolution" className="w-full">
-                {/* ✅ OPTIMISATION 320px : TabsList scrollable horizontalement */}
+                {/* TabsList scrollable horizontalement */}
                 <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
                     <TabsList className="grid w-full min-w-[300px] grid-cols-3 mb-4">
                         <TabsTrigger value="evolution" className="gap-1 sm:gap-2 text-xs sm:text-sm">
@@ -319,7 +319,7 @@ export function ChartsSection({ charts }: Props) {
                                         </BarChart>
                                     </ResponsiveContainer>
                                     
-                                    {/* ✅ OPTIMISATION 320px : Grid responsive pour stats */}
+                                    {/* Grid responsive pour stats */}
                                     <div className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border">
                                         <div className="text-center p-2">
                                             <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">

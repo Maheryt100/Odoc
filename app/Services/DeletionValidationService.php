@@ -67,7 +67,7 @@ class DeletionValidationService
                 return [
                     'can_delete' => false,
                     'reason' => 'blocked_by_demandes',
-                    'message' => "❌ Impossible de supprimer la propriété Lot {$propriete->lot} : " . implode(' et ', $messages) . ".",
+                    'message' => "❌Impossible de supprimer la propriété Lot {$propriete->lot} : " . implode(' et ', $messages) . ".",
                     'details' => [
                         'demandes_actives' => $demandesActives,
                         'demandes_archivees' => $demandesArchivees,

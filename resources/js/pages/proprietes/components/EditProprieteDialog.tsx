@@ -1,4 +1,4 @@
-// pages/proprietes/components/EditProprieteDialog.tsx - VERSION RESPONSIVE
+// pages/proprietes/components/EditProprieteDialog.tsx 
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import {

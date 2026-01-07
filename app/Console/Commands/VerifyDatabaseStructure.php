@@ -20,7 +20,7 @@ class VerifyDatabaseStructure extends Command
         $warnings = 0;
 
         // 1. Vérifier la table users
-        $this->info('📋 Table: users');
+        $this->info('Table: users');
         if (!Schema::hasTable('users')) {
             $this->error('  ✗ Table users n\'existe pas');
             return 1;
@@ -50,7 +50,7 @@ class VerifyDatabaseStructure extends Command
 
         // 2. Vérifier la table proprietes
         $this->newLine();
-        $this->info('📋 Table: proprietes');
+        $this->info('Table: proprietes');
         
         if (Schema::hasColumn('proprietes', 'is_archived')) {
             $this->line('  ✓ is_archived');
@@ -62,7 +62,7 @@ class VerifyDatabaseStructure extends Command
 
         // 3. Vérifier user_access_logs
         $this->newLine();
-        $this->info('📋 Table: user_access_logs');
+        $this->info('Table: user_access_logs');
         
         $logColumns = ['id_user', 'id_district', 'action', 'resource_type', 'resource_id'];
         foreach ($logColumns as $column) {
@@ -76,7 +76,7 @@ class VerifyDatabaseStructure extends Command
 
         // 4. Vérifier user_permissions
         $this->newLine();
-        $this->info('📋 Table: user_permissions');
+        $this->info('Table: user_permissions');
         
         if (Schema::hasColumn('user_permissions', 'granted')) {
             $this->line('  ✓ granted');
@@ -88,7 +88,7 @@ class VerifyDatabaseStructure extends Command
 
         // 5. Vérifier les index
         $this->newLine();
-        $this->info('📋 Index de performance');
+        $this->info('Index de performance');
         
         try {
             $indexes = DB::select("
@@ -112,7 +112,7 @@ class VerifyDatabaseStructure extends Command
 
         // 6. Vérifier les contraintes UNIQUE
         $this->newLine();
-        $this->info('📋 Contraintes UNIQUE');
+        $this->info('Contraintes UNIQUE');
         
         $uniqueConstraints = [
             'demander' => ['id_demandeur', 'id_propriete'],
@@ -129,7 +129,7 @@ class VerifyDatabaseStructure extends Command
 
         // 7. Vérifier les données essentielles
         $this->newLine();
-        $this->info('📋 Données essentielles');
+        $this->info('Données essentielles');
         
         try {
             $userCount = DB::table('users')->count();
@@ -170,17 +170,17 @@ class VerifyDatabaseStructure extends Command
         $this->info('============================================');
         
         if ($errors === 0 && $warnings === 0) {
-            $this->info('✅ Tout est OK ! La structure est correcte.');
+            $this->info('Tout est OK ! La structure est correcte.');
             return 0;
         }
 
         if ($errors > 0) {
-            $this->error("❌ {$errors} erreur(s) critique(s) détectée(s)");
+            $this->error("{$errors} erreur(s) critique(s) détectée(s)");
             $this->error('   → Exécutez les migrations corrigées');
         }
 
         if ($warnings > 0) {
-            $this->warn("⚠️  {$warnings} avertissement(s)");
+            $this->warn("{$warnings} avertissement(s)");
             $this->warn('   → Recommandé de corriger mais non bloquant');
         }
 

@@ -4,7 +4,7 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\{Http, Log};
+use Illuminate\Support\Facades\Http;
 use App\Services\JwtService;
 use Exception;
 
@@ -24,7 +24,6 @@ class FastApiService
             $user = \Illuminate\Support\Facades\Auth::user();
             
             if (!$user) {
-                Log::error('❌ FastAPI: Utilisateur non authentifié');
                 return [];
             }
             
@@ -36,9 +35,6 @@ class FastApiService
             ];
             
         } catch (Exception $e) {
-            Log::error('❌ FastAPI: Erreur génération token', [
-                'error' => $e->getMessage()
-            ]);
             return [];
         }
     }
@@ -66,19 +62,14 @@ class FastApiService
                 ->get("{$this->baseUrl}/api/imports", $fastApiFilters);
             
             if (!$response->successful()) {
-                Log::error('❌ FastAPI getImports error', [
-                    'status' => $response->status(),
-                    'body' => $response->body()
-                ]);
+
                 return [];
             }
             
             return $response->json();
             
         } catch (Exception $e) {
-            Log::error('❌ FastAPI getImports failed', [
-                'error' => $e->getMessage()
-            ]);
+
             return [];
         }
     }
@@ -91,19 +82,14 @@ class FastApiService
                 ->get("{$this->baseUrl}/api/imports/{$importId}");
             
             if (!$response->successful()) {
-                Log::error('❌ FastAPI getImport error', [
-                    'import_id' => $importId,
-                    'status' => $response->status()
-                ]);
+
                 return null;
             }
             
             return $response->json();
                 
         } catch (Exception $e) {
-            Log::error("❌ FastAPI getImport {$importId} failed", [
-                'error' => $e->getMessage()
-            ]);
+  
             return null;
         }
     }
@@ -125,9 +111,7 @@ class FastApiService
             return $response->successful();
             
         } catch (Exception $e) {
-            Log::error("❌ FastAPI validateImport {$importId} failed", [
-                'error' => $e->getMessage()
-            ]);
+   
             return false;
         }
     }
@@ -146,9 +130,7 @@ class FastApiService
             return $response->successful();
             
         } catch (Exception $e) {
-            Log::error("❌ FastAPI rejectImport {$importId} failed", [
-                'error' => $e->getMessage()
-            ]);
+ 
             return false;
         }
     }
@@ -179,9 +161,7 @@ class FastApiService
             ];
             
         } catch (Exception $e) {
-            Log::error("❌ FastAPI downloadFile {$fileId} failed", [
-                'error' => $e->getMessage()
-            ]);
+ 
             return null;
         }
     }

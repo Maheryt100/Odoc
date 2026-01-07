@@ -1,4 +1,4 @@
-// users/components/Pagination.tsx - MOBILE OPTIMIZED
+// users/components/Pagination.tsx 
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 

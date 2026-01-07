@@ -106,9 +106,9 @@ class DiagnosticPrixCommand extends Command
         });
 
         if ($problemes->isEmpty()) {
-            $this->info('   ✅ Tous les dossiers ont au moins un prix configuré');
+            $this->info('   Tous les dossiers ont au moins un prix configuré');
         } else {
-            $this->error('   ❌ ' . $problemes->count() . ' dossier(s) SANS AUCUN PRIX:');
+            $this->error('   ' . $problemes->count() . ' dossier(s) SANS AUCUN PRIX:');
             $this->table(
                 ['Dossier ID', 'Nom dossier', 'District'],
                 $problemes->map(fn($p) => [$p->dossier_id, $p->nom_dossier, $p->nom_district])->toArray()
@@ -120,7 +120,7 @@ class DiagnosticPrixCommand extends Command
 
     private function checkProprietesInvalides(): void
     {
-        $this->info('3️⃣  VÉRIFICATION PROPRIÉTÉS AVEC DONNÉES MANQUANTES');
+        $this->info('3️VÉRIFICATION PROPRIÉTÉS AVEC DONNÉES MANQUANTES');
         
         $proprietes = Propriete::with('dossier')
             ->where(function($q) {
@@ -131,17 +131,17 @@ class DiagnosticPrixCommand extends Command
             ->get();
 
         if ($proprietes->isEmpty()) {
-            $this->info('   ✅ Toutes les propriétés ont une vocation et contenance valides');
+            $this->info('   Toutes les propriétés ont une vocation et contenance valides');
         } else {
-            $this->warn('   ⚠️  ' . $proprietes->count() . ' propriété(s) avec données manquantes:');
+            $this->warn('    ' . $proprietes->count() . ' propriété(s) avec données manquantes:');
             $this->table(
                 ['ID', 'Lot', 'Dossier', 'Vocation', 'Contenance'],
                 $proprietes->map(fn($p) => [
                     $p->id,
                     $p->lot,
                     $p->dossier->nom_dossier ?? 'N/A',
-                    $p->vocation ?? '❌ NULL',
-                    $p->contenance ?? '❌ NULL'
+                    $p->vocation ?? 'NULL',
+                    $p->contenance ?? 'NULL'
                 ])->toArray()
             );
         }
@@ -151,16 +151,16 @@ class DiagnosticPrixCommand extends Command
 
     private function checkDemandesZero(): void
     {
-        $this->info('4️⃣  DEMANDES AVEC PRIX À 0');
+        $this->info('4️DEMANDES AVEC PRIX À 0');
         
         $demandes = Demander::with(['propriete.dossier', 'demandeur'])
             ->where('total_prix', 0)
             ->get();
 
         if ($demandes->isEmpty()) {
-            $this->info('   ✅ Aucune demande avec prix à 0');
+            $this->info('   Aucune demande avec prix à 0');
         } else {
-            $this->warn('   ⚠️  ' . $demandes->count() . ' demande(s) avec prix à 0');
+            $this->warn('   ' . $demandes->count() . ' demande(s) avec prix à 0');
             
             // Grouper par raison
             $raisons = [
@@ -210,7 +210,7 @@ class DiagnosticPrixCommand extends Command
 
             // Afficher un échantillon
             $this->newLine();
-            $this->info('   📋 Échantillon (10 premières):');
+            $this->info('   Échantillon (10 premières):');
             $this->table(
                 ['ID', 'Lot', 'Dossier', 'Demandeur', 'Vocation', 'Contenance'],
                 $demandes->take(10)->map(fn($d) => [
@@ -218,8 +218,8 @@ class DiagnosticPrixCommand extends Command
                     $d->propriete->lot ?? 'N/A',
                     $d->propriete->dossier->nom_dossier ?? 'N/A',
                     $d->demandeur->nom_demandeur ?? 'N/A',
-                    $d->propriete->vocation ?? '❌',
-                    $d->propriete->contenance ?? '❌'
+                    $d->propriete->vocation ?? '',
+                    $d->propriete->contenance ?? ''
                 ])->toArray()
             );
         }
@@ -229,20 +229,20 @@ class DiagnosticPrixCommand extends Command
 
     private function testCalculSurDossier(int $dossierId): void
     {
-        $this->info("5️⃣  TEST CALCUL SUR DOSSIER ID: {$dossierId}");
+        $this->info("5️EST CALCUL SUR DOSSIER ID: {$dossierId}");
         
         $dossier = Dossier::with('district')->find($dossierId);
         
         if (!$dossier) {
-            $this->error('   ❌ Dossier introuvable');
+            $this->error('Dossier introuvable');
             return;
         }
 
-        $this->info("   📁 Dossier: {$dossier->nom_dossier}");
-        $this->info("   📍 District: {$dossier->district->nom_district}");
+        $this->info("Dossier: {$dossier->nom_dossier}");
+        $this->info("District: {$dossier->district->nom_district}");
         $this->newLine();
 
-        $this->info('   💰 Prix configurés:');
+        $this->info('Prix configurés:');
         $this->table(
             ['Vocation', 'Prix/m²'],
             [
@@ -260,12 +260,12 @@ class DiagnosticPrixCommand extends Command
             ->get();
 
         if ($proprietes->isEmpty()) {
-            $this->warn('   ⚠️  Aucune propriété dans ce dossier');
+            $this->warn('Aucune propriété dans ce dossier');
             return;
         }
 
         $this->newLine();
-        $this->info('   🧪 Test calcul sur 5 propriétés:');
+        $this->info('Test calcul sur 5 propriétés:');
         
         foreach ($proprietes as $propriete) {
             try {
@@ -281,7 +281,7 @@ class DiagnosticPrixCommand extends Command
                 $this->line("   {$status} Lot {$propriete->lot}: {$prixUnitaire} × {$propriete->contenance} = " . number_format($prixCalcule) . " Ar (Base: " . number_format($prixEnBase) . " Ar)");
 
             } catch (\Exception $e) {
-                $this->error("   ❌ Lot {$propriete->lot}: ERREUR - {$e->getMessage()}");
+                $this->error("Lot {$propriete->lot}: ERREUR - {$e->getMessage()}");
             }
         }
     }

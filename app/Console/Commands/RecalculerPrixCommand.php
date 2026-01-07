@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Demander;
 use App\Services\PrixCalculatorService;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class RecalculerPrixCommand extends Command
 {
@@ -28,25 +28,25 @@ class RecalculerPrixCommand extends Command
      */
     public function handle()
     {
-        $this->info('🔄 Démarrage du recalcul des prix...');
+        $this->info('Démarrage du recalcul des prix...');
         
         $query = Demander::with(['propriete.dossier']);
         
         if (!$this->option('all')) {
             $query->where('total_prix', 0);
-            $this->info('📊 Mode: Recalcul uniquement des prix à 0 AR');
+            $this->info('Mode: Recalcul uniquement des prix à 0 AR');
         } else {
-            $this->info('📊 Mode: Recalcul de TOUS les prix');
+            $this->info('Mode: Recalcul de TOUS les prix');
         }
         
         $demandes = $query->get();
         
         if ($demandes->isEmpty()) {
-            $this->info('✅ Aucune demande à recalculer.');
+            $this->info('Aucune demande à recalculer.');
             return 0;
         }
 
-        $this->info("📦 {$demandes->count()} demande(s) à traiter");
+        $this->info("{$demandes->count()} demande(s) à traiter");
         
         $bar = $this->output->createProgressBar($demandes->count());
         $bar->start();
@@ -61,7 +61,7 @@ class RecalculerPrixCommand extends Command
                 
                 if (!$propriete) {
                     $this->newLine();
-                    $this->warn("⚠️  Demande ID {$demande->id}: Propriété introuvable");
+                    $this->warn("Demande ID {$demande->id}: Propriété introuvable");
                     $errors++;
                     $bar->advance();
                     continue;
@@ -75,12 +75,12 @@ class RecalculerPrixCommand extends Command
                     $demande->update(['total_prix' => $nouveauPrix]);
                     
                     if ($ancienPrix != $nouveauPrix) {
-                        Log::info('Prix recalculé', [
-                            'demande_id' => $demande->id,
-                            'propriete_lot' => $propriete->lot,
-                            'ancien_prix' => $ancienPrix,
-                            'nouveau_prix' => $nouveauPrix
-                        ]);
+                        // Log::info('Prix recalculé', [
+                        //     'demande_id' => $demande->id,
+                        //     'propriete_lot' => $propriete->lot,
+                        //     'ancien_prix' => $ancienPrix,
+                        //     'nouveau_prix' => $nouveauPrix
+                        // ]);
                         $success++;
                     } else {
                         $skipped++;
@@ -88,13 +88,13 @@ class RecalculerPrixCommand extends Command
                     
                 } catch (\Exception $e) {
                     $this->newLine();
-                    $this->error("❌ Demande ID {$demande->id}: {$e->getMessage()}");
+                    $this->error("Demande ID {$demande->id}: {$e->getMessage()}");
                     $errors++;
                 }
 
             } catch (\Exception $e) {
                 $this->newLine();
-                $this->error("❌ Erreur demande ID {$demande->id}: {$e->getMessage()}");
+                $this->error("Erreur demande ID {$demande->id}: {$e->getMessage()}");
                 $errors++;
             }
             
@@ -105,19 +105,19 @@ class RecalculerPrixCommand extends Command
         $this->newLine(2);
 
         // Résumé
-        $this->info('✅ Recalcul terminé !');
+        $this->info('Recalcul terminé !');
         $this->table(
             ['Résultat', 'Nombre'],
             [
-                ['✅ Prix recalculés', $success],
-                ['⏭️  Inchangés', $skipped],
-                ['❌ Erreurs', $errors],
-                ['📊 Total traité', $demandes->count()],
+                ['Prix recalculés', $success],
+                ['⏭Inchangés', $skipped],
+                ['Erreurs', $errors],
+                ['Total traité', $demandes->count()],
             ]
         );
 
         if ($errors > 0) {
-            $this->warn("⚠️  {$errors} erreur(s) rencontrée(s). Consultez les logs pour plus de détails.");
+            $this->warn("{$errors} erreur(s) rencontrée(s). Consultez les logs pour plus de détails.");
         }
 
         return $errors > 0 ? 1 : 0;

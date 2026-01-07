@@ -31,7 +31,7 @@ export function LinkProprieteDialog({
     const [selectedPropriete, setSelectedPropriete] = useState<Propriete | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // ✅ NOUVEAU : État pour date_demande
+    // État pour date_demande
     const today = new Date().toISOString().split('T')[0];
     const [dateDemande, setDateDemande] = useState<string>(today);
     const [dateDemandeError, setDateDemandeError] = useState<string>('');
@@ -65,7 +65,7 @@ export function LinkProprieteDialog({
         );
     });
 
-    // ✅ NOUVEAU : Validation date_demande avec cohérence date_requisition
+    // alidation date_demande avec cohérence date_requisition
     const handleDateDemandeChange = (newDate: string) => {
         setDateDemande(newDate);
         
@@ -91,7 +91,7 @@ export function LinkProprieteDialog({
         setDateDemandeError('');
     };
 
-    // ✅ MISE À JOUR : Soumission avec date_demande
+    //  Soumission avec date_demande
     const handleSubmit = () => {
         if (!selectedPropriete) {
             toast.error('Veuillez sélectionner une propriété');
@@ -109,7 +109,7 @@ export function LinkProprieteDialog({
             id_demandeur: demandeur.id,
             id_propriete: selectedPropriete.id,
             id_dossier: dossierId,
-            date_demande: dateDemande, // ✅ NOUVEAU
+            date_demande: dateDemande, 
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -157,7 +157,7 @@ export function LinkProprieteDialog({
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto space-y-4">
-                    {/* ✅ NOUVEAU : Section Date de demande */}
+                    {/* Section Date de demande */}
                     <div className="sticky top-0 bg-background pb-4 border-b z-10">
                         <DatePickerDemande
                             value={dateDemande}
@@ -236,7 +236,7 @@ export function LinkProprieteDialog({
                                                 {prop.situation && (
                                                     <p className="col-span-2"><strong>Situation:</strong> {prop.situation}</p>
                                                 )}
-                                                {/* ✅ NOUVEAU : Afficher date_requisition si existe */}
+                                                {/*  Afficher date_requisition si existe */}
                                                 {prop.date_requisition && (
                                                     <p className="col-span-2 text-xs">
                                                         <strong>Date réquisition:</strong> {new Date(prop.date_requisition).toLocaleDateString('fr-FR')}

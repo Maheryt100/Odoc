@@ -11,7 +11,7 @@ import { Search, Filter, RefreshCw, AlertTriangle, WifiOff, CheckCircle2 } from 
 import { toast } from 'sonner';
 import type { BreadcrumbItem, PageProps } from '@/types';
 
-// ✅ Import des types TopoFlux centralisés
+// Import des types TopoFlux centralisés
 import type {
   TopoImport,
   TopoStats,
@@ -38,7 +38,7 @@ export default function Index() {
     const [filePreviewOpen, setFilePreviewOpen] = useState(false);
     const [filePreviewImport, setFilePreviewImport] = useState<TopoImport | null>(null);
 
-    // ✅ Cache local des imports pour utilisation même si FastAPI down
+    //  Cache local des imports pour utilisation même si FastAPI down
     const [cachedImports, setCachedImports] = useState<TopoImport[]>([]);
     
     // Dialogue de rejet
@@ -51,9 +51,9 @@ export default function Index() {
     // Notifications flash avec type spécifique
     if (flash?.success) toast.success(flash.success);
     if (flash?.error) toast.error(flash.error);
-    if (flash?.warning) toast.warning(flash.warning); // ✅ Support des warnings
+    if (flash?.warning) toast.warning(flash.warning); //  Support des warnings
     
-    // ✅ Mise en cache des imports quand disponibles
+    // Mise en cache des imports quand disponibles
     useEffect(() => {
         if (imports && imports.length > 0) {
             setCachedImports(imports);
@@ -85,7 +85,7 @@ export default function Index() {
         }
     }, [imports, fastapiAvailable]);
     
-    // ✅ Utiliser les imports disponibles (live ou cache)
+    // Utiliser les imports disponibles (live ou cache)
     const availableImports = imports.length > 0 ? imports : cachedImports;
     const hasDataToDisplay = availableImports.length > 0;
     
@@ -132,7 +132,7 @@ export default function Index() {
             return;
         }
         
-        // ✅ Cacher l'import dans la session pour utilisation offline
+        // Cacher l'import dans la session pour utilisation offline
         try {
             sessionStorage.setItem(`topo_import_${imp.id}`, JSON.stringify(imp));
         } catch (e) {
@@ -264,7 +264,7 @@ export default function Index() {
                     </Button>
                 </div>
                 
-                {/* ✅ ALERTE CONTEXTUELLE */}
+                {/* ALERTE CONTEXTUELLE */}
                 {fastapiAvailable === false && (
                     <Alert className={hasDataToDisplay ? "border-orange-200 bg-orange-50" : "border-red-200 bg-red-50"}>
                         <WifiOff className="h-4 w-4" />
@@ -293,7 +293,7 @@ export default function Index() {
                     </Alert>
                 )}
                 
-                {/* ✅ Info cache si données en cache */}
+                {/* Info cache si données en cache */}
                 {fastapiAvailable === false && hasDataToDisplay && cachedImports.length > 0 && (
                     <Alert className="border-blue-200 bg-blue-50">
                         <AlertTriangle className="h-4 w-4" />

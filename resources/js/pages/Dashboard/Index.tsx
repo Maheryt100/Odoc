@@ -18,8 +18,7 @@ import AdvancedSearchBar from '@/pages/dossiers/components/AdvancedSearchBar';
 export default function DashboardIndex({ kpis, charts, alerts, recentActivity }: DashboardProps) {
     const { auth } = usePage().props as any;
     const user = auth?.user;
-    
-    // ✅ État pour toggle recherche avancée
+
     const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
     
     const canShowAllDistricts = user?.role === 'super_admin' || user?.role === 'central_user';
@@ -29,7 +28,7 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
             <Head title="Dashboard" />
 
             <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
-                {/* ✅ En-tête avec bouton recherche */}
+                {/* En-tête avec bouton recherche */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -44,7 +43,7 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
                         </div>
                     </div>
 
-                    {/* ✅ NOUVEAU : Bouton recherche avancée */}
+                    {/*Bouton recherche avancée */}
                     <Button 
                         variant={showAdvancedSearch ? "default" : "outline"}
                         size="default"
@@ -56,7 +55,7 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
                     </Button>
                 </div>
 
-                {/* ✅ NOUVELLE SECTION : Recherche avancée collapsible */}
+                {/* Recherche avancée collapsible */}
                 {showAdvancedSearch && (
                     <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50/50 to-blue-50/50 dark:from-indigo-950/20 dark:to-blue-950/20">
                         <CardContent className="p-4 sm:p-6">

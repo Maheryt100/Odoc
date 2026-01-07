@@ -12,13 +12,12 @@ import {
 import type { Demandeur, Propriete } from '@/types';
 import { Button } from '@/components/ui/button';
 
-// ✅ SUPPRESSION des types partiels - on utilise directement Propriete
 interface DemandeurDetailDialogProps {
     demandeur: Demandeur | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    proprietes?: Propriete[];  // ✅ Type complet
-    onSelectPropriete?: (propriete: Propriete) => void;  // ✅ Type complet
+    proprietes?: Propriete[]; 
+    onSelectPropriete?: (propriete: Propriete) => void;  
     dossierId: number;
     dossierClosed?: boolean;
     onDissociate?: (
@@ -42,7 +41,6 @@ export default function DemandeurDetailDialog({
 }: DemandeurDetailDialogProps) {
     if (!demandeur) return null;
 
-    // ✅ Filtrage sécurisé avec vérification de null
     const proprietesAssociees = proprietes.filter(prop => {
         if (!prop.demandes?.length) return false;
         return prop.demandes.some(d => {

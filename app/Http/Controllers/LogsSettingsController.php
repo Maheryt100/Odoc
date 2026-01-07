@@ -6,22 +6,22 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\SystemSettings;
 use App\Services\ActivityLogsExportService;
-use App\Services\LogCleanupService; // ✅ NOUVEAU
+use App\Services\LogCleanupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
 class LogsSettingsController extends Controller
 {
     private ActivityLogsExportService $exportService;
-    private LogCleanupService $cleanupService; // ✅ NOUVEAU
+    private LogCleanupService $cleanupService;
 
     public function __construct(
         ActivityLogsExportService $exportService,
-        LogCleanupService $cleanupService // ✅ NOUVEAU
+        LogCleanupService $cleanupService
     ) {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
@@ -34,7 +34,7 @@ class LogsSettingsController extends Controller
         });
 
         $this->exportService = $exportService;
-        $this->cleanupService = $cleanupService; // ✅ NOUVEAU
+        $this->cleanupService = $cleanupService;
     }
 
     /**
@@ -55,7 +55,6 @@ class LogsSettingsController extends Controller
             'next_cleanup_date' => SystemSettings::getNextCleanupDate()?->format('Y-m-d H:i:s'),
         ];
 
-        // ✅ Statistiques détaillées avec détection de surcharge simplifiée
         $detailedStats = $this->cleanupService->getDetailedStats();
         $overloadStatus = $this->cleanupService->checkOverloadStatus();
         
@@ -72,6 +71,9 @@ class LogsSettingsController extends Controller
             // Total en BDD
             'total_logs' => $detailedStats['total_logs'],
             
+            // Taille en BDD
+            'db_size_mb' => $detailedStats['db_size_mb'],
+            
             // Seuil configuré
             'max_logs' => $detailedStats['max_logs'],
             
@@ -85,7 +87,7 @@ class LogsSettingsController extends Controller
             // Par action
             'by_action' => $detailedStats['by_action'],
             
-            // ✅ Statut de surcharge simplifié
+            // Statut de surcharge simplifié
             'overload_status' => $overloadStatus,
         ];
 
@@ -109,7 +111,7 @@ class LogsSettingsController extends Controller
             'retention_days' => 'required|integer|min:30|max:365',
             'cleanup_frequency' => 'required|in:daily,weekly,monthly',
             'auto_export_before_delete' => 'required|boolean',
-            'max_logs' => 'nullable|integer|min:100000|max:2000000', // ✅ NOUVEAU
+            'max_logs' => 'nullable|integer|min:100000|max:2000000',
         ]);
 
         SystemSettings::set('logs_auto_delete_enabled', $validated['auto_delete_enabled'], 'boolean');
@@ -117,7 +119,6 @@ class LogsSettingsController extends Controller
         SystemSettings::set('logs_cleanup_frequency', $validated['cleanup_frequency']);
         SystemSettings::set('logs_auto_export_before_delete', $validated['auto_export_before_delete'], 'boolean');
         
-        // ✅ NOUVEAU : Seuil max configurable
         if (isset($validated['max_logs'])) {
             SystemSettings::set('logs_max_count', $validated['max_logs'], 'integer');
         }
@@ -126,7 +127,7 @@ class LogsSettingsController extends Controller
     }
 
     /**
-     * Exporter manuellement avec période personnalisée
+     * Exporter manuellement avec période personnalisée et filtre par action
      */
     public function export(Request $request)
     {
@@ -134,46 +135,48 @@ class LogsSettingsController extends Controller
             $validated = $request->validate([
                 'date_from' => 'required|date',
                 'date_to' => 'required|date|after_or_equal:date_from',
+                'actions' => 'nullable|array',
+                'actions.*' => 'nullable|string',
             ]);
 
             $dateFrom = Carbon::parse($validated['date_from']);
             $dateTo = Carbon::parse($validated['date_to']);
 
+            $query = ActivityLog::with(['user', 'district'])
+                ->whereBetween('created_at', [
+                    $dateFrom->startOfDay(),
+                    $dateTo->endOfDay()
+                ])
+                ->orderBy('created_at', 'desc');
+
+            // Appliquer le filtre par actions si spécifié
+            if (!empty($validated['actions'])) {
+                $query->whereIn('action', $validated['actions']);
+            }
+
+            $logs = $query->get();
+
+            if ($logs->isEmpty()) {
+                return back()->with('error', 'Aucun log trouvé pour cette période et ces critères.');
+            }
+
             // Export manuel sans suppression
             $result = $this->exportService->export(
                 isAutoExport: false,
-                dateFrom: $dateFrom,
-                dateTo: $dateTo
+                logs: $logs
             );
 
             if (!$result['success']) {
                 return back()->with('error', "Erreur lors de l'export : " . ($result['error'] ?? 'Erreur inconnue'));
             }
 
-            // ✅ CORRECTION : Vérifier le chemin complet
             $filePath = storage_path('app/' . $result['path']);
             
             if (!file_exists($filePath)) {
-                Log::error('Fichier export introuvable', [
-                    'path' => $result['path'],
-                    'full_path' => $filePath,
-                    'storage_path' => storage_path('app/pieces_jointes/logs/'),
-                ]);
                 
                 return back()->with('error', 'Export créé mais fichier introuvable : ' . $result['path']);
             }
 
-            Log::info('Export manuel des logs', [
-                'count' => $result['count'],
-                'filename' => $result['filename'],
-                'period' => $dateFrom->format('Y-m-d') . ' to ' . $dateTo->format('Y-m-d'),
-                'user_id' => Auth::id(),
-                'file_path' => $filePath,
-                'file_exists' => file_exists($filePath),
-                'file_size' => file_exists($filePath) ? filesize($filePath) : 0,
-            ]);
-
-            // ✅ CORRECTION : Utiliser response()->download() correctement
             return response()->download(
                 $filePath,
                 $result['filename'],
@@ -186,12 +189,6 @@ class LogsSettingsController extends Controller
             )->deleteFileAfterSend(false);
 
         } catch (\Exception $e) {
-            Log::error('Erreur export manuel logs', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-            ]);
 
             return back()->with('error', "Erreur : " . $e->getMessage());
         }
@@ -203,36 +200,18 @@ class LogsSettingsController extends Controller
     public function download(string $filename)
     {
         try {
-            // ✅ CORRECTION : Validation stricte du nom de fichier
             if (!preg_match('/^activity_logs_(auto|manual)_.+\.xlsx$/', $filename)) {
-                Log::warning('Tentative téléchargement fichier invalide', [
-                    'filename' => $filename,
-                    'user_id' => Auth::id(),
-                ]);
+ 
                 return back()->with('error', 'Nom de fichier invalide.');
             }
 
-            // ✅ CORRECTION : Chemin absolu complet
             $path = storage_path('app/pieces_jointes/logs/' . $filename);
 
             if (!file_exists($path)) {
-                Log::warning('Fichier export introuvable', [
-                    'filename' => $filename,
-                    'path' => $path,
-                    'user_id' => Auth::id(),
-                    'storage_exists' => is_dir(storage_path('app/pieces_jointes/logs/')),
-                ]);
+
                 return back()->with('error', 'Fichier introuvable : ' . $filename);
             }
 
-            Log::info('Téléchargement export', [
-                'filename' => $filename,
-                'path' => $path,
-                'size' => filesize($path),
-                'user_id' => Auth::id(),
-            ]);
-
-            // ✅ CORRECTION : Headers complets pour forcer le téléchargement
             return response()->download(
                 $path,
                 $filename,
@@ -247,11 +226,6 @@ class LogsSettingsController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Erreur téléchargement export', [
-                'filename' => $filename,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
 
             return back()->with('error', 'Erreur lors du téléchargement : ' . $e->getMessage());
         }
@@ -274,10 +248,6 @@ class LogsSettingsController extends Controller
             return back()->with('error', 'Impossible de supprimer l\'export.');
 
         } catch (\Exception $e) {
-            Log::error('Erreur suppression export', [
-                'filename' => $filename,
-                'error' => $e->getMessage()
-            ]);
 
             return back()->with('error', 'Erreur lors de la suppression.');
         }
@@ -310,18 +280,11 @@ class LogsSettingsController extends Controller
             return back()->with('error', $result['error']);
 
         } catch (\Exception $e) {
-            Log::error('Erreur nettoyage logs', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
 
             return back()->with('error', 'Erreur lors du nettoyage : ' . $e->getMessage());
         }
     }
 
-    /**
-     * ✅ NOUVEAU : Suppression manuelle de logs spécifiques par IDs
-     */
     public function deleteManually(Request $request)
     {
         try {
@@ -343,17 +306,11 @@ class LogsSettingsController extends Controller
             return back()->with('error', $result['error']);
 
         } catch (\Exception $e) {
-            Log::error('Erreur suppression manuelle', [
-                'error' => $e->getMessage()
-            ]);
 
             return back()->with('error', 'Erreur lors de la suppression.');
         }
     }
 
-    /**
-     * ✅ NOUVEAU : Suppression manuelle par filtres (date, action, utilisateur...)
-     */
     public function deleteByFilters(Request $request)
     {
         try {
@@ -389,17 +346,11 @@ class LogsSettingsController extends Controller
             return back()->with('error', $result['error']);
 
         } catch (\Exception $e) {
-            Log::error('Erreur suppression par filtres', [
-                'error' => $e->getMessage()
-            ]);
 
             return back()->with('error', 'Erreur lors de la suppression.');
         }
     }
 
-    /**
-     * ✅ Nettoyage selon le niveau de surcharge (automatique/standard)
-     */
     public function previewCleanup()
     {
         try {
@@ -433,9 +384,6 @@ class LogsSettingsController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur preview cleanup', [
-                'error' => $e->getMessage()
-            ]);
 
             return response()->json([
                 'error' => 'Erreur lors de la prévisualisation'

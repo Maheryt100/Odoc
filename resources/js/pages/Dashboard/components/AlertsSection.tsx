@@ -1,4 +1,4 @@
-// Dashboard/components/AlertsSection.tsx - VERSION OPTIMISÉE
+// Dashboard/components/AlertsSection.tsx 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Info, ArrowRight, AlertCircle } from 'lucide-react';

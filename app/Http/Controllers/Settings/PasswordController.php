@@ -42,7 +42,7 @@ class PasswordController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        // ✅ CORRECTION: Utiliser le nom complet de la route avec préfixe
+       
         return Redirect::route('settings.password.edit')
             ->with('success', 'Mot de passe mis à jour avec succès');
     }

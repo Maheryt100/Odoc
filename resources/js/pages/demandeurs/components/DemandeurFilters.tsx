@@ -39,7 +39,6 @@ export default function DemandeurFilters({
     const filterRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
-    // ✅ Détection améliorée des clics outside
     useEffect(() => {
         if (!showFilters) return;
 

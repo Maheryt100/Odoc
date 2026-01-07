@@ -40,7 +40,7 @@ class AdvancedSearchController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // ✅ SÉCURITÉ : Vérifier l'accès
+        // Vérifier l'accès
         if (!$user->canAccessSearchFeature()) {
             abort(403, 'Accès à la recherche refusé');
         }
@@ -454,7 +454,7 @@ class AdvancedSearchController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // ✅ SÉCURITÉ : Tous les utilisateurs peuvent exporter
+        // Tous les utilisateurs peuvent exporter
         if (!$user->canExportData()) {
             abort(403, 'Permission refusée');
         }

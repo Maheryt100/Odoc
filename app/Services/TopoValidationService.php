@@ -1,32 +1,20 @@
 <?php
-// ============================================
-// app/Services/TopoValidationService.php
-// SERVICE DE VALIDATION COMPLETE DES IMPORTS TOPO
-// ============================================
 
 namespace App\Services;
 
 use App\Models\{Demandeur, Propriete, Dossier, User};
-use Illuminate\Support\Facades\{DB, Log, Auth};
-use Carbon\Carbon;
+// use Illuminate\Support\Facades\Log;
 
 class TopoValidationService
 {
-    // ========================================
-    // VALIDATION COMPLÈTE D'UN IMPORT
-    // ========================================
-    
     /**
-     * Valide un import et retourne le résultat détaillé
+     * Valide un import et retourne le résultat
+     * SIMPLIFIÉ : Focus sur la détection de doublons
      */
     public function validateImport(array $importData, User $user): array
     {
         try {
-            Log::info('🔍 Début validation import', [
-                'import_id' => $importData['id'] ?? 'N/A',
-                'entity_type' => $importData['entity_type'],
-                'user_id' => $user->id
-            ]);
+
             
             // 1. Vérifications préliminaires
             $preliminaryChecks = $this->runPreliminaryChecks($importData, $user);
@@ -36,67 +24,38 @@ class TopoValidationService
                     'success' => false,
                     'can_proceed' => false,
                     'errors' => $preliminaryChecks['errors'],
-                    'warnings' => []
+                    'warnings' => [],
+                    'duplicate_info' => [
+                        'is_duplicate' => false
+                    ]
                 ];
             }
             
-            // 2. Validation des données
-            $dataValidation = $this->validateData($importData);
-            
-            // 3. Détection des doublons
+            // 2. Détection des doublons
             $duplicateCheck = $this->checkForDuplicates($importData);
             
-            // 4. Validation des fichiers
-            $filesValidation = $this->validateFiles($importData['files'] ?? []);
-            
-            // 5. Calcul du score de qualité
-            $qualityScore = $this->calculateQualityScore(
-                $dataValidation, 
-                $filesValidation
-            );
-            
-            // 6. Déterminer l'action recommandée
-            $recommendedAction = $this->determineRecommendedAction(
-                $duplicateCheck,
-                $dataValidation
-            );
-            
+            // 3. Résultat
             $result = [
                 'success' => true,
                 'can_proceed' => $preliminaryChecks['can_proceed'],
-                'recommended_action' => $recommendedAction,
                 'duplicate_info' => $duplicateCheck,
-                'data_validation' => $dataValidation,
-                'files_validation' => $filesValidation,
-                'quality_score' => $qualityScore,
-                'warnings' => array_merge(
-                    $preliminaryChecks['warnings'] ?? [],
-                    $dataValidation['warnings'] ?? [],
-                    $filesValidation['warnings'] ?? []
-                ),
+                'warnings' => $preliminaryChecks['warnings'] ?? [],
                 'errors' => []
             ];
-            
-            Log::info('✅ Validation terminée', [
-                'import_id' => $importData['id'] ?? 'N/A',
-                'recommended_action' => $recommendedAction['action'],
-                'quality_score' => $qualityScore
-            ]);
-            
+     
             return $result;
             
         } catch (\Exception $e) {
-            Log::error('❌ Erreur validation import', [
-                'import_id' => $importData['id'] ?? 'N/A',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+   
             
             return [
                 'success' => false,
                 'can_proceed' => false,
                 'errors' => ['Erreur système : ' . $e->getMessage()],
-                'warnings' => []
+                'warnings' => [],
+                'duplicate_info' => [
+                    'is_duplicate' => false
+                ]
             ];
         }
     }
@@ -112,7 +71,7 @@ class TopoValidationService
         $canProceed = true;
         
         // 1. Vérifier que le dossier existe
-        $dossier = Dossier::find($importData['dossier_id']);
+        $dossier = Dossier::find($importData['dossier_id'] ?? null);
         
         if (!$dossier) {
             $errors[] = "Le dossier #{$importData['dossier_id']} n'existe pas";
@@ -157,179 +116,6 @@ class TopoValidationService
     }
     
     // ========================================
-    // VALIDATION DES DONNÉES
-    // ========================================
-    
-    private function validateData(array $importData): array
-    {
-        $entityType = $importData['entity_type'];
-        $rawData = $importData['raw_data'];
-        
-        if ($entityType === 'demandeur') {
-            return $this->validateDemandeurData($rawData);
-        } else {
-            return $this->validateProprieteData($rawData);
-        }
-    }
-    
-    private function validateDemandeurData(array $data): array
-    {
-        $errors = [];
-        $warnings = [];
-        $missingFields = [];
-        $validFields = [];
-        
-        // Champs obligatoires
-        $requiredFields = [
-            'titre_demandeur' => 'Titre de civilité',
-            'nom_demandeur' => 'Nom',
-            'prenom_demandeur' => 'Prénom',
-            'date_naissance' => 'Date de naissance',
-            'cin' => 'CIN'
-        ];
-        
-        foreach ($requiredFields as $field => $label) {
-            if (empty($data[$field])) {
-                $errors[] = "{$label} obligatoire";
-                $missingFields[] = $field;
-            } else {
-                $validFields[] = $field;
-            }
-        }
-        
-        // Validation CIN
-        if (!empty($data['cin'])) {
-            if (!preg_match('/^\d{12}$/', $data['cin'])) {
-                $errors[] = "CIN invalide (12 chiffres requis)";
-            }
-        }
-        
-        // Validation date de naissance (>18 ans)
-        if (!empty($data['date_naissance'])) {
-            $birthDate = Carbon::parse($data['date_naissance']);
-            $age = $birthDate->diffInYears(Carbon::now());
-            
-            if ($age < 18) {
-                $errors[] = "Le demandeur doit avoir au moins 18 ans";
-            }
-        }
-        
-        // Champs recommandés
-        $recommendedFields = [
-            'lieu_naissance' => 'Lieu de naissance',
-            'occupation' => 'Profession',
-            'domiciliation' => 'Domiciliation',
-            'telephone' => 'Téléphone',
-            'date_delivrance' => 'Date délivrance CIN',
-            'lieu_delivrance' => 'Lieu délivrance CIN'
-        ];
-        
-        foreach ($recommendedFields as $field => $label) {
-            if (empty($data[$field])) {
-                $warnings[] = "{$label} recommandé mais non fourni";
-                $missingFields[] = $field;
-            } else {
-                $validFields[] = $field;
-            }
-        }
-        
-        return [
-            'is_valid' => empty($errors),
-            'errors' => $errors,
-            'warnings' => $warnings,
-            'missing_fields' => $missingFields,
-            'valid_fields' => $validFields,
-            'completeness' => $this->calculateCompleteness($data, array_merge($requiredFields, $recommendedFields))
-        ];
-    }
-    
-    private function validateProprieteData(array $data): array
-    {
-        $errors = [];
-        $warnings = [];
-        $missingFields = [];
-        $validFields = [];
-        
-        // Champs obligatoires
-        $requiredFields = [
-            'lot' => 'Lot',
-            'type_operation' => 'Type d\'opération',
-            'nature' => 'Nature',
-            'vocation' => 'Vocation'
-        ];
-        
-        foreach ($requiredFields as $field => $label) {
-            if (empty($data[$field])) {
-                $errors[] = "{$label} obligatoire";
-                $missingFields[] = $field;
-            } else {
-                $validFields[] = $field;
-            }
-        }
-        
-        // Validation cohérence des dates
-        if (!empty($data['date_requisition']) && !empty($data['date_approbation_acte'])) {
-            $dateReq = Carbon::parse($data['date_requisition']);
-            $dateAppro = Carbon::parse($data['date_approbation_acte']);
-            
-            if ($dateAppro->lessThan($dateReq)) {
-                $errors[] = "La date d'approbation ne peut pas être antérieure à la date de réquisition";
-            }
-        }
-        
-        // Validation cohérence dates de dépôt
-        if (!empty($data['date_depot_1']) && !empty($data['date_depot_2'])) {
-            $depot1 = Carbon::parse($data['date_depot_1']);
-            $depot2 = Carbon::parse($data['date_depot_2']);
-            
-            if ($depot2->lessThan($depot1)) {
-                $warnings[] = "La date du dépôt 2 est antérieure au dépôt 1";
-            }
-        }
-        
-        // Champs recommandés
-        $recommendedFields = [
-            'titre' => 'Titre',
-            'proprietaire' => 'Propriétaire',
-            'contenance' => 'Contenance',
-            'situation' => 'Situation',
-            'date_requisition' => 'Date réquisition'
-        ];
-        
-        foreach ($recommendedFields as $field => $label) {
-            if (empty($data[$field])) {
-                $warnings[] = "{$label} recommandé mais non fourni";
-                $missingFields[] = $field;
-            } else {
-                $validFields[] = $field;
-            }
-        }
-        
-        return [
-            'is_valid' => empty($errors),
-            'errors' => $errors,
-            'warnings' => $warnings,
-            'missing_fields' => $missingFields,
-            'valid_fields' => $validFields,
-            'completeness' => $this->calculateCompleteness($data, array_merge($requiredFields, $recommendedFields))
-        ];
-    }
-    
-    private function calculateCompleteness(array $data, array $allFields): float
-    {
-        $total = count($allFields);
-        $filled = 0;
-        
-        foreach ($allFields as $field => $label) {
-            if (!empty($data[$field])) {
-                $filled++;
-            }
-        }
-        
-        return $total > 0 ? round(($filled / $total) * 100, 1) : 0;
-    }
-    
-    // ========================================
     // DÉTECTION DES DOUBLONS
     // ========================================
     
@@ -345,6 +131,9 @@ class TopoValidationService
         }
     }
     
+    /**
+     * Recherche GLOBALE par CIN (tous districts)
+     */
     private function checkDemandeurDuplicate(array $data): array
     {
         if (empty($data['cin'])) {
@@ -352,7 +141,8 @@ class TopoValidationService
                 'is_duplicate' => false,
                 'existing_entity' => null,
                 'match_confidence' => 0,
-                'match_method' => null
+                'match_method' => null,
+                'action' => 'create'
             ];
         }
         
@@ -388,6 +178,9 @@ class TopoValidationService
         ];
     }
     
+    /**
+     * Recherche dans le dossier ciblé uniquement
+     */
     private function checkProprieteDuplicate(array $data, int $dossierId): array
     {
         if (empty($data['lot'])) {
@@ -395,7 +188,8 @@ class TopoValidationService
                 'is_duplicate' => false,
                 'existing_entity' => null,
                 'match_confidence' => 0,
-                'match_method' => null
+                'match_method' => null,
+                'action' => 'create'
             ];
         }
         
@@ -430,109 +224,6 @@ class TopoValidationService
             'match_confidence' => 0,
             'match_method' => null,
             'action' => 'create'
-        ];
-    }
-    
-    // ========================================
-    // VALIDATION DES FICHIERS
-    // ========================================
-    
-    private function validateFiles(array $files): array
-    {
-        $warnings = [];
-        $totalSize = 0;
-        $filesByCategory = [];
-        
-        foreach ($files as $file) {
-            $size = $file['size'] ?? 0;
-            $totalSize += $size;
-            
-            $category = $file['category'] ?? 'non_classé';
-            $filesByCategory[$category] = ($filesByCategory[$category] ?? 0) + 1;
-            
-            // Vérifier taille individuelle (max 10MB)
-            if ($size > 10 * 1024 * 1024) {
-                $warnings[] = "Fichier '{$file['name']}' dépasse 10MB";
-            }
-        }
-        
-        // Vérifier taille totale (max 50MB)
-        if ($totalSize > 50 * 1024 * 1024) {
-            $warnings[] = "Taille totale des fichiers dépasse 50MB";
-        }
-        
-        return [
-            'total_files' => count($files),
-            'total_size' => $totalSize,
-            'files_by_category' => $filesByCategory,
-            'warnings' => $warnings,
-            'has_files' => count($files) > 0
-        ];
-    }
-    
-    // ========================================
-    // CALCUL SCORE DE QUALITÉ
-    // ========================================
-    
-    private function calculateQualityScore(array $dataValidation, array $filesValidation): array
-    {
-        $dataScore = $dataValidation['completeness'] ?? 0;
-        $filesScore = $filesValidation['has_files'] ? 20 : 0;
-        
-        $totalScore = ($dataScore * 0.8) + $filesScore;
-        
-        $level = 'faible';
-        if ($totalScore >= 90) {
-            $level = 'excellent';
-        } elseif ($totalScore >= 75) {
-            $level = 'bon';
-        } elseif ($totalScore >= 60) {
-            $level = 'moyen';
-        }
-        
-        return [
-            'score' => round($totalScore, 1),
-            'level' => $level,
-            'data_completeness' => $dataValidation['completeness'] ?? 0,
-            'has_files' => $filesValidation['has_files']
-        ];
-    }
-    
-    // ========================================
-    // DÉTERMINER L'ACTION RECOMMANDÉE
-    // ========================================
-    
-    private function determineRecommendedAction(array $duplicateCheck, array $dataValidation): array
-    {
-        // Si doublon détecté
-        if ($duplicateCheck['is_duplicate']) {
-            return [
-                'action' => 'update',
-                'dialog' => $duplicateCheck['existing_entity']['id'] ? 'edit_dialog' : 'create_form',
-                'entity_id' => $duplicateCheck['existing_entity']['id'] ?? null,
-                'message' => 'Une entité similaire existe déjà. Mise à jour recommandée.',
-                'requires_confirmation' => true
-            ];
-        }
-        
-        // Si données invalides
-        if (!$dataValidation['is_valid']) {
-            return [
-                'action' => 'review',
-                'dialog' => 'validation_errors',
-                'entity_id' => null,
-                'message' => 'Les données contiennent des erreurs. Correction requise.',
-                'requires_confirmation' => true
-            ];
-        }
-        
-        // Si données valides, création normale
-        return [
-            'action' => 'create',
-            'dialog' => 'create_form',
-            'entity_id' => null,
-            'message' => 'Prêt pour création.',
-            'requires_confirmation' => false
         ];
     }
 }

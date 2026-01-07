@@ -1,4 +1,4 @@
-// DossierForm.tsx - ✅ VERSION CORRIGÉE
+// DossierForm.tsx
 import { useForm } from '@inertiajs/react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -49,7 +49,6 @@ export default function DossierForm({
     const [openCommune, setOpenCommune] = useState(false);
     const [numeroWarning, setNumeroWarning] = useState<string | null>(null);
 
-    // ✅ Initialisation sécurisée du numéro
     const initialNumero = useMemo(() => {
         if (mode === 'create') {
             return suggested_numero || 1;
@@ -79,21 +78,20 @@ export default function DossierForm({
         id_district: dossier?.id_district || 0,
     });
 
-    // ✅ Validation du numéro avec messages détaillés
     useEffect(() => {
         if (mode === 'create' && data.numero_ouverture) {
             const num = data.numero_ouverture;
             
             if (num < 1) {
-                setNumeroWarning('⚠️ Le numéro doit être supérieur à 0');
+                setNumeroWarning('Le numéro doit être supérieur à 0');
             } else if (suggested_numero && num < suggested_numero) {
                 const diff = suggested_numero - num;
                 const lastInfo = last_numero ? ` (dernier utilisé : ${last_numero})` : '';
-                setNumeroWarning(`⚠️ Attention : vous utilisez un numéro ${diff} ${diff > 1 ? 'positions' : 'position'} plus bas que le prochain suggéré (${suggested_numero})${lastInfo}. Ce numéro sera accepté s'il n'est pas déjà utilisé.`);
+                setNumeroWarning(`Attention : vous utilisez un numéro ${diff} ${diff > 1 ? 'positions' : 'position'} plus bas que le prochain suggéré (${suggested_numero})${lastInfo}. Ce numéro sera accepté s'il n'est pas déjà utilisé.`);
             } else if (suggested_numero && num > suggested_numero) {
                 const skipped = num - suggested_numero;
                 const plural = skipped > 1 ? 's' : '';
-                setNumeroWarning(`ℹ️ Information : vous sautez ${skipped} numéro${plural}. Les numéros ${suggested_numero} à ${num - 1} resteront disponibles pour de futurs dossiers.`);
+                setNumeroWarning(`ℹInformation : vous sautez ${skipped} numéro${plural}. Les numéros ${suggested_numero} à ${num - 1} resteront disponibles pour de futurs dossiers.`);
             } else {
                 setNumeroWarning(null);
             }
@@ -154,7 +152,7 @@ export default function DossierForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ✅ Validation côté client
+        // Validation côté client
         if (!data.nom_dossier?.trim()) {
             toast.error('Le nom du dossier est obligatoire');
             return;
@@ -188,7 +186,7 @@ export default function DossierForm({
             return;
         }
 
-        // ✅ Soumission
+        // Soumission
         if (mode === 'create') {
             post(route('dossiers.store'), {
                 onError: (errors) => {
@@ -277,7 +275,7 @@ export default function DossierForm({
 
                         {/* Numéro d'ouverture + Date d'ouverture */}
                         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
-                            {/* ✅ Numéro d'ouverture avec validation visuelle */}
+                            {/* Numéro d'ouverture avec validation visuelle */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">
                                     Numéro d'ouverture <span className="text-red-500">*</span>
@@ -295,8 +293,8 @@ export default function DossierForm({
                                     className={cn(
                                         "h-11",
                                         errors.numero_ouverture && "border-red-500 focus-visible:ring-red-500",
-                                        numeroWarning?.includes('⚠️') && !errors.numero_ouverture && "border-yellow-500",
-                                        numeroWarning?.includes('ℹ️') && !errors.numero_ouverture && "border-blue-500"
+                                        numeroWarning?.includes('') && !errors.numero_ouverture && "border-yellow-500",
+                                        numeroWarning?.includes('') && !errors.numero_ouverture && "border-blue-500"
                                     )}
                                     disabled={mode === 'edit'}
                                 />
@@ -327,25 +325,25 @@ export default function DossierForm({
                                     </p>
                                 )}
 
-                                {/* ✅ Avertissements contextuels */}
+                                {/* Avertissements contextuels */}
                                 {numeroWarning && mode === 'create' && (
                                     <Alert 
                                         variant="default" 
                                         className={cn(
                                             "border",
-                                            numeroWarning.includes('⚠️') && "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20",
-                                            numeroWarning.includes('ℹ️') && "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                                            numeroWarning.includes('') && "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20",
+                                            numeroWarning.includes('') && "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
                                         )}
                                     >
                                         <AlertCircle className={cn(
                                             "h-4 w-4",
-                                            numeroWarning.includes('⚠️') && "text-yellow-600 dark:text-yellow-400",
-                                            numeroWarning.includes('ℹ️') && "text-blue-600 dark:text-blue-400"
+                                            numeroWarning.includes('') && "text-yellow-600 dark:text-yellow-400",
+                                            numeroWarning.includes('') && "text-blue-600 dark:text-blue-400"
                                         )} />
                                         <AlertDescription className={cn(
                                             "text-xs",
-                                            numeroWarning.includes('⚠️') && "text-yellow-800 dark:text-yellow-200",
-                                            numeroWarning.includes('ℹ️') && "text-blue-800 dark:text-blue-200"
+                                            numeroWarning.includes('') && "text-yellow-800 dark:text-yellow-200",
+                                            numeroWarning.includes('') && "text-blue-800 dark:text-blue-200"
                                         )}>
                                             {numeroWarning}
                                         </AlertDescription>
@@ -507,7 +505,7 @@ export default function DossierForm({
     );
 }
 
-// ✅ Composants helpers pour réduire la complexité
+// Composants helpers pour réduire la complexité
 
 function DistrictSelector({ districts, selectedId, onSelect, open, onOpenChange, error }: any) {
     const selected = districts.find((d: District) => d.id === selectedId);

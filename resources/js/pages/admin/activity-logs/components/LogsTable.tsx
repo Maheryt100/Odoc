@@ -1,4 +1,4 @@
-// admin/activity-logs/components/LogsTable.tsx - VERSION SIMPLIFIÉE
+// admin/activity-logs/components/LogsTable.tsx 
 import { Badge } from '@/components/ui/badge';
 import { User, MapPin, AlertCircle, Info, Calendar, Database, ExternalLink } from 'lucide-react';
 import { ActivityLog } from '../types';

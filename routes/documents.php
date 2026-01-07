@@ -29,68 +29,60 @@ Route::prefix('documents')->name('documents.')->group(function () {
         ->name('stats');
 
     // ========================================================================
-    // ✅ VÉRIFICATION UNICITÉ NUMÉRO DE REÇU
-    // ========================================================================
-    Route::post('/check-recu-numero', function (Request $request) {
-        $validated = $request->validate([
-            'numero_recu' => 'required|string',
-            'id_dossier' => 'required|exists:dossiers,id',
-        ]);
-        
-        $exists = \App\Models\RecuReference::where('numero_recu', $validated['numero_recu'])
-            ->where('id_dossier', $validated['id_dossier'])
-            ->first();
-        
-        return response()->json([
-            'exists' => !!$exists,
-            'proprietaire' => $exists ? ($exists->propriete->proprietaire ?? 'inconnu') : null,
-        ]);
-    })->name('check-recu-numero');
-
-    // ========================================================================
-    // ✅ ACTES DE VENTE (avec numéro de reçu externe)
+    // ACTES DE VENTE (avec numéro de reçu externe + date)
     // ========================================================================
     Route::prefix('acte-vente')->name('acte-vente.')->group(function () {
-        // ✅ CORRECTION : Génération en POST
+        // POST - Génération initiale
         Route::post('/generate', [ActeVenteController::class, 'generate'])
             ->name('generate');
         
-        // Téléchargement
+        // GET - Téléchargement
         Route::get('/{id}/download', [ActeVenteController::class, 'download'])
             ->name('download');
         
-        // Régénération
+        // POST - Régénération
         Route::post('/{id}/regenerate', [ActeVenteController::class, 'regenerate'])
             ->name('regenerate');
+        
+        // DELETE - Suppression
+        Route::delete('/{id}', [ActeVenteController::class, 'delete'])
+            ->name('delete');
     });
 
     // ========================================================================
-    // CSF
+    // CSF - ⚠️ CORRIGÉ : POST au lieu de GET pour generate
     // ========================================================================
     Route::prefix('csf')->name('csf.')->group(function () {
-        Route::get('/generate', [CertificatController::class, 'generate'])
+        // ✅ POST - Génération (CORRIGÉ)
+        Route::post('/generate', [CertificatController::class, 'generate'])
             ->name('generate');
         
+        // ✅ GET - Téléchargement
         Route::get('/{id}/download', [CertificatController::class, 'download'])
             ->name('download');
         
+        // ✅ POST - Régénération
         Route::post('/{id}/regenerate', [CertificatController::class, 'regenerate'])
             ->name('regenerate');
         
+        // ✅ GET - Historique
         Route::get('/history/{id_demandeur}', [CertificatController::class, 'history'])
             ->name('history');
     });
 
     // ========================================================================
-    // RÉQUISITIONS
+    // RÉQUISITIONS - ⚠️ CORRIGÉ : POST au lieu de GET pour generate
     // ========================================================================
     Route::prefix('requisition')->name('requisition.')->group(function () {
-        Route::get('/generate', [RequisitionController::class, 'generate'])
+        // ✅ POST - Génération (CORRIGÉ)
+        Route::post('/generate', [RequisitionController::class, 'generate'])
             ->name('generate');
         
+        // ✅ GET - Téléchargement
         Route::get('/{id}/download', [RequisitionController::class, 'download'])
             ->name('download');
         
+        // ✅ POST - Régénération
         Route::post('/{id}/regenerate', [RequisitionController::class, 'regenerate'])
             ->name('regenerate');
     });
@@ -128,7 +120,7 @@ Route::prefix('documents')->name('documents.')->group(function () {
                 ]);
             })->name('cleanup-obsolete');
 
-            // Migration des numéros de reçu (ancien système vers nouveau)
+            // Migration des numéros de reçu
             Route::post('/migrate-recu-format', [DocumentGenerationController::class, 'migrateOldRecuFormat'])
                 ->name('migrate-recu-format');
         });

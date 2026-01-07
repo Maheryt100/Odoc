@@ -1,4 +1,4 @@
-// pages/users/components/UserFilters.tsx - VERSION CORRIGÉE
+// pages/users/components/UserFilters.tsx
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

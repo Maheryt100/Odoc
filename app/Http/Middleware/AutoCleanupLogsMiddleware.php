@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Models\SystemSettings;
 use App\Models\ActivityLog;
 use App\Services\ActivityLogsExportService;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -73,10 +73,7 @@ class AutoCleanupLogsMiddleware
             })->afterResponse();
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la vérification automatique des logs', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+
         }
     }
 
@@ -97,25 +94,15 @@ class AutoCleanupLogsMiddleware
             $count = $logsToArchive->count();
 
             if ($count === 0) {
-                Log::info('Archivage automatique : Aucun log à archiver', [
-                    'retention_days' => $retentionDays,
-                    'period' => $dateFrom->format('Y-m-d') . ' to ' . $dateTo->format('Y-m-d'),
-                ]);
+  
                 return;
             }
-
-            Log::info("Archivage automatique : {$count} logs à archiver", [
-                'retention_days' => $retentionDays,
-                'period' => $dateFrom->format('Y-m-d') . ' to ' . $dateTo->format('Y-m-d'),
-            ]);
 
             // Export automatique (Niveau 3 : Archives Excel)
             $result = $this->exportService->export(isAutoExport: true);
 
             if (!$result['success']) {
-                Log::error('Erreur lors de l\'export automatique', [
-                    'error' => $result['error'] ?? 'Erreur inconnue'
-                ]);
+
                 DB::rollBack();
                 return;
             }
@@ -134,22 +121,9 @@ class AutoCleanupLogsMiddleware
 
             DB::commit();
 
-            Log::info('Archivage automatique terminé avec succès', [
-                'archived_logs' => $count,
-                'filename' => $result['filename'],
-                'cleaned_exports' => $cleanedExports,
-                'retention_days' => $retentionDays,
-                'frequency' => SystemSettings::getCleanupFrequency(),
-                'active_logs_remaining' => ActivityLog::where('created_at', '>=', $dateTo)->count(),
-            ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erreur lors de l\'archivage automatique', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
         }
     }
 }

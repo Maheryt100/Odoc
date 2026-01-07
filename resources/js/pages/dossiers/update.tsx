@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/Update.tsx - ✅ VERSION RESPONSIVE
+// resources/js/pages/dossiers/Update.tsx - 
 import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
 import { Toaster } from 'sonner';
@@ -32,10 +32,10 @@ export default function Update() {
             <Head title={`Modifier ${dossier.nom_dossier}`} />
             <Toaster richColors position="top-center" />
 
-            {/* ✅ Container responsive */}
+            {/*  Container responsive */}
             <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-6 lg:py-8">
                 
-                {/* ✅ Header responsive amélioré */}
+                {/* Header responsive amélioré */}
                 <div className="mb-4 sm:mb-6">
                     {/* Titre avec icône */}
                     <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
@@ -47,7 +47,7 @@ export default function Update() {
                         </h1>
                     </div>
                     
-                    {/* ✅ Info dossier - Responsive avec wrapping */}
+                    {/*  Info dossier - Responsive avec wrapping */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pl-8 sm:pl-11">
                         {/* Nom du dossier */}
                         <p className="text-sm sm:text-base text-muted-foreground font-medium truncate">
@@ -67,10 +67,10 @@ export default function Update() {
                         </Badge>
                     </div>
                     
-                    {/* ✅ Note d'avertissement mobile
+                    {/*  Note d'avertissement mobile
                     <div className="mt-3 sm:hidden bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                         <p className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
-                            <span className="shrink-0">ℹ️</span>
+                            <span className="shrink-0">ℹ</span>
                             <span>
                                 Le numéro d'ouverture ne peut pas être modifié. 
                                 Seules les autres informations peuvent être mises à jour.
@@ -79,7 +79,7 @@ export default function Update() {
                     </div> */}
                 </div>
 
-                {/* ✅ Formulaire */}
+                {/* Formulaire */}
                 <DossierForm
                     districts={districts}
                     dossier={dossier}

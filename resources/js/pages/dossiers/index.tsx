@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/index.tsx - ✅ CORRECTION BOUTON DOCUMENTS
+// resources/js/pages/dossiers/index.tsx
 
 import { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -56,7 +56,7 @@ export default function Index() {
 
     const itemsPerPage = 10;
 
-    // ✅ Permissions - Mémorisées pour éviter les recalculs
+    // Permissions - Mémorisées pour éviter les recalculs
     const permissions = useMemo(() => {
         const canCreateDossier = user?.role === 'admin_district' || user?.role === 'user_district';
         const canShowAllDistricts = user?.role === 'super_admin' || user?.role === 'central_user';
@@ -360,7 +360,7 @@ export default function Index() {
                             canShowAllDistricts={permissions.canShowAllDistricts}
                         />
 
-                        {/* ✅ Table avec permissions passées */}
+                        {/* Table avec permissions passées */}
                         <DossierTable
                             dossiers={sortedDossiers}
                             auth={auth}

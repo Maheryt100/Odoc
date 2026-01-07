@@ -1,4 +1,4 @@
-// pages/demandes/index.tsx - ✅ CORRECTION ERREURS TYPESCRIPT
+// pages/demandes/index.tsx 
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -173,9 +173,6 @@ export default function DemandesIndex({
         setShowDemandeDetail(true);
     };
 
-    /**
-     * ✅ CORRECTION : Enrichir le demandeur avec propriétés du dossier
-     */
     const handleSelectDemandeurFromDemande = (demandeurPartiel: any) => {
         setShowDemandeDetail(false);
         
@@ -202,9 +199,6 @@ export default function DemandesIndex({
         }, 100);
     };
 
-    /**
-     * ✅ CORRECTION TYPESCRIPT : Type proper pour demandes[]
-     */
     const handleSelectProprieteFromDemande = (proprietePartielle: any) => {
         setShowDemandeDetail(false);
         
@@ -217,11 +211,9 @@ export default function DemandesIndex({
             );
             
             if (proprieteComplete) {
-                // ✅ VALIDATION : S'assurer que demandes[] est présent et enrichi
                 if (!proprieteComplete.demandes || proprieteComplete.demandes.length === 0) {
                     console.warn('Propriété trouvée mais sans demandes, reconstruction...');
-                    
-                    // ✅ FIX TYPE : Reconstruire avec tous les champs nécessaires
+  
                     const demandesReconstruites = documents.data
                         .filter(doc => doc.id_propriete === proprieteComplete!.id)
                         .flatMap(doc => 
@@ -229,21 +221,20 @@ export default function DemandesIndex({
                                 id: d.id,
                                 id_demandeur: d.id_demandeur,
                                 id_propriete: doc.id_propriete,
-                                date_demande: doc.date_demande || '', // ✅ Champ ajouté
+                                date_demande: doc.date_demande || '',
                                 status: doc.status as 'active' | 'archive',
-                                status_consort: doc.status_consort, // ✅ Champ ajouté
+                                status_consort: doc.status_consort, 
                                 ordre: idx + 1,
                                 total_prix: doc.total_prix,
-                                motif_archive: null, // ✅ Champ ajouté
-                                id_user: 0, // ✅ Champ ajouté (valeur par défaut)
-                                created_at: doc.created_at || '', // ✅ Champ ajouté
-                                updated_at: doc.updated_at || '', // ✅ Champ ajouté
+                                motif_archive: null, 
+                                id_user: 0, 
+                                created_at: doc.created_at || '',
+                                updated_at: doc.updated_at || '', 
                                 demandeur: d.demandeur,
                                 propriete: undefined, // Optionnel
                             }))
                         ) as any[];
                     
-                    // ✅ FIX UNDEFINED : S'assurer que proprieteComplete est défini
                     if (proprieteComplete) {
                         proprieteComplete = {
                             ...proprieteComplete,
@@ -251,18 +242,11 @@ export default function DemandesIndex({
                         };
                     }
                 }
-                
-                console.log('✅ Propriété complète envoyée au dialog:', {
-                    id: proprieteComplete?.id,
-                    lot: proprieteComplete?.lot,
-                    demandes_count: proprieteComplete?.demandes?.length || 0
-                });
-                
+            
                 setSelectedPropriete(proprieteComplete);
             } else {
                 console.warn('Propriété complète introuvable, reconstruction depuis données partielles');
                 
-                // ✅ FIX TYPE : Fallback avec tous les champs
                 const demandesReconstruites = documents.data
                     .filter(doc => doc.id_propriete === proprietePartielle.id)
                     .flatMap(doc => 

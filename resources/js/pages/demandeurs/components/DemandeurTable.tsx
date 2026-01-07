@@ -39,7 +39,7 @@ export default function DemandeurTable({
     const paginatedDemandeurs = demandeurs.slice(startIndex, endIndex);
     const totalPages = Math.ceil(demandeurs.length / itemsPerPage);
 
-    // ✅ CORRECTION: Fonction pagination déclarée AVANT utilisation
+    //Fonction pagination déclarée AVANT utilisation
     function renderPagination() {
         if (totalPages <= 1) return null;
         
@@ -102,7 +102,7 @@ export default function DemandeurTable({
         );
     }
 
-    // 📱 VERSION MOBILE
+
     if (isMobile) {
         return (
             <>
@@ -125,7 +125,7 @@ export default function DemandeurTable({
         );
     }
 
-    // 💻 VERSION DESKTOP
+
     return (
         <>
             <div className="overflow-x-auto">

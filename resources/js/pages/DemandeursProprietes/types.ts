@@ -1,7 +1,7 @@
 // pages/DemandeursProprietes/types.ts
 
 export interface DemandeurFormData {
-    _tempId?: number; // ✅ Ajout pour clé unique
+    _tempId?: number; 
     titre_demandeur: string;
     nom_demandeur: string;
     prenom_demandeur: string;
@@ -29,7 +29,7 @@ export interface DemandeurFormData {
 }
 
 export interface ProprieteFormData {
-    _tempId?: number; // ✅ Ajout pour clé unique
+    _tempId?: number;
     lot: string;
     type_operation: string;
     nature: string;

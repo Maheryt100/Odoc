@@ -126,7 +126,7 @@ export default function SmartDeleteDossierDialog({
                     </div>
                 ) : checkData ? (
                     <div className="space-y-6 py-4">
-                        {/* ✅ INFORMATIONS DOSSIER */}
+                        {/* INFORMATIONS DOSSIER */}
                         <Card className="p-4 bg-muted/30">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
@@ -147,7 +147,7 @@ export default function SmartDeleteDossierDialog({
                             </div>
                         </Card>
 
-                        {/* ✅ STATISTIQUES DU CONTENU */}
+                        {/* STATISTIQUES DU CONTENU */}
                         <div className="grid grid-cols-3 gap-3">
                             <Card className={`p-3 text-center ${
                                 checkData.total_demandeurs > 0 
@@ -198,21 +198,21 @@ export default function SmartDeleteDossierDialog({
                             </Card>
                         </div>
 
-                        {/* ✅ RÉSULTAT DE LA VÉRIFICATION */}
+                        {/* RÉSULTAT DE LA VÉRIFICATION */}
                         {checkData.can_delete ? (
-                            // ✅ SUPPRESSION AUTORISÉE
+                            // SUPPRESSION AUTORISÉE
                             <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                                 <div className="flex items-start gap-3">
                                     <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
                                     <div className="text-sm text-blue-700 dark:text-blue-300">
                                         <p className="font-medium mb-2">
-                                            ✅ Ce dossier peut être supprimé
+                                            Ce dossier peut être supprimé
                                         </p>
                                         <p>
                                             Le dossier est vide (aucun demandeur, propriété ou pièce jointe).
                                         </p>
                                         <p className="text-red-600 dark:text-red-400 font-medium mt-2">
-                                            ⚠️ Cette action est irréversible !
+                                            Cette action est irréversible !
                                         </p>
                                     </div>
                                 </div>
@@ -234,7 +234,7 @@ export default function SmartDeleteDossierDialog({
                                     </div>
                                 </Card>
 
-                                {/* ✅ DÉTAILS DES BLOCAGES */}
+                                {/*  DÉTAILS DES BLOCAGES */}
                                 <Card className="p-4 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
                                     <div className="flex items-start gap-2">
                                         <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />

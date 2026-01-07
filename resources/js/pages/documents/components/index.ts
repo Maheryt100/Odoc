@@ -1,8 +1,7 @@
-// documents/components/index.ts - ✅ EXPORTS CENTRALISÉS
-
-export { ProprieteSelect, DemandeurSelect } from './DocumentSelects';
+// documents/components/index.ts
+export { EntityCard } from './EntityCard';
+export { EntitySelect } from './EntitySelect';
+export { ActionButton } from './ActionButton';
+export { RecuModal } from './RecuModal';
+export { StatusBadge } from './StatusBadge';
 export { DocumentTabs } from './DocumentTabs';
-export { StickyActionFooter } from './StickyActionFooter';
-export { default as StatCard } from './StatCard';
-export { default as DocumentStatusBadge } from './DocumentStatusBadge';
-export { default as SecureDownloadButton } from './SecureDownloadButton';

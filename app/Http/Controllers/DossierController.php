@@ -8,7 +8,6 @@ use App\Traits\ManagesDistrictAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
@@ -158,8 +157,9 @@ class DossierController extends Controller
             
             DB::commit();
             
-            // return Redirect::route('dossiers')
-            //     ->with('message', 'Dossier créé avec succès');
+            // ✅ MODIFICATION : Redirection vers la liste des dossiers
+            return Redirect::route('dossiers')
+                ->with('success', 'Dossier créé avec succès');
                 
         } catch (\Exception $exception) {
             DB::rollBack();
@@ -168,9 +168,6 @@ class DossierController extends Controller
         }
     }
 
-    /**
-     * 
-     */
     public function show($id)
     {
         $dossier = Dossier::with([
@@ -384,10 +381,6 @@ class DossierController extends Controller
         }
     }
 
-    /**
-     * RÈGLE : Fermeture/réouverture
-     * AUTORISÉS : super_admin, central_user, admin_district (leur district)
-     */
     private function canCloseDossier(Dossier $dossier, User $user): bool
     {
         if ($user->isSuperAdmin()) {
@@ -405,19 +398,12 @@ class DossierController extends Controller
         return false;
     }
 
-    /**
-     * Génération de documents sur dossiers fermés
-     * AUTORISÉS : super_admin, admin_district (leur district uniquement)
-     * INTERDITS : central_user, user_district
-     */
     private function canGenerateDocuments(Dossier $dossier, User $user): bool
     {
-        // Si le dossier est ouvert, tout le monde peut générer (selon permissions habituelles)
         if (!$dossier->is_closed) {
             return true;
         }
 
-        // Dossier fermé : seulement super_admin et admin_district
         if ($user->isSuperAdmin()) {
             return true;
         }
@@ -426,7 +412,6 @@ class DossierController extends Controller
             return $user->id_district === $dossier->id_district;
         }
 
-        // central_user et user_district NE PEUVENT PAS
         return false;
     }
 
@@ -543,7 +528,6 @@ class DossierController extends Controller
         }
     }
 
-
     private function canDeleteDossier(Dossier $dossier, User $user): bool
     {
         if ($dossier->is_closed) {
@@ -604,10 +588,6 @@ class DossierController extends Controller
         ];
     }
 
-    
-    /**
-     * Supprimer un dossier (seulement si vide)
-     */
     public function destroy($id)
     {
         $this->authorizeDistrictAccess('delete');

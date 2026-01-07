@@ -16,7 +16,7 @@ class Demander extends Model
     protected $fillable = [
         'id_demandeur',
         'id_propriete',
-        'date_demande', // ✅ NOUVEAU CHAMP
+        'date_demande',
         'total_prix',
         'status',
         'status_consort',
@@ -29,14 +29,14 @@ class Demander extends Model
         'total_prix' => 'integer',
         'status_consort' => 'boolean',
         'ordre' => 'integer',
-        'date_demande' => 'date', // ✅ CAST EN DATE
+        'date_demande' => 'date',
     ];
 
     protected $appends = [
         'is_principal',
         'is_active',
         'is_archived',
-        'date_demande_formatted', // ✅ NOUVEAU ACCESSOR
+        'date_demande_formatted',
     ];
 
     // ════════════════════════════════════════════════════════════════════════
@@ -76,7 +76,7 @@ class Demander extends Model
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // ✅ NOUVEAUX ACCESSORS POUR DATE_DEMANDE
+    // ACCESSORS POUR DATE_DEMANDE
     // ════════════════════════════════════════════════════════════════════════
 
     /**
@@ -163,7 +163,7 @@ class Demander extends Model
     }
 
     /**
-     * ✅ NOUVEAU SCOPE : Filtrer par période de demande
+     * Filtrer par période de demande
      */
     public function scopeByDateDemandePeriod($query, ?string $dateDebut = null, ?string $dateFin = null)
     {
@@ -179,7 +179,7 @@ class Demander extends Model
     }
 
     /**
-     * ✅ NOUVEAU SCOPE : Demandes du mois en cours
+     * Demandes du mois en cours
      */
     public function scopeCurrentMonth($query)
     {
@@ -188,7 +188,7 @@ class Demander extends Model
     }
 
     /**
-     * ✅ NOUVEAU SCOPE : Demandes de l'année en cours
+     * Demandes de l'année en cours
      */
     public function scopeCurrentYear($query)
     {
@@ -305,8 +305,8 @@ class Demander extends Model
                 'is_principal' => $demande->is_principal,
                 'is_consort' => $demande->is_consort,
                 'total_prix' => $demande->total_prix,
-                'date_demande' => $demande->date_demande, // ✅ AJOUTÉ
-                'date_demande_formatted' => $demande->date_demande_formatted, // ✅ AJOUTÉ
+                'date_demande' => $demande->date_demande,
+                'date_demande_formatted' => $demande->date_demande_formatted,
             ];
         })->toArray();
     }
@@ -353,7 +353,7 @@ class Demander extends Model
     }
 
     /**
-     * ✅ MISE À JOUR : Inclure date_demande dans les stats
+     * Inclure date_demande dans les stats
      */
     public function getStats(): array
     {
@@ -371,9 +371,9 @@ class Demander extends Model
             'can_be_dissociated' => $this->canBeDissociated(),
             'can_be_modified' => $this->canBeModified(),
             'motif_archive' => $this->motif_archive,
-            'date_demande' => $this->date_demande, // ✅ AJOUTÉ
-            'date_demande_formatted' => $this->date_demande_formatted, // ✅ AJOUTÉ
-            'date_demande_short' => $this->date_demande_short, // ✅ AJOUTÉ
+            'date_demande' => $this->date_demande,
+            'date_demande_formatted' => $this->date_demande_formatted,
+            'date_demande_short' => $this->date_demande_short,
         ];
     }
 
@@ -401,7 +401,7 @@ class Demander extends Model
             // Auto-calculer status_consort
             $demande->status_consort = $demande->ordre > 1;
 
-            // ✅ NOUVEAU : Date de demande par défaut = aujourd'hui
+            // Date de demande par défaut = aujourd'hui
             if (!$demande->date_demande) {
                 $demande->date_demande = Carbon::today();
             }

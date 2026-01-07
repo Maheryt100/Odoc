@@ -1,5 +1,5 @@
 // ============================================
-// 📅 utils/dateHelpers.ts - HELPER DATES
+// utils/dateHelpers.ts - HELPER DATES
 // ============================================
 
 /**

@@ -1,4 +1,4 @@
-// Dashboard/components/ProprietesCard.tsx - VERSION CORRIGÉE
+// Dashboard/components/ProprietesCard.tsx 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LandPlot, Maximize2 } from 'lucide-react';

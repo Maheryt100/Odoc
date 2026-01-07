@@ -9,7 +9,7 @@ class ValidCIN implements Rule
 {
     public function passes($attribute, $value)
     {
-        // ✅ Validation stricte du CIN
+        // Validation stricte du CIN
         return preg_match('/^\d{12}$/', $value);
     }
 

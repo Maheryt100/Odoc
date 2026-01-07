@@ -14,9 +14,9 @@ class TopoUserSeeder extends Seeder
     public function run(): void
     {
         DB::table('topo_users')->insert([
-            'username' => 'mahery',
-            'email' => 'mahery@gmail.com',
-            'full_name' => 'Mahery',
+            'username' => 'topo',
+            'email' => 'topo@gmail.com',
+            'full_name' => 'Topo',
             'hashed_password' => Hash::make('password'),
             'role' => 'operator',
             'is_active' => true,

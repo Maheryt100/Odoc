@@ -5,7 +5,7 @@ namespace App\Console;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Models\SystemSettings;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
 
 class Kernel extends ConsoleKernel
@@ -19,7 +19,6 @@ class Kernel extends ConsoleKernel
         // NETTOYAGE AUTOMATIQUE DES LOGS
         // ========================================
 
-        // ✅ AMÉLIORATION : Exécution selon la fréquence configurée
         $this->scheduleLogCleanup($schedule);
 
         // ========================================
@@ -32,12 +31,12 @@ class Kernel extends ConsoleKernel
                 $deleted = $service->cleanOldExports(10);
 
                 if ($deleted > 0) {
-                    Log::info("Nettoyage des anciens exports : {$deleted} fichiers supprimés");
+                    // Log::info("Nettoyage des anciens exports : {$deleted} fichiers supprimés");
                 }
             } catch (\Exception $e) {
-                Log::error('Erreur lors du nettoyage des exports', [
-                    'error' => $e->getMessage()
-                ]);
+                // Log::error('Erreur lors du nettoyage des exports', [
+                //     'error' => $e->getMessage()
+                // ]);
             }
         })
         ->weekly()
@@ -47,7 +46,7 @@ class Kernel extends ConsoleKernel
         ->withoutOverlapping();
 
         // ========================================
-        // RAPPORT HEBDOMADAIRE DES LOGS (Optionnel)
+        // RAPPORT HEBDOMADAIRE DES LOGS 
         // ========================================
 
         $schedule->call(function () {
@@ -56,11 +55,11 @@ class Kernel extends ConsoleKernel
                 
                 // Log des statistiques pour le moment
                 // TODO : Implémenter l'envoi d'email au Super Admin
-                Log::info('Rapport hebdomadaire des logs', $stats);
+                // Log::info('Rapport hebdomadaire des logs', $stats);
             } catch (\Exception $e) {
-                Log::error('Erreur lors de la génération du rapport', [
-                    'error' => $e->getMessage()
-                ]);
+                // Log::error('Erreur lors de la génération du rapport', [
+                //     'error' => $e->getMessage()
+                // ]);
             }
         })
         ->weekly()
@@ -69,24 +68,10 @@ class Kernel extends ConsoleKernel
         ->name('weekly-logs-report')
         ->withoutOverlapping();
 
-        // ========================================
-        // AUTRES TÂCHES (À décommenter si nécessaire)
-        // ========================================
-
-        // Backup quotidien
-        // $schedule->command('backup:run')
-        //     ->daily()
-        //     ->at('01:00')
-        //     ->name('daily-backup');
-
-        // Nettoyage du cache
-        // $schedule->command('cache:prune-stale-tags')
-        //     ->hourly()
-        //     ->name('prune-cache');
     }
 
     /**
-     * ✅ NOUVEAU : Planifier le nettoyage selon la fréquence configurée
+     * Planifier le nettoyage selon la fréquence configurée
      */
     private function scheduleLogCleanup(Schedule $schedule): void
     {
@@ -99,36 +84,36 @@ class Kernel extends ConsoleKernel
 
         $task = $schedule->call(function () {
             try {
-                Log::info('Démarrage du nettoyage automatique des logs');
+                // Log::info('Démarrage du nettoyage automatique des logs');
                 
                 $exitCode = Artisan::call('logs:clean', [
                     '--force' => true // Force sans confirmation
                 ]);
                 
                 if ($exitCode === 0) {
-                    Log::info('Nettoyage automatique des logs terminé avec succès');
+                    // Log::info('Nettoyage automatique des logs terminé avec succès');
                 } else {
-                    Log::warning('Le nettoyage des logs a retourné un code non-zéro', [
-                        'exit_code' => $exitCode
-                    ]);
+                    // Log::warning('Le nettoyage des logs a retourné un code non-zéro', [
+                    //     'exit_code' => $exitCode
+                    // ]);
                 }
             } catch (\Exception $e) {
-                Log::error('Erreur lors du nettoyage automatique des logs', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
+                // Log::error('Erreur lors du nettoyage automatique des logs', [
+                //     'error' => $e->getMessage(),
+                //     'trace' => $e->getTraceAsString()
+                // ]);
             }
         })
         ->name('auto-clean-activity-logs')
         ->withoutOverlapping()
         ->onSuccess(function () {
-            Log::info('Nettoyage automatique des logs : Succès');
+            // Log::info('Nettoyage automatique des logs : Succès');
         })
         ->onFailure(function () {
-            Log::error('Nettoyage automatique des logs : Échec');
+            // Log::error('Nettoyage automatique des logs : Échec');
         });
 
-        // ✅ Appliquer la fréquence configurée
+        // Appliquer la fréquence configurée
         match($frequency) {
             'daily' => $task->daily()->at('02:00'),
             'weekly' => $task->weekly()->sundays()->at('02:00'),
@@ -136,10 +121,10 @@ class Kernel extends ConsoleKernel
             default => $task->monthly()->at('02:00'), // Par défaut : mensuel
         };
 
-        Log::info('Nettoyage automatique des logs planifié', [
-            'frequency' => $frequency,
-            'enabled' => true
-        ]);
+        // Log::info('Nettoyage automatique des logs planifié', [
+        //     'frequency' => $frequency,
+        //     'enabled' => true
+        // ]);
     }
 
     /**

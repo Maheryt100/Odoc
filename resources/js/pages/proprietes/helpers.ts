@@ -1,4 +1,4 @@
-// pages/proprietes/helpers.ts - ✅ RECHERCHE MISE À JOUR
+// pages/proprietes/helpers.ts 
 
 import type { Propriete } from '@/types';
 import type { 

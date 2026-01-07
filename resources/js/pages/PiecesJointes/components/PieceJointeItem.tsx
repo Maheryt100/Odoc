@@ -1,4 +1,4 @@
-// components/PieceJointeItem.tsx - AVEC URL DIRECTE
+// components/PieceJointeItem.tsx
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 

@@ -1,4 +1,4 @@
-// pages/demandes/components/DossierStats.tsx - ✅ VERSION RESPONSIVE
+// pages/demandes/components/DossierStats.tsx 
 
 import { Card } from '@/components/ui/card';
 import { FileText, CheckCircle2, Archive, LandPlot } from 'lucide-react';

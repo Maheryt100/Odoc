@@ -1,6 +1,4 @@
 <?php
-// app/Http/Middleware/InertiaTopoData.php
-// ✅ VERSION CORRIGÉE - TRANSMISSION TOKEN
 
 namespace App\Http\Middleware;
 
@@ -9,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Services\JwtService;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class InertiaTopoData
 {
@@ -26,26 +24,26 @@ class InertiaTopoData
                 $token = JwtService::generateToken($user);
                 session(['geodoc_jwt' => $token]);
                 
-                Log::debug('JWT généré pour TopoFlux', [
-                    'user_id' => $user->id,
-                    'token_preview' => substr($token, 0, 20) . '...'
-                ]);
+                // Log::debug('JWT généré pour TopoFlux', [
+                //     'user_id' => $user->id,
+                //     'token_preview' => substr($token, 0, 20) . '...'
+                // ]);
                 
             } catch (\Exception $e) {
-                Log::error('Erreur génération JWT', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage()
-                ]);
+                // Log::error('Erreur génération JWT', [
+                //     'user_id' => $user->id,
+                //     'error' => $e->getMessage()
+                // ]);
             }
         }
         
         // ========================================
-        // ✅ PARTAGE AVEC REACT (GLOBAL)
+        // PARTAGE AVEC REACT (GLOBAL)
         // ========================================
         Inertia::share([
             'fastapi' => fn () => [
                 'url' => config('services.fastapi.url'),
-                'token' => $token,  // ✅ Token disponible partout
+                'token' => $token,  // Token disponible partout
                 'connected' => !is_null($token)
             ]
         ]);

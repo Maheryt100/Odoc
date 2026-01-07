@@ -70,11 +70,11 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
 
-                // ✅ JWT accessible côté React
+                // JWT accessible côté React
                 // usePage().props.auth.jwt_token
                 'jwt_token' => $jwtToken,
 
-                // ✅ URL FastAPI
+                // URL FastAPI
                 'fastapi_url' => config(
                     'services.fastapi.url',
                     'http://127.0.0.1:8000'

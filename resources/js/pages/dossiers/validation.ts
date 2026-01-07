@@ -127,7 +127,7 @@ export function validateDossierForm(data: DossierFormData): ValidationResult {
 
     // Numéro d'ouverture (optionnel mais si présent, doit être valide)
     if (data.numero_ouverture) {
-        const numeroStr = data.numero_ouverture.toString();  // ✅ Convertir en string
+        const numeroStr = data.numero_ouverture.toString();  // Convertir en string
         if (numeroStr.length > 50) {
             errors.push({
                 field: 'numero_ouverture',

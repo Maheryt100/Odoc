@@ -581,4 +581,21 @@ class ActivityLogger
         
         return round($bytes, 2) . ' ' . $units[$i];
     }
+
+    public static function logDocumentDeletion(string $type, int $documentId, array $context = []): void
+    {
+        ActivityLog::create([
+            'id_user' => Auth::id(),
+            'action' => ActivityLog::ACTION_DELETE,
+            'entity_type' => ActivityLog::ENTITY_DOCUMENT,
+            'entity_id' => $documentId,
+            'document_type' => $type,
+            'metadata' => array_merge($context, [
+                'timestamp' => now()->toIso8601String(),
+                'action_type' => 'delete_document',
+            ]),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+    }
 }

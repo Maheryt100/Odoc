@@ -28,7 +28,6 @@ class ProprieteController extends Controller
         $this->proprieteService = $proprieteService;
     }
 
-    // ✅ VALIDATION RULES COMMUNE
     private function getValidationRules(): array
     {
         return [
@@ -46,18 +45,16 @@ class ProprieteController extends Controller
             'numero_FN' => 'nullable|string|max:30',
             'numero_requisition' => 'nullable|string|max:50',
             'id_dossier' => 'required|numeric|exists:dossiers,id',
-            
-            // ✅ DATES MISES À JOUR
+
             'date_requisition' => 'nullable|date',
-            'date_depot_1' => 'nullable|date',  // ex date_inscription
-            'date_depot_2' => 'nullable|date',  // NOUVEAU
+            'date_depot_1' => 'nullable|date',
+            'date_depot_2' => 'nullable|date',
             'date_approbation_acte' => [
                 'nullable',
                 'date',
-                'after_or_equal:date_requisition', // ✅ VALIDATION : après date_requisition
+                'after_or_equal:date_requisition', 
             ],
-            
-            // Dep/Vol
+
             'dep_vol_inscription' => 'nullable|string|max:50',
             'numero_dep_vol_inscription' => 'nullable|string|max:50',
             'dep_vol_requisition' => 'nullable|string|max:50',
@@ -75,8 +72,7 @@ class ProprieteController extends Controller
             'vocation.required' => 'La vocation est obligatoire',
             'vocation.in' => 'La vocation doit être: Edilitaire, Agricole, Forestière ou Touristique',
             'contenance.min' => 'La contenance est invalide',
-            
-            // ✅ MESSAGES POUR NOUVELLES DATES
+    
             'date_approbation_acte.after_or_equal' => 'La date d\'approbation doit être postérieure ou égale à la date de réquisition',
         ];
     }
@@ -124,7 +120,6 @@ class ProprieteController extends Controller
             ]);
         }
 
-        // ✅ VALIDATION AVEC NOUVELLES DATES
         $validate = $request->validate(
             $this->getValidationRules(),
             $this->getValidationMessages()
@@ -170,7 +165,6 @@ class ProprieteController extends Controller
             'id_dossier' => 'required|exists:dossiers,id',
         ]);
 
-        // ✅ VALIDATION AVEC NOUVELLES DATES
         $rules = $this->getValidationRules();
         $messages = $this->getValidationMessages();
         
@@ -271,7 +265,6 @@ class ProprieteController extends Controller
             ]);
         }
 
-        // ✅ VALIDATION AVEC NOUVELLES DATES
         $validate = $request->validate(
             $this->getValidationRules(),
             $this->getValidationMessages()

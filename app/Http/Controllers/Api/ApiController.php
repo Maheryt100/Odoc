@@ -125,7 +125,7 @@ class ApiController extends Controller
     // ========================================================================
 
     /**
-     * ✅ Vérifier si un demandeur peut être retiré d'un dossier
+     * Vérifier si un demandeur peut être retiré d'un dossier
      * 
      * @param int $id ID du demandeur
      * @return JsonResponse
@@ -133,7 +133,7 @@ class ApiController extends Controller
     public function checkDemandeurRemove(int $id): JsonResponse
     {
         try {
-            // ✅ Récupérer dossierId depuis query string
+            // Récupérer dossierId depuis query string
             $dossierId = request()->query('dossierId');
             
             if (!$dossierId) {
@@ -163,7 +163,7 @@ class ApiController extends Controller
             
             $canRemove = empty($lotsActifs) && empty($lotsArchives);
             
-            // ✅ Structure attendue par le frontend
+            // Structure attendue par le frontend
             return response()->json([
                 'can_remove' => $canRemove,
                 'lots_actifs' => $lotsActifs,
@@ -186,7 +186,7 @@ class ApiController extends Controller
     }
 
     /**
-     * ✅ Vérifier si un demandeur peut être supprimé définitivement
+     * Vérifier si un demandeur peut être supprimé définitivement
      * Structure alignée avec SmartDeleteDemandeurDialog.tsx
      */
     public function checkDemandeurDelete(int $id): JsonResponse
@@ -228,7 +228,7 @@ class ApiController extends Controller
             
             $canDelete = $demandesActives->isEmpty() && $demandesArchivees->isEmpty();
             
-            // ✅ Structure EXACTE attendue par le frontend
+            // Structure EXACTE attendue par le frontend
             return response()->json([
                 'can_delete_completely' => $canDelete,
                 'can_remove_from_dossier' => false, // Sera déterminé par checkDemandeurRemove
@@ -257,7 +257,7 @@ class ApiController extends Controller
     // ========================================================================
 
     /**
-     * ✅ Vérifier si une propriété peut être supprimée
+     * Vérifier si une propriété peut être supprimée
      * Structure alignée avec SmartDeleteProprieteDialog.tsx
      */
     public function checkProprieteDelete(int $id): JsonResponse
@@ -277,7 +277,7 @@ class ApiController extends Controller
             // Déterminer si suppression possible
             $canDelete = $demandesActives->isEmpty();
             
-            // ✅ Structure EXACTE attendue par le frontend
+            // Structure EXACTE attendue par le frontend
             return response()->json([
                 'can_delete' => $canDelete,
                 'is_archived' => $propriete->is_archived,

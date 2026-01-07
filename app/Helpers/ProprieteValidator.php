@@ -16,25 +16,21 @@ class ProprieteValidator
             'type_operation' => 'required|in:morcellement,immatriculation',
             'nature' => 'required|in:Urbaine,Suburbaine,Rurale',
             'vocation' => 'nullable|in:Edilitaire,Agricole,Forestière,Touristique',
-            
-            // Champs optionnels mais avec format
+           
             'titre' => 'nullable|string|max:50',
             'proprietaire' => 'nullable|string|max:100',
             'contenance' => 'nullable|integer|min:1',
             'charge' => 'nullable|string|max:255',
             'situation' => 'nullable|string',
-            
-            // Cadastre
+     
             'numero_FN' => 'nullable|string|max:30',
-            'dep_vol' => 'nullable|numeric', // ✅ CORRIGÉ: Simple numéro
-            'numero_dep_vol' => 'nullable|string|max:50|regex:/^\d+$/', // ✅ CORRIGÉ: Numéros uniquement
-            
-            // Réquisition
+            'dep_vol' => 'nullable|numeric', 
+            'numero_dep_vol' => 'nullable|string|max:50|regex:/^\d+$/',
+    
             'numero_requisition' => 'nullable|string|max:50',
             'date_requisition' => 'nullable|date',
             'date_inscription' => 'nullable|date',
-            
-            // Pour morcellement
+       
             'propriete_mere' => 'nullable|string|max:50',
             'titre_mere' => 'nullable|string|max:50',
             

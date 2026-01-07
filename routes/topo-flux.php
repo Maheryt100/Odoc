@@ -7,16 +7,16 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | TopoFlux Routes
 |--------------------------------------------------------------------------
-| Gestion des imports terrain depuis TopoManager
+| Gestion des imports terrain depuis TopoManager (FastAPI v2.0)
 | 
-| ACCÈS RESTREINT:
-| ✅ Admin District et User District UNIQUEMENT
-| ❌ Super Admin et Central User: REFUSÉ (lecture seule)
+| ACCÈS:
+|  Admin District et User District
+|  Super Admin et Central User (lecture seule possible)
 */
 
 Route::prefix('topo-flux')
     ->name('topo-flux.')
-    ->middleware(['auth', 'verified', 'topo.access']) // ✅ Middleware de restriction
+    ->middleware(['auth', 'verified'])
     ->group(function () {
         
         // Liste des imports
@@ -27,23 +27,23 @@ Route::prefix('topo-flux')
         Route::get('/{import}', [TopoFluxController::class, 'show'])
             ->name('show');
         
-        // Validation d'un import
-        Route::post('/{import}/validate', [TopoFluxController::class, 'validate'])
-            ->name('validate');
+        // Importer dans GeODOC
+        Route::post('/{import}/import', [TopoFluxController::class, 'import'])
+            ->name('import');
         
-        // Rejet d'un import
-        Route::post('/{import}/reject', [TopoFluxController::class, 'reject'])
-            ->name('reject');
-        
-        // Archivage d'un import
+        // Archiver
         Route::post('/{import}/archive', [TopoFluxController::class, 'archive'])
             ->name('archive');
         
-        // Téléchargement de fichier
-        Route::get('/{import}/files/{file}/download', [TopoFluxController::class, 'downloadFile'])
-            ->name('files.download');
+        // Désarchiver
+        Route::post('/{import}/unarchive', [TopoFluxController::class, 'unarchive'])
+            ->name('unarchive');
         
-        // Statistiques
-        Route::get('/stats', [TopoFluxController::class, 'stats'])
-            ->name('stats');
+        // Rejeter
+        Route::post('/{import}/reject', [TopoFluxController::class, 'reject'])
+            ->name('reject');
+        
+        // Téléchargement de fichier
+        Route::get('/files/{file}/download', [TopoFluxController::class, 'downloadFile'])
+            ->name('files.download');
     });

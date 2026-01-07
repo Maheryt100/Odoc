@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/components/DossierInfoSection.tsx - ✅ VERSION RESPONSIVE OPTIMALE
+// resources/js/pages/dossiers/components/DossierInfoSection.tsx
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,17 +34,17 @@ export default function DossierInfoSection({
     const duration = getDurationInDays(dossier.date_descente_debut, dossier.date_descente_fin);
     const daysSinceOpening = getDaysSince(dossier.date_ouverture);
 
-    // ✅ Affichage du numéro d'ouverture
+    //  Affichage du numéro d'ouverture
     const displayNumero = typeof dossier.numero_ouverture === 'number' 
         ? `N° ${dossier.numero_ouverture}`
         : (dossier.numero_ouverture_display || dossier.numero_ouverture || 'Non assigné');
 
-    // ✅ Vérifier si l'utilisateur est en lecture seule
+    // Vérifier si l'utilisateur est en lecture seule
     const isReadOnly = userRole === 'super_admin' || userRole === 'central_user';
 
     return (
         <div className="space-y-3 sm:space-y-4">
-            {/* ✅ Alerte fermeture - Responsive */}
+            {/*  Alerte fermeture  */}
             {dossier.is_closed && (
                 <div className="p-3 sm:p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                     <div className="flex items-start gap-2 sm:gap-3">
@@ -86,7 +86,7 @@ export default function DossierInfoSection({
             )}
 
             <Card className="border-0 shadow-lg overflow-hidden">
-                {/* ✅ Header - Responsive avec menu mobile */}
+                {/*  Header - Responsive avec menu mobile */}
                 <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 px-3 sm:px-6 py-3 sm:py-4 border-b">
                     <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-4">
                         {/* Info minimale */}
@@ -120,7 +120,7 @@ export default function DossierInfoSection({
                             </div>
                         </div>
 
-                        {/* ✅ Boutons d'action - Responsive */}
+                        {/* Boutons d'action */}
                         {!isReadOnly && (
                             isMobile ? (
                                 // Mobile : Menu dropdown
@@ -236,7 +236,7 @@ export default function DossierInfoSection({
                 </div>
 
                 <CardContent className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
-                    {/* ✅ Localisation - Responsive Grid */}
+                    {/* Localisation */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                         <InfoCard
                             icon={Building2}
@@ -259,7 +259,7 @@ export default function DossierInfoSection({
                         />
                     </div>
 
-                    {/* ✅ Dates - Responsive Grid */}
+                    {/* Dates */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         <div className="p-3 bg-orange-50/50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900">
                             <div className="flex items-start gap-2">
@@ -293,7 +293,7 @@ export default function DossierInfoSection({
                         </div>
                     </div>
 
-                    {/* ✅ Statistiques - Responsive Badges */}
+                    {/* Statistiques  */}
                     <div className="flex flex-wrap gap-2 pt-2 sm:pt-3 border-t">
                         <Badge variant="secondary" className="px-2.5 sm:px-3 py-1 text-xs">
                             <User className="mr-1 sm:mr-1.5 h-3 w-3" />
@@ -319,7 +319,7 @@ export default function DossierInfoSection({
     );
 }
 
-// ✅ Composant InfoCard réutilisable et responsive
+// Composant InfoCard réutilisable et responsive
 interface InfoCardProps {
     icon: React.ElementType;
     label: string;

@@ -1,4 +1,4 @@
-// pages/demandes/components/DemandeCard.tsx - VERSION OPTIMISÉE
+// pages/demandes/components/DemandeCard.tsx 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -76,7 +76,7 @@ export default function DemandeCard({
                !prop?.nature || !prop?.vocation || !prop?.situation;
     };
 
-    // ✅ AMÉLIORATION : Vérifier si les demandeurs existent vraiment
+    // Vérifier si les demandeurs existent vraiment
     const hasValidDemandeurs = doc.demandeurs && Array.isArray(doc.demandeurs) && doc.demandeurs.length > 0;
     
     const hasIncompleteData = hasValidDemandeurs
@@ -93,7 +93,7 @@ export default function DemandeCard({
         return 'hover:shadow-md transition-shadow';
     };
 
-    // ✅ AMÉLIORATION : Afficher le premier demandeur OU un message
+    // Afficher le premier demandeur OU un message
     const premierDemandeur = hasValidDemandeurs && doc.demandeurs[0]?.demandeur
         ? doc.demandeurs[0].demandeur
         : null;

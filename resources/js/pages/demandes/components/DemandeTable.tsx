@@ -1,4 +1,4 @@
-// pages/demandes/components/DemandeTable.tsx - ✅ CORRECTION LIGNE 169 & 316
+// pages/demandes/components/DemandeTable.tsx 
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,7 @@ import { Pagination } from '@/components/ui/pagination';
 
 /* ===================== TYPES ===================== */
 
-// ✅ Type partiel pour le demandeur (suffisant pour l'affichage)
+// Type partiel pour le demandeur (suffisant pour l'affichage)
 interface DemandeurSimple {
     id: number;
     titre_demandeur?: string;
@@ -59,7 +59,6 @@ interface DemandeTableProps {
 
 /* ===================== HELPERS ===================== */
 
-// ✅ CORRECTION : Accepter le type partiel
 const formatNomComplet = (d: DemandeurSimple) =>
     [d.titre_demandeur, d.nom_demandeur, d.prenom_demandeur].filter(Boolean).join(' ');
 
@@ -162,7 +161,7 @@ export default function DemandeTable({
                                         </td>
 
                                         <td className="px-4 py-3">
-                                            {/* ✅ CORRECTION LIGNE 169 : Cast vers DemandeurSimple */}
+                                            {/* Cast vers DemandeurSimple */}
                                             {premier ? formatNomComplet(premier as DemandeurSimple) : '—'}
                                         </td>
 
@@ -310,7 +309,7 @@ function MobileDemandeCard({
                 </div>
 
                 <div className="text-sm text-muted-foreground">
-                    {/* ✅ CORRECTION LIGNE 316 : Cast vers DemandeurSimple */}
+                    {/* Cast vers DemandeurSimple */}
                     {premier ? formatNomComplet(premier as DemandeurSimple) : 'Aucun demandeur'}
                 </div>
 

@@ -1,4 +1,4 @@
-// resources/js/pages/dossiers/types.ts - ✅ VERSION COMPLÈTE
+// resources/js/pages/dossiers/types.ts
 
 import { Demandeur, Dossier, Propriete } from '@/types';
 

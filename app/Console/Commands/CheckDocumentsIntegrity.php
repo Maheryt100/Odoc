@@ -16,7 +16,7 @@ class CheckDocumentsIntegrity extends Command
 
     public function handle()
     {
-        $this->info('🔍 Vérification de l\'intégrité des documents...');
+        $this->info('Vérification de l\'intégrité des documents...');
 
         $query = DocumentGenere::where('status', DocumentGenere::STATUS_ACTIVE);
 
@@ -25,7 +25,7 @@ class CheckDocumentsIntegrity extends Command
         }
 
         $documents = $query->get();
-        $this->info("📊 Total de documents à vérifier : {$documents->count()}");
+        $this->info("Total de documents à vérifier : {$documents->count()}");
 
         $missing = [];
         $corrupted = [];
@@ -66,17 +66,17 @@ class CheckDocumentsIntegrity extends Command
             ['Statut', 'Nombre', 'Pourcentage'],
             [
                 [
-                    '✅ Valides', 
+                    'Valides', 
                     $valid, 
                     round(($valid / $documents->count()) * 100, 2) . '%'
                 ],
                 [
-                    '❌ Manquants', 
+                    'Manquants', 
                     count($missing), 
                     round((count($missing) / $documents->count()) * 100, 2) . '%'
                 ],
                 [
-                    '⚠️  Corrompus', 
+                    'Corrompus', 
                     count($corrupted), 
                     round((count($corrupted) / $documents->count()) * 100, 2) . '%'
                 ],
@@ -85,7 +85,7 @@ class CheckDocumentsIntegrity extends Command
 
         // Détails des problèmes
         if (count($missing) > 0) {
-            $this->warn("\n📁 Documents manquants :");
+            $this->warn("\nDocuments manquants :");
             foreach (array_slice($missing, 0, 10) as $doc) {
                 $this->line("  • ID {$doc['id']} ({$doc['type']}): {$doc['error']}");
             }
@@ -95,7 +95,7 @@ class CheckDocumentsIntegrity extends Command
         }
 
         if (count($corrupted) > 0) {
-            $this->warn("\n⚠️  Documents corrompus :");
+            $this->warn("\nDocuments corrompus :");
             foreach (array_slice($corrupted, 0, 10) as $doc) {
                 $this->line("  • ID {$doc['id']} ({$doc['type']}): {$doc['error']}");
             }
@@ -118,7 +118,7 @@ class CheckDocumentsIntegrity extends Command
                     }
                 }
                 
-                $this->info("✅ {$marked} documents marqués pour régénération");
+                $this->info("{$marked} documents marqués pour régénération");
             }
         }
 

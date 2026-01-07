@@ -9,7 +9,7 @@ namespace App\Services;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class JwtService
 {
@@ -54,12 +54,7 @@ class JwtService
         $token = JWT::encode($payload, self::getSecretKey(), 'HS256');
         
         if (config('app.debug')) {
-            Log::debug('JWT genere', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'expires_in' => $lifetime . 's',
-                'token_preview' => substr($token, 0, 30) . '...'
-            ]);
+
         }
         
         return $token;
@@ -97,7 +92,7 @@ class JwtService
             self::decodeToken($token);
             return true;
         } catch (\Exception $e) {
-            Log::debug('Token invalide', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -138,8 +133,6 @@ class JwtService
         if (!$user->status) {
             throw new \Exception("Utilisateur desactive");
         }
-        
-        Log::info('Token rafraichi', ['user_id' => $user->id]);
         
         return self::generateToken($user);
     }

@@ -18,7 +18,7 @@ use App\Http\Controllers\Documents\Concerns\FormatsDocumentData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\TemplateProcessor;
 
@@ -27,29 +27,30 @@ class CertificatController extends Controller
     use HandlesDocumentGeneration, ValidatesDocumentData, FormatsDocumentData;
 
     /**
-     * ✅ GÉNÉRATION INITIALE (GET)
+     * GÉNÉRATION INITIALE (GET)
      */
     public function generate(Request $request)
     {
-        $request->validate([
+        // ✅ Validation des données POST
+        $validated = $request->validate([
             'id_demandeur' => 'required|exists:demandeurs,id',
             'id_propriete' => 'required|exists:proprietes,id',
         ]);
 
         try {
-            $propriete = Propriete::with('dossier.district')->findOrFail($request->id_propriete);
-            $demandeur = Demandeur::findOrFail($request->id_demandeur);
+            $propriete = Propriete::with('dossier.district')->findOrFail($validated['id_propriete']);
+            $demandeur = Demandeur::findOrFail($validated['id_demandeur']);
 
-            // ✅ Récupérer le reçu pour les données
+            // Récupérer le reçu pour les données
             $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
-                ->where('id_propriete', $request->id_propriete)
+                ->where('id_propriete', $validated['id_propriete'])
                 ->where('id_district', $propriete->dossier->id_district)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
                 ->first();
 
             // Vérifier si CSF existe déjà
             $documentExistant = DocumentGenere::where('type_document', DocumentGenere::TYPE_CSF)
-                ->where('id_demandeur', $request->id_demandeur)
+                ->where('id_demandeur', $validated['id_demandeur'])
                 ->where('id_district', $propriete->dossier->id_district)
                 ->where('status', DocumentGenere::STATUS_ACTIVE)
                 ->first();
@@ -61,11 +62,6 @@ class CertificatController extends Controller
             return $this->createNewCsf($propriete, $demandeur, $documentRecu);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur génération CSF', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
             return response()->json([
                 'success' => false,
                 'error' => 'generation_error',
@@ -75,7 +71,7 @@ class CertificatController extends Controller
     }
 
     /**
-     * ✅ TÉLÉCHARGEMENT (GET)
+     * ✅ TÉLÉCHARGEMENT (GET - INCHANGÉ)
      */
     public function download($id)
     {
@@ -93,11 +89,6 @@ class CertificatController extends Controller
             return $this->downloadExisting($document, 'CSF');
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur téléchargement CSF', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-            
             return response()->json([
                 'success' => false,
                 'error' => 'download_error',
@@ -107,7 +98,7 @@ class CertificatController extends Controller
     }
 
     /**
-     * ✅ RÉGÉNÉRATION (POST)
+     * ✅ RÉGÉNÉRATION (POST - INCHANGÉ)
      */
     public function regenerate($id)
     {
@@ -129,7 +120,6 @@ class CertificatController extends Controller
                 throw new \Exception("Données manquantes");
             }
 
-            // ✅ Récupérer le reçu
             $documentRecu = DocumentGenere::where('type_document', DocumentGenere::TYPE_RECU)
                 ->where('id_propriete', $propriete->id)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -139,11 +129,6 @@ class CertificatController extends Controller
             return $this->regenerateCsf($document, $propriete, $demandeur, $documentRecu);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur régénération CSF', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-            
             return response()->json([
                 'success' => false,
                 'error' => 'regeneration_error',
@@ -152,18 +137,15 @@ class CertificatController extends Controller
         }
     }
 
-    /**
-     * ✅ Créer nouveau CSF
-     */
+    // Méthodes privées (INCHANGÉES - voir code original)
     private function createNewCsf(
-        Propriete $propriete, 
-        Demandeur $demandeur, 
+        Propriete $propriete,
+        Demandeur $demandeur,
         ?DocumentGenere $documentRecu
     ) {
         DB::beginTransaction();
 
         try {
-            // Double-check atomique
             $existingDoc = DocumentGenere::where('type_document', DocumentGenere::TYPE_CSF)
                 ->where('id_demandeur', $demandeur->id)
                 ->where('id_district', $propriete->dossier->id_district)
@@ -206,39 +188,23 @@ class CertificatController extends Controller
                 'recu_linked' => !!$documentRecu,
             ]);
 
-            Log::info('✅ CSF créé', [
-                'document_id' => $document->id,
-                'demandeur_id' => $demandeur->id,
-            ]);
-
             return response()->download($tempFilePath, $document->nom_fichier)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur création CSF', [
-                'error' => $e->getMessage(),
-            ]);
             throw $e;
         }
     }
 
-    /**
-     * Régénérer CSF existant
-     */
     private function regenerateCsf(
-        DocumentGenere $document, 
-        Propriete $propriete, 
+        DocumentGenere $document,
+        Propriete $propriete,
         Demandeur $demandeur,
         ?DocumentGenere $documentRecu
     ) {
         DB::beginTransaction();
 
         try {
-            Log::info('🔄 Régénération CSF', [
-                'document_id' => $document->id,
-                'has_recu' => !!$documentRecu,
-            ]);
-
             $tempFilePath = $this->createCsfDocument($demandeur, $propriete, $documentRecu);
 
             if (!file_exists($tempFilePath)) {
@@ -260,10 +226,6 @@ class CertificatController extends Controller
 
             DB::commit();
 
-            Log::info('✅ Régénération CSF réussie', [
-                'document_id' => $document->id,
-            ]);
-
             ActivityLogger::logDocumentDownload(ActivityLog::DOC_CSF, $document->id, [
                 'action_type' => 'regenerate',
             ]);
@@ -272,19 +234,13 @@ class CertificatController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Erreur régénération CSF', [
-                'error' => $e->getMessage(),
-            ]);
             throw $e;
         }
     }
 
-    /**
-     * ✅ Créer le document Word CSF
-     */
     private function createCsfDocument(
-        Demandeur $demandeur, 
-        Propriete $propriete, 
+        Demandeur $demandeur,
+        Propriete $propriete,
         ?DocumentGenere $documentRecu
     ): string {
         $templatePath = storage_path('app/public/modele_odoc/document_CSF/Certificat_situation_financiere.docx');
@@ -297,18 +253,36 @@ class CertificatController extends Controller
         $locationData = $this->getLocationData($propriete);
         $articles = $this->getArticles($locationData['district'], $propriete->dossier->commune);
 
-        // ✅ Données du reçu
-        $numeroQuittance = $documentRecu?->numero_document ?? 'N/A';
-        $dateQuittance = $documentRecu && $documentRecu->date_document
-            ? $this->formatDateDocument(\Carbon\Carbon::parse($documentRecu->date_document))
-            : 'N/A';
-        
-        // ✅ AJOUT : Montant du reçu
-        $montantRecu = $documentRecu?->montant 
-            ? $this->formatMontantChiffres($documentRecu->montant) 
-            : 'N/A';
-        
-        // ✅ AJOUT : Date actuelle
+        // PRIORITÉ 1 : Chercher dans recu_references (nouveau système)
+        $recuRef = \App\Models\RecuReference::where('id_propriete', $propriete->id)
+            ->where('id_demandeur', $demandeur->id)
+            ->first();
+
+        if ($recuRef) {
+            // Utiliser les données de recu_references
+            $numeroQuittance = $recuRef->numero_recu;
+            $dateQuittance = $recuRef->date_recu 
+                ? $this->formatDateDocument(\Carbon\Carbon::parse($recuRef->date_recu))
+                : 'N/A';
+            $montantRecu = $recuRef->montant 
+                ? $this->formatMontantChiffres($recuRef->montant)
+                : 'N/A';
+        } elseif ($documentRecu) {
+            // Fallback : Ancien système avec DocumentGenere de type RECU
+            $numeroQuittance = $documentRecu->numero_document ?? 'N/A';
+            $dateQuittance = $documentRecu->date_document
+                ? $this->formatDateDocument(\Carbon\Carbon::parse($documentRecu->date_document))
+                : 'N/A';
+            $montantRecu = $documentRecu->montant
+                ? $this->formatMontantChiffres($documentRecu->montant)
+                : 'N/A';
+        } else {
+            // Aucune donnée disponible
+            $numeroQuittance = 'Non renseigné';
+            $dateQuittance = 'Non renseignée';
+            $montantRecu = 'Non renseigné';
+        }
+    
         $dateActuelle = $this->formatDateDocument(\Carbon\Carbon::now());
 
         $modele->setValues([
@@ -321,20 +295,13 @@ class CertificatController extends Controller
             'Province' => $locationData['province'],
             'NumeroQuittance' => $numeroQuittance,
             'DateQuittance' => $dateQuittance,
-            'MontantRecu' => $montantRecu, // ✅ AJOUT
-            'DateActuelle' => $dateActuelle, // ✅ AJOUT
+            'MontantRecu' => $montantRecu,
+            'DateActuelle' => $dateActuelle,
         ]);
 
         $fileName = 'CSF_' . uniqid() . '_' . Str::slug($demandeur->nom_demandeur) . '.docx';
         $filePath = sys_get_temp_dir() . '/' . $fileName;
         $modele->saveAs($filePath);
-
-        Log::info('✅ Document CSF créé', [
-            'path' => $filePath,
-            'size' => filesize($filePath),
-            'montant' => $montantRecu,
-            'date_actuelle' => $dateActuelle,
-        ]);
 
         return $filePath;
     }

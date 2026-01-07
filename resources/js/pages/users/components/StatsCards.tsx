@@ -1,4 +1,4 @@
-// users/components/StatsCards.tsx - HARMONISÉ AVEC LOGS
+// users/components/StatsCards.tsx 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Shield, UserCog, Globe } from 'lucide-react';
 import { UserStats } from '../types';

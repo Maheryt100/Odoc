@@ -8,11 +8,11 @@ use App\Models\Propriete;
 use App\Models\RecuReference;
 use App\Models\DocumentGenere;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 /**
- * ✅ REFACTORISÉ : Controller léger qui délègue aux controllers spécialisés
+ * REFACTORISÉ : Controller léger qui délègue aux controllers spécialisés
  * 
  * Ce controller NE FAIT PLUS de génération directe.
  * Il sert uniquement à :
@@ -23,13 +23,13 @@ use Inertia\Inertia;
 class DocumentGenerationController extends Controller
 {
     /**
-     * ✅ Page principale avec chargement des documents existants
+     * Page principale avec chargement des documents existants
      */
     public function index($id_dossier)
     {
         $dossier = Dossier::with(['district'])->findOrFail($id_dossier);
 
-        // ✅ Charger les propriétés avec leurs demandes actives
+        // Charger les propriétés avec leurs demandes actives
         $proprietes = Propriete::where('id_dossier', $id_dossier)
             ->with([
                 'demandesActives.demandeur'
@@ -51,7 +51,7 @@ class DocumentGenerationController extends Controller
                     ];
                 });
 
-                // ✅ NOUVEAU : Charger la référence de reçu externe
+                // Charger la référence de reçu externe
                 $propriete->recu_reference = RecuReference::where('id_propriete', $propriete->id)
                     ->first();
 
@@ -79,7 +79,7 @@ class DocumentGenerationController extends Controller
             })
             ->values();
 
-        // ✅ Charger les demandeurs avec leurs CSF
+        // Charger les demandeurs avec leurs CSF
         $demandeurs = $dossier->demandeurs()
             ->whereHas('demandesActives')
             ->get()
@@ -101,14 +101,14 @@ class DocumentGenerationController extends Controller
     }
 
     /**
-     * ✅ MIGRATION : Convertir les anciens formats de numéro de reçu
+     * MIGRATION : Convertir les anciens formats de numéro de reçu
      * 
      * Cette méthode reste ici car elle concerne TOUS les types de documents
      * et nécessite une vue d'ensemble du système.
      */
     public function migrateOldRecuFormat()
     {
-        Log::info('🔄 Début migration format numéro reçu');
+        // Log::info('Début migration format numéro reçu');
         
         DB::beginTransaction();
         
@@ -141,10 +141,10 @@ class DocumentGenerationController extends Controller
                             ->exists();
                         
                         if ($exists) {
-                            Log::error('❌ Conflit de numéro', [
-                                'recu_id' => $recu->id,
-                                'numero_tente' => $nouveauNumero,
-                            ]);
+                            // Log::error('Conflit de numéro', [
+                            //     'recu_id' => $recu->id,
+                            //     'numero_tente' => $nouveauNumero,
+                            // ]);
                             $errors++;
                             continue;
                         }
@@ -161,17 +161,17 @@ class DocumentGenerationController extends Controller
                         $updated++;
                         $sequence++;
                         
-                        Log::info('✅ Reçu migré', [
-                            'recu_id' => $recu->id,
-                            'ancien' => $ancienNumero,
-                            'nouveau' => $nouveauNumero,
-                        ]);
+                        // Log::info('Reçu migré', [
+                        //     'recu_id' => $recu->id,
+                        //     'ancien' => $ancienNumero,
+                        //     'nouveau' => $nouveauNumero,
+                        // ]);
                         
                     } catch (\Exception $e) {
-                        Log::error('❌ Erreur migration reçu', [
-                            'recu_id' => $recu->id,
-                            'error' => $e->getMessage(),
-                        ]);
+                        // Log::error('Erreur migration reçu', [
+                        //     'recu_id' => $recu->id,
+                        //     'error' => $e->getMessage(),
+                        // ]);
                         $errors++;
                     }
                 }
@@ -179,11 +179,11 @@ class DocumentGenerationController extends Controller
             
             DB::commit();
             
-            Log::info('✅ Migration terminée', [
-                'dossiers_traites' => $dossiers->count(),
-                'recus_updated' => $updated,
-                'errors' => $errors,
-            ]);
+            // Log::info('Migration terminée', [
+            //     'dossiers_traites' => $dossiers->count(),
+            //     'recus_updated' => $updated,
+            //     'errors' => $errors,
+            // ]);
             
             return response()->json([
                 'success' => true,
@@ -195,9 +195,9 @@ class DocumentGenerationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('❌ Erreur critique migration', [
-                'error' => $e->getMessage(),
-            ]);
+            // Log::error('Erreur critique migration', [
+            //     'error' => $e->getMessage(),
+            // ]);
             
             return response()->json([
                 'success' => false,
@@ -207,7 +207,7 @@ class DocumentGenerationController extends Controller
     }
 
     /**
-     * ✅ STATISTIQUES
+     * STATISTIQUES
      */
     public function getStats($id_dossier)
     {

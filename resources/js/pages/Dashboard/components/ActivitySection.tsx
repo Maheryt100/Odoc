@@ -1,4 +1,4 @@
-// Dashboard/components/ActivitySection.tsx - VERSION CORRIGÉE
+// Dashboard/components/ActivitySection.tsx 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin } from 'lucide-react';
@@ -11,7 +11,6 @@ interface Props {
 
 export function ActivitySection({ recentActivity, topCommunes }: Props) {
     return (
-        // ✅ CORRECTION : Grid responsive 1/2 colonnes
         <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             {/* Top communes */}
             <Card>

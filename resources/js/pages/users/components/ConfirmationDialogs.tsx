@@ -1,4 +1,4 @@
-// users/components/ConfirmationDialogs.tsx - AVEC NETTOYAGE
+// users/components/ConfirmationDialogs.tsx 
 import { useEffect } from 'react';
 import {
     AlertDialog,
@@ -24,13 +24,13 @@ interface ToggleStatusDialogProps {
 export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDialogProps) => {
     const isOpen = !!user;
     
-    // ✅ Nettoyage automatique à la fermeture
+    // Nettoyage automatique à la fermeture
     useDialogCleanup(isOpen);
     
-    // ✅ Nettoyage manuel pour les handlers
+    // Nettoyage manuel pour les handlers
     const forceCleanup = useForceDialogCleanup();
     
-    // ✅ Nettoyage au démontage du composant
+    //  Nettoyage au démontage du composant
     useEffect(() => {
         return () => {
             if (!isOpen) {
@@ -43,13 +43,13 @@ export const ToggleStatusDialog = ({ user, onClose, onConfirm }: ToggleStatusDia
 
     const handleConfirm = () => {
         onConfirm(user);
-        // ✅ Nettoyage immédiat + fermeture
+        //  Nettoyage immédiat + fermeture
         forceCleanup();
         onClose();
     };
 
     const handleCancel = () => {
-        // ✅ Nettoyage immédiat + fermeture
+        //  Nettoyage immédiat + fermeture
         forceCleanup();
         onClose();
     };
@@ -120,13 +120,13 @@ interface DeleteUserDialogProps {
 export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogProps) => {
     const isOpen = !!user;
     
-    // ✅ Nettoyage automatique à la fermeture
+    // Nettoyage automatique à la fermeture
     useDialogCleanup(isOpen);
     
-    // ✅ Nettoyage manuel pour les handlers
+    // Nettoyage manuel pour les handlers
     const forceCleanup = useForceDialogCleanup();
     
-    // ✅ Nettoyage au démontage du composant
+    // Nettoyage au démontage du composant
     useEffect(() => {
         return () => {
             if (!isOpen) {
@@ -139,13 +139,13 @@ export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogP
 
     const handleConfirm = () => {
         onConfirm(user);
-        // ✅ Nettoyage immédiat + fermeture
+        // Nettoyage immédiat + fermeture
         forceCleanup();
         onClose();
     };
 
     const handleCancel = () => {
-        // ✅ Nettoyage immédiat + fermeture
+        // Nettoyage immédiat + fermeture
         forceCleanup();
         onClose();
     };
@@ -174,7 +174,7 @@ export const DeleteUserDialog = ({ user, onClose, onConfirm }: DeleteUserDialogP
                             <Alert variant="destructive" className="bg-destructive/10">
                                 <AlertDescription>
                                     <span className="font-medium block mb-1.5 sm:mb-2 text-xs sm:text-sm">
-                                        ⚠️ Cette action est irréversible
+                                        Cette action est irréversible
                                     </span>
                                     <ul className="text-xs sm:text-sm space-y-0.5 sm:space-y-1 list-disc list-inside">
                                         <li>Toutes les données seront supprimées</li>

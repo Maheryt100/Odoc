@@ -36,14 +36,14 @@ class OrganizeDocumentsCommand extends Command
         $isDryRun = $this->option('dry-run');
         $filterType = $this->option('type');
 
-        $this->info('🚀 Démarrage de l\'organisation des documents...');
+        $this->info('Démarrage de l\'organisation des documents...');
         
         if ($isDryRun) {
-            $this->warn('⚠️  MODE DRY-RUN : Aucune modification ne sera effectuée');
+            $this->warn('MODE DRY-RUN : Aucune modification ne sera effectuée');
         }
 
         if ($filterType) {
-            $this->info("📋 Filtrage par type : {$filterType}");
+            $this->info("Filtrage par type : {$filterType}");
         }
 
         // Organiser les documents_generes
@@ -54,7 +54,7 @@ class OrganizeDocumentsCommand extends Command
             $this->organizeLegacyRecus($isDryRun);
         }
 
-        $this->info('✅ Organisation terminée !');
+        $this->info('Organisation terminée !');
     }
 
     /**
@@ -62,7 +62,7 @@ class OrganizeDocumentsCommand extends Command
      */
     private function organizeDocumentsGeneres(bool $isDryRun, ?string $filterType)
     {
-        $this->info("\n📁 Organisation des documents générés...");
+        $this->info("\nOrganisation des documents générés...");
 
         $query = DocumentGenere::with(['propriete.dossier.district']);
 
@@ -71,7 +71,7 @@ class OrganizeDocumentsCommand extends Command
         }
 
         $documents = $query->get();
-        $this->info("📊 {$documents->count()} documents à traiter");
+        $this->info("{$documents->count()} documents à traiter");
 
         $bar = $this->output->createProgressBar($documents->count());
         $bar->start();
@@ -86,7 +86,7 @@ class OrganizeDocumentsCommand extends Command
                 // Vérifier que le fichier existe
                 if (!Storage::disk('public')->exists($oldPath)) {
                     $this->newLine();
-                    $this->warn("⚠️  Fichier introuvable : {$oldPath}");
+                    $this->warn("Fichier introuvable : {$oldPath}");
                     $errorCount++;
                     $bar->advance();
                     continue;
@@ -95,7 +95,7 @@ class OrganizeDocumentsCommand extends Command
                 // Vérifier que la propriété et le district existent
                 if (!$document->propriete || !$document->propriete->dossier || !$document->propriete->dossier->district) {
                     $this->newLine();
-                    $this->warn("⚠️  Données incomplètes pour le document ID {$document->id}");
+                    $this->warn("Données incomplètes pour le document ID {$document->id}");
                     $errorCount++;
                     $bar->advance();
                     continue;
@@ -127,13 +127,13 @@ class OrganizeDocumentsCommand extends Command
                     $movedCount++;
                 } else {
                     $this->newLine();
-                    $this->line("📋 {$oldPath} → {$newPath}");
+                    $this->line("{$oldPath} → {$newPath}");
                     $movedCount++;
                 }
 
             } catch (\Exception $e) {
                 $this->newLine();
-                $this->error("❌ Erreur pour le document ID {$document->id} : {$e->getMessage()}");
+                $this->error("Erreur pour le document ID {$document->id} : {$e->getMessage()}");
                 $errorCount++;
             }
 
@@ -143,9 +143,9 @@ class OrganizeDocumentsCommand extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $this->info("✅ {$movedCount} fichiers " . ($isDryRun ? 'seraient déplacés' : 'déplacés'));
+        $this->info("{$movedCount} fichiers " . ($isDryRun ? 'seraient déplacés' : 'déplacés'));
         if ($errorCount > 0) {
-            $this->warn("⚠️  {$errorCount} erreurs rencontrées");
+            $this->warn("{$errorCount} erreurs rencontrées");
         }
     }
 
@@ -154,16 +154,16 @@ class OrganizeDocumentsCommand extends Command
      */
     private function organizeLegacyRecus(bool $isDryRun)
     {
-        $this->info("\n📁 Organisation des anciens reçus...");
+        $this->info("\nOrganisation des anciens reçus...");
 
         $recus = RecuPaiement::with(['propriete.dossier.district', 'demandeur'])
             ->whereNotNull('file_path')
             ->get();
 
-        $this->info("📊 {$recus->count()} anciens reçus à traiter");
+        $this->info("{$recus->count()} anciens reçus à traiter");
 
         if ($recus->isEmpty()) {
-            $this->info("✅ Aucun ancien reçu à organiser");
+            $this->info("Aucun ancien reçu à organiser");
             return;
         }
 
@@ -222,9 +222,9 @@ class OrganizeDocumentsCommand extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $this->info("✅ {$movedCount} anciens reçus " . ($isDryRun ? 'seraient déplacés' : 'déplacés'));
+        $this->info("{$movedCount} anciens reçus " . ($isDryRun ? 'seraient déplacés' : 'déplacés'));
         if ($errorCount > 0) {
-            $this->warn("⚠️  {$errorCount} erreurs rencontrées");
+            $this->warn("{$errorCount} erreurs rencontrées");
         }
     }
 

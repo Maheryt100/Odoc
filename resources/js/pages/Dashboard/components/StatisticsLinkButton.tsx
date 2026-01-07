@@ -1,4 +1,4 @@
-// Dashboard/components/StatisticsLinkButton.tsx - VERSION CORRIGÉE
+// Dashboard/components/StatisticsLinkButton.tsx 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from '@inertiajs/react';
@@ -8,7 +8,7 @@ export function StatisticsLinkButton() {
     return (
         <Card className="border-2 border-dashed border-primary/30 dark:border-primary/50 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 hover:border-primary/60 dark:hover:border-primary/70 transition-all">
             <CardContent className="p-4 sm:p-6">
-                {/* ✅ CORRECTION : Layout responsive avec flex-col sur mobile */}
+                {/* Layout responsive avec flex-col sur mobile */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-start gap-3 sm:gap-4 w-full sm:w-auto">
                         <div className="p-2 sm:p-3 rounded-lg bg-primary/10 dark:bg-primary/20 shrink-0">
@@ -39,7 +39,7 @@ export function StatisticsLinkButton() {
                         </div>
                     </div>
                     
-                    {/* ✅ CORRECTION : Bouton pleine largeur sur mobile */}
+                    {/* Bouton pleine largeur sur mobile */}
                     <Button asChild size="lg" className="gap-2 w-full sm:w-auto">
                         <Link href={route('statistiques.index')}>
                             <span className="hidden sm:inline">Voir l'analyse complète</span>

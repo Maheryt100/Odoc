@@ -61,7 +61,7 @@ export function AppSidebar() {
     }
 
     // Logs d'activité - super_admin et admin_district
-    if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
+    if (user && (user.role === 'super_admin' || user.role === 'admin_district' || user.role === 'central_user')) {
         configNavItems.push({
             title: 'Logs d\'activité',
             href: '/admin/activity-logs',

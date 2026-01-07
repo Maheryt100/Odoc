@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class DocumentGenere extends Model
 {
@@ -41,7 +41,7 @@ class DocumentGenere extends Model
     ];
 
     /**
-     * ✅ Vérification complète de l'état du fichier
+     * Vérification complète de l'état du fichier
      */
     public function checkFileStatus(): array
     {
@@ -82,10 +82,7 @@ class DocumentGenere extends Model
 
             return $status;
         } catch (\Exception $e) {
-            Log::error('Erreur vérification fichier', [
-                'document_id' => $this->id,
-                'error' => $e->getMessage(),
-            ]);
+   
             $status['error'] = 'Erreur système : ' . $e->getMessage();
             return $status;
         }

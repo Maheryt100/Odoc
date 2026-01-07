@@ -1,5 +1,4 @@
 // pages/DemandeursProprietes/NouveauLot.tsx 
-// ✅ VERSION AVEC CLÉS REACT UNIQUES
 
 import { useState, useEffect, useCallback } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -31,7 +30,6 @@ export default function NouveauLot() {
     const [creationMode, setCreationMode] = useState<CreationMode>('lot-demandeur');
     const [processing, setProcessing] = useState(false);
     
-    // ✅ ID Generator pour garantir l'unicité
     const [nextTempId, setNextTempId] = useState(() => Date.now());
     const generateTempId = useCallback(() => {
         const id = nextTempId;
@@ -56,7 +54,6 @@ export default function NouveauLot() {
     
     const [selectedChargesByPropriete, setSelectedChargesByPropriete] = useState<Record<number, string[]>>({ 0: [] });
 
-    // ✅ Charger les données de session
     useEffect(() => {
         if (session?.preloadDemandeur) {
             console.log('📥 Chargement demandeur depuis TopoFlux', session.preloadDemandeur);
@@ -293,7 +290,7 @@ export default function NouveauLot() {
                 demandeurs_json: JSON.stringify(cleanDemandeurs)
             }, {
                 onError: (errors) => {
-                    console.error('❌ Erreurs backend:', errors);
+                    console.error('Erreurs backend:', errors);
                     const errorMessages = Object.entries(errors)
                         .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
                         .join('\n');
@@ -319,7 +316,7 @@ export default function NouveauLot() {
                 proprietes: JSON.stringify(cleanProprietes)
             }, {
                 onError: (errors) => {
-                    console.error('❌ Erreurs backend:', errors);
+                    console.error('Erreurs backend:', errors);
                     const errorMessages = Object.values(errors).flat().join('\n');
                     toast.error('Erreur de validation', { description: errorMessages });
                     setProcessing(false);
@@ -340,7 +337,7 @@ export default function NouveauLot() {
                 demandeurs: JSON.stringify(cleanDemandeurs)
             }, {
                 onError: (errors) => {
-                    console.error('❌ Erreurs backend:', errors);
+                    console.error('Erreurs backend:', errors);
                     const errorMessages = Object.values(errors).flat().join('\n');
                     toast.error('Erreur de validation', { description: errorMessages });
                     setProcessing(false);

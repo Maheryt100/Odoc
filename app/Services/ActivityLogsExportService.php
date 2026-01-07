@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\SystemSettings;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -67,16 +67,6 @@ class ActivityLogsExportService
             // Mettre à jour la date d'export
             SystemSettings::updateLastExport();
 
-            Log::info('Export des logs réussi', [
-                'filename' => $filename,
-                'count' => $logs->count(),
-                'is_auto_export' => $isAutoExport,
-                'size' => Storage::size($path),
-                'period' => $dateFrom && $dateTo 
-                    ? $dateFrom->format('Y-m-d') . ' to ' . $dateTo->format('Y-m-d')
-                    : 'all',
-            ]);
-
             return [
                 'success' => true,
                 'path' => $path,
@@ -89,11 +79,6 @@ class ActivityLogsExportService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'export des logs', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'is_auto_export' => $isAutoExport,
-            ]);
 
             return [
                 'success' => false,
@@ -466,27 +451,26 @@ class ActivityLogsExportService
     private function saveSpreadsheet($spreadsheet, string $filename): string
     {
         try {
-            // ✅ Créer le dossier s'il n'existe pas
+            // Créer le dossier s'il n'existe pas
             $fullPath = storage_path('app/' . self::EXPORT_PATH);
             
             if (!is_dir($fullPath)) {
                 mkdir($fullPath, 0775, true);
-                Log::info('Dossier logs créé', ['path' => $fullPath]);
             }
 
-            // ✅ Vérifier les permissions
+            // Vérifier les permissions
             if (!is_writable($fullPath)) {
                 throw new \Exception("Le dossier n'est pas accessible en écriture : {$fullPath}");
             }
 
-            // ✅ Chemin complet du fichier
+            // Chemin complet du fichier
             $absolutePath = $fullPath . '/' . $filename;
             
-            // ✅ Sauvegarder avec PhpSpreadsheet
+            // Sauvegarder avec PhpSpreadsheet
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($absolutePath);
 
-            // ✅ Vérifier que le fichier a bien été créé
+            // Vérifier que le fichier a bien été créé
             if (!file_exists($absolutePath)) {
                 throw new \Exception("Fichier non créé après save() : {$absolutePath}");
             }
@@ -496,23 +480,11 @@ class ActivityLogsExportService
                 throw new \Exception("Fichier créé mais vide : {$absolutePath}");
             }
 
-            Log::info('Export Excel créé avec succès', [
-                'filename' => $filename,
-                'path' => $absolutePath,
-                'size' => $fileSize,
-                'size_formatted' => $this->formatBytes($fileSize),
-            ]);
-
-            // ✅ Retourner le chemin relatif (sans 'app/')
+            // Retourner le chemin relatif (sans 'app/')
             return self::EXPORT_PATH . '/' . $filename;
 
         } catch (\Exception $e) {
-            Log::error('Erreur sauvegarde spreadsheet', [
-                'filename' => $filename,
-                'path' => $fullPath ?? 'undefined',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+
             throw $e;
         }
     }
@@ -535,19 +507,15 @@ class ActivityLogsExportService
     public function getAvailableExports(): array
     {
         $fullPath = storage_path('app/' . self::EXPORT_PATH);
-        
-        // ✅ Créer le dossier s'il n'existe pas
+
         if (!is_dir($fullPath)) {
             mkdir($fullPath, 0775, true);
-            Log::info('Dossier logs créé pour listing', ['path' => $fullPath]);
             return [];
         }
 
-        // ✅ Lister les fichiers Excel
         $files = glob($fullPath . '/activity_logs_*.xlsx');
         
         if ($files === false) {
-            Log::warning('Impossible de lister les exports', ['path' => $fullPath]);
             return [];
         }
 
@@ -578,39 +546,23 @@ class ActivityLogsExportService
      */
     public function deleteExport(string $filename): bool
     {
-        // ✅ Vérifier si c'est un export automatique
         if (strpos($filename, '_auto_') !== false) {
-            Log::warning('Tentative de suppression d\'export automatique bloquée', [
-                'filename' => $filename
-            ]);
             return false;
         }
 
-        // ✅ Chemin complet
         $path = storage_path('app/' . self::EXPORT_PATH . '/' . $filename);
         
         if (file_exists($path)) {
             $deleted = unlink($path);
             
             if ($deleted) {
-                Log::info('Export manuel supprimé', [
-                    'filename' => $filename,
-                    'path' => $path,
-                ]);
+  
             } else {
-                Log::error('Échec suppression export', [
-                    'filename' => $filename,
-                    'path' => $path,
-                ]);
+
             }
             
             return $deleted;
         }
-
-        Log::warning('Fichier export introuvable pour suppression', [
-            'filename' => $filename,
-            'path' => $path,
-        ]);
 
         return false;
     }
@@ -637,17 +589,12 @@ class ActivityLogsExportService
             
             if (file_exists($path) && unlink($path)) {
                 $deleted++;
-                Log::info('Export automatique ancien supprimé', [
-                    'filename' => $export['filename'],
-                ]);
+
             }
         }
 
         if ($deleted > 0) {
-            Log::info("Nettoyage des exports automatiques", [
-                'deleted' => $deleted,
-                'kept' => 12,
-            ]);
+ 
         }
 
         return $deleted;

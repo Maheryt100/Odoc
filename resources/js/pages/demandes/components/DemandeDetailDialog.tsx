@@ -1,4 +1,4 @@
-// pages/demandes/components/DemandeDetailDialog.tsx - ✅ CORRECTION COMPLÈTE
+// pages/demandes/components/DemandeDetailDialog.tsx 
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +83,7 @@ export default function DemandeDetailDialog({
     };
 
     /**
-     * ✅ CORRECTION PRINCIPALE : Gestion robuste des formats de date
+     * Gestion robuste des formats de date
      */
     const formatDate = (dateStr: string | null | undefined, format: 'short' | 'long' = 'short'): string => {
         if (!dateStr) return '-';
@@ -159,7 +159,7 @@ export default function DemandeDetailDialog({
     };
 
     /**
-     * ✅ CORRECTION : Calcul d'âge robuste
+     * Calcul d'âge robuste
      */
     const getDemandeAge = (dateDemande: string | null | undefined): number | null => {
         if (!dateDemande) return null;
@@ -203,18 +203,18 @@ export default function DemandeDetailDialog({
     ) : null;
 
     /**
-     * ✅ CORRECTION : Handlers avec données COMPLÈTES
+     * Handlers avec données COMPLÈTES
      */
     const handleSelectDemandeur = (demandeur: Demandeur) => {
         if (onSelectDemandeur) {
-            // ✅ Passer l'objet demandeur COMPLET (pas juste une partie)
+            // Passer l'objet demandeur COMPLET (pas juste une partie)
             onSelectDemandeur(demandeur);
         }
     };
 
     const handleSelectPropriete = () => {
         if (onSelectPropriete && propriete) {
-            // ✅ Passer l'objet propriété COMPLET
+            // Passer l'objet propriété COMPLET
             onSelectPropriete(propriete);
         }
     };
@@ -280,7 +280,7 @@ export default function DemandeDetailDialog({
                                     </div>
                                 )}
 
-                                {/* Section Demandeurs - ✅ AVEC HANDLER CORRIGÉ */}
+                                {/* Section Demandeurs */}
                                 <div>
                                     <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                                         <Users className="h-4 w-4" />
@@ -334,7 +334,7 @@ export default function DemandeDetailDialog({
 
                                 <Separator />
 
-                                {/* Section Propriété - ✅ AVEC HANDLER CORRIGÉ */}
+                                {/* Section Propriété */}
                                 <div>
                                     <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                                         <MapPin className="h-4 w-4" />

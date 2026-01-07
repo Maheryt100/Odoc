@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Documents\Concerns;
 use App\Models\Propriete;
 use App\Models\Demandeur;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 trait ValidatesDocumentData
 {
     /**
-     * ✅ VALIDATION STRICTE POUR ADV
+     * VALIDATION STRICTE POUR ADV
      * Toutes les données utilisées dans le template sont OBLIGATOIRES
      */
     protected function validateActeVenteData(Propriete $propriete, Demandeur $demandeur, ?string $numeroRecu = null): array
@@ -98,20 +98,20 @@ trait ValidatesDocumentData
         // LOGGING
         // ============================================
         if (!empty($errors)) {
-            Log::warning('⚠️ Validation ADV stricte échouée', [
-                'propriete_id' => $propriete->id,
-                'demandeur_id' => $demandeur->id,
-                'numero_recu' => $numeroRecu,
-                'errors_count' => count($errors),
-                'errors' => $errors
-            ]);
+            // Log::warning('Validation ADV stricte échouée', [
+            //     'propriete_id' => $propriete->id,
+            //     'demandeur_id' => $demandeur->id,
+            //     'numero_recu' => $numeroRecu,
+            //     'errors_count' => count($errors),
+            //     'errors' => $errors
+            // ]);
         }
         
         return $errors;
     }
     
     /**
-     * ✅ Valider les demandeurs pour un acte de vente avec consorts
+     * Valider les demandeurs pour un acte de vente avec consorts
      */
     protected function validateConsortsData(Collection $demandeurs): array
     {
@@ -152,7 +152,7 @@ trait ValidatesDocumentData
     }
     
     /**
-     * ✅ Valider le format du numéro de reçu XXX/XX
+     * Valider le format du numéro de reçu XXX/XX
      */
     protected function validateNumeroRecuFormat(string $numero): bool
     {

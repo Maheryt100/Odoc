@@ -35,14 +35,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // ✅ GÉNÉRATION JWT POUR FASTAPI
+        // GÉNÉRATION JWT POUR FASTAPI
         $user = Auth::user();
         $jwtToken = JwtService::generateToken($user);
         
-        // ✅ STOCKER EN SESSION POUR REACT
+        // STOCKER EN SESSION POUR REACT
         session(['geodoc_jwt' => $jwtToken]);
         
-        // ✅ LOGGER (optionnel)
+        // LOGGER (optionnel)
         Log::info("JWT généré pour utilisateur {$user->id}", [
             'user' => $user->email,
             'token_expiry' => now()->addHour()->toDateTimeString()
@@ -61,7 +61,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // ✅ SUPPRIMER JWT
+        // SUPPRIMER JWT
         session()->forget('geodoc_jwt');
 
         return redirect('/');

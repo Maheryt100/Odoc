@@ -127,8 +127,8 @@ class User extends Authenticatable
 
     /**
      * Vérifie si l'utilisateur peut valider des imports TopoManager
-     * ✅ Admin District et User District UNIQUEMENT
-     * ❌ Super Admin et Central User: NE PEUVENT PAS (lecture seule)
+     * Admin District et User District UNIQUEMENT
+     * Super Admin et Central User: NE PEUVENT PAS (lecture seule)
      */
     public function canValidateTopoImports(): bool
     {
@@ -136,19 +136,19 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : NE PEUVENT PAS (lecture seule)
+        // Super Admin et Central User : NE PEUVENT PAS (lecture seule)
         if ($this->isReadOnly()) {
             return false;
         }
 
-        // ✅ Admin District et User District : PEUVENT valider
+        // Admin District et User District : PEUVENT valider
         return ($this->isAdminDistrict() || $this->isUserDistrict()) 
             && $this->id_district !== null;
     }
 
     /**
      * Vérifie si l'utilisateur peut gérer les utilisateurs TopoManager
-     * ✅ Super Admin UNIQUEMENT
+     * Super Admin UNIQUEMENT
      */
     public function canManageTopoUsers(): bool
     {
@@ -164,12 +164,12 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : NE PEUVENT PAS accéder
+        // Super Admin et Central User : NE PEUVENT PAS accéder
         if ($this->isReadOnly()) {
             return false;
         }
 
-        // ✅ Admin District et User District : peuvent accéder
+        // Admin District et User District : peuvent accéder
         return ($this->isAdminDistrict() || $this->isUserDistrict()) 
             && $this->id_district !== null;
     }
@@ -192,8 +192,8 @@ class User extends Authenticatable
 
     /**
      * Peut créer des données métier (dossiers, propriétés, demandeurs)
-     * ✅ Admin District et User District UNIQUEMENT
-     * ❌ Super Admin et Central User: LECTURE SEULE
+     * Admin District et User District UNIQUEMENT
+     * Super Admin et Central User: LECTURE SEULE
      */
     public function canCreate(?string $resource = null): bool
     {
@@ -201,12 +201,12 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : LECTURE SEULE
+        // Super Admin et Central User : LECTURE SEULE
         if ($this->isReadOnly()) {
             return false;
         }
         
-        // ✅ Admin District et User District : peuvent créer dans leur district
+        // Admin District et User District : peuvent créer dans leur district
         if ($this->isAdminDistrict() || $this->isUserDistrict()) {
             return $this->id_district !== null;
         }
@@ -216,8 +216,8 @@ class User extends Authenticatable
 
     /**
      * Peut modifier des données métier
-     * ✅ Admin District et User District UNIQUEMENT
-     * ❌ Super Admin et Central User: LECTURE SEULE
+     * Admin District et User District UNIQUEMENT
+     * Super Admin et Central User: LECTURE SEULE
      */
     public function canUpdate(?string $resource = null): bool
     {
@@ -225,12 +225,12 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : LECTURE SEULE
+        // Super Admin et Central User : LECTURE SEULE
         if ($this->isReadOnly()) {
             return false;
         }
 
-        // ✅ Admin District et User District : peuvent modifier dans leur district
+        // Admin District et User District : peuvent modifier dans leur district
         if ($this->isAdminDistrict() || $this->isUserDistrict()) {
             return $this->id_district !== null;
         }
@@ -240,8 +240,8 @@ class User extends Authenticatable
 
     /**
      * Peut supprimer des données métier
-     * ✅ Admin District UNIQUEMENT
-     * ❌ Tous les autres: NON
+     * Admin District UNIQUEMENT
+     * Tous les autres: NON
      */
     public function canDelete(?string $resource = null): bool
     {
@@ -249,18 +249,18 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : LECTURE SEULE
+        // Super Admin et Central User : LECTURE SEULE
         if ($this->isReadOnly()) {
             return false;
         }
 
-        // ✅ Seul Admin District peut supprimer
+        // Seul Admin District peut supprimer
         return $this->isAdminDistrict() && $this->id_district !== null;
     }
 
     /**
      * Peut archiver des données
-     * ✅ Admin District et User District UNIQUEMENT
+     * Admin District et User District UNIQUEMENT
      */
     public function canArchive(): bool
     {
@@ -268,7 +268,7 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : NE PEUVENT PAS archiver
+        // Super Admin et Central User : NE PEUVENT PAS archiver
         if ($this->isReadOnly()) {
             return false;
         }
@@ -279,17 +279,17 @@ class User extends Authenticatable
 
     /**
      * Peut exporter des données
-     * ✅ TOUS peuvent exporter (lecture seule pour Super Admin et Central User)
+     * TOUS peuvent exporter (lecture seule pour Super Admin et Central User)
      */
 
     // ============ GESTION DES UTILISATEURS ============
 
     /**
      * Peut gérer des utilisateurs
-     * ✅ Super Admin : peut créer admin_district
-     * ✅ Admin District : peut créer/gérer user_district de son district
-     * ❌ Central User : AUCUNE gestion
-     * ❌ User District : AUCUNE gestion
+     * Super Admin : peut créer admin_district
+     * Admin District : peut créer/gérer user_district de son district
+     * Central User : AUCUNE gestion
+     * User District : AUCUNE gestion
      */
     public function canManageUsers(): bool
     {
@@ -297,17 +297,17 @@ class User extends Authenticatable
             return false;
         }
 
-        // ✅ Super Admin peut gérer (mais seulement admin_district)
+        // Super Admin peut gérer (mais seulement admin_district)
         if ($this->isSuperAdmin()) {
             return true;
         }
 
-        // ✅ Admin District peut gérer (user_district de leur district)
+        // Admin District peut gérer (user_district de leur district)
         if ($this->isAdminDistrict()) {
             return $this->id_district !== null;
         }
 
-        // ❌ Central User et User District : AUCUNE gestion
+        // Central User et User District : AUCUNE gestion
         return false;
     }
 
@@ -317,7 +317,7 @@ class User extends Authenticatable
 
     /**
      * Peut configurer les prix
-     * ✅ Admin District UNIQUEMENT
+     * Admin District UNIQUEMENT
      */
     public function canConfigurePrices(): bool
     {
@@ -325,7 +325,7 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : LECTURE SEULE
+        // Super Admin et Central User : LECTURE SEULE
         if ($this->isReadOnly()) {
             return false;
         }
@@ -335,7 +335,7 @@ class User extends Authenticatable
 
     /**
      * Peut générer des documents
-     * ✅ Admin District et User District UNIQUEMENT
+     * Admin District et User District UNIQUEMENT
      */
     public function canGenerateDocuments(): bool
     {
@@ -343,19 +343,19 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : NE PEUVENT PAS
+        // Super Admin et Central User : NE PEUVENT PAS
         if ($this->isReadOnly()) {
             return false;
         }
 
-        // ✅ Admin District et User District : PEUVENT
+        // Admin District et User District : PEUVENT
         return ($this->isAdminDistrict() || $this->isUserDistrict()) 
             && $this->id_district !== null;
     }
 
     /**
      * Peut fermer/rouvrir un dossier
-     * ✅ Admin District UNIQUEMENT
+     * Admin District UNIQUEMENT
      */
     public function canCloseDossier(?Dossier $dossier = null): bool
     {
@@ -363,12 +363,12 @@ class User extends Authenticatable
             return false;
         }
 
-        // ❌ Super Admin et Central User : NE PEUVENT PAS
+        // Super Admin et Central User : NE PEUVENT PAS
         if ($this->isReadOnly()) {
             return false;
         }
 
-        // ✅ Seul Admin District peut fermer/rouvrir
+        // Seul Admin District peut fermer/rouvrir
         if (!$this->isAdminDistrict()) {
             return false;
         }
@@ -729,7 +729,7 @@ class User extends Authenticatable
             return false;
         }
 
-        // ✅ Super Admin : peut créer super_admin, central_user, admin_district
+        // Super Admin : peut créer super_admin, central_user, admin_district
         if ($this->isSuperAdmin()) {
             return in_array($targetRole, [
                 self::ROLE_SUPER_ADMIN,
@@ -738,12 +738,12 @@ class User extends Authenticatable
             ]);
         }
         
-        // ✅ Admin District : UNIQUEMENT user_district
+        // Admin District : UNIQUEMENT user_district
         if ($this->isAdminDistrict()) {
             return $targetRole === self::ROLE_USER_DISTRICT;
         }
         
-        // ❌ Central User et User District : RIEN
+        // Central User et User District : RIEN
         return false;
     }
 
@@ -763,8 +763,8 @@ class User extends Authenticatable
             return false;
         }
 
-        // ✅ Super Admin peut modifier super_admin, central_user, admin_district
-        // ❌ Super Admin NE PEUT PAS modifier user_district (juste consulter)
+        //  Sper Admin peut modifier super_admin, central_user, admin_district
+        //  Super Admin NE PEUT PAS modifier user_district (juste consulter)
         if ($this->isSuperAdmin()) {
             return in_array($targetUser->role, [
                 self::ROLE_SUPER_ADMIN,
@@ -773,7 +773,7 @@ class User extends Authenticatable
             ]);
         }
 
-        // ✅ Admin District peut modifier les user_district de son district
+        // Admin District peut modifier les user_district de son district
         if ($this->isAdminDistrict()) {
             return $targetUser->role === self::ROLE_USER_DISTRICT
                 && $targetUser->id_district === $this->id_district;
@@ -784,9 +784,9 @@ class User extends Authenticatable
 
     /**
      * Peut supprimer un utilisateur
-     * ✅ Super Admin peut supprimer : super_admin, central_user, admin_district
-     * ❌ Super Admin NE PEUT PAS supprimer : user_district (juste consulter)
-     * ✅ Admin District peut supprimer : user_district de son district
+     * Super Admin peut supprimer : super_admin, central_user, admin_district
+     *  Super Admin NE PEUT PAS supprimer : user_district (juste consulter)
+     *  Admin District peut supprimer : user_district de son district
      */
     public function canDeleteUser(User $targetUser): bool
     {
@@ -794,8 +794,8 @@ class User extends Authenticatable
             return false;
         }
 
-        // ✅ Super Admin peut supprimer super_admin, central_user, admin_district
-        // ❌ Super Admin NE PEUT PAS supprimer user_district (juste consulter)
+        // Super Admin peut supprimer super_admin, central_user, admin_district
+        // Super Admin NE PEUT PAS supprimer user_district (juste consulter)
         if ($this->isSuperAdmin()) {
             return in_array($targetUser->role, [
                 self::ROLE_SUPER_ADMIN,
@@ -804,7 +804,7 @@ class User extends Authenticatable
             ]);
         }
 
-        // ✅ Admin District peut supprimer user_district de son district
+        // Admin District peut supprimer user_district de son district
         if ($this->isAdminDistrict()) {
             return $targetUser->role === self::ROLE_USER_DISTRICT
                 && $targetUser->id_district === $this->id_district;
@@ -814,9 +814,9 @@ class User extends Authenticatable
     }
     /**
      * Peut voir la liste de TOUS les utilisateurs (pour consultation)
-     * ✅ Super Admin peut voir : super_admin, central_user, admin_district, user_district
-     * ✅ Central User peut voir : tous (lecture seule)
-     * ✅ Admin District peut voir : user_district de son district
+     * Super Admin peut voir : super_admin, central_user, admin_district, user_district
+     * Central User peut voir : tous (lecture seule)
+     * Admin District peut voir : user_district de son district
      */
     public function canViewUser(User $targetUser): bool
     {
@@ -824,12 +824,12 @@ class User extends Authenticatable
             return false;
         }
 
-        // ✅ Super Admin et Central User peuvent tout voir (consultation)
+        // Super Admin et Central User peuvent tout voir (consultation)
         if ($this->isSuperAdmin() || $this->isCentralUser()) {
             return true;
         }
 
-        // ✅ Admin District peut voir les user_district de son district
+        // Admin District peut voir les user_district de son district
         if ($this->isAdminDistrict()) {
             return $targetUser->role === self::ROLE_USER_DISTRICT
                 && $targetUser->id_district === $this->id_district;
@@ -852,7 +852,7 @@ class User extends Authenticatable
         }
 
         if ($forUser->isSuperAdmin()) {
-            // ✅ Super admin peut créer super_admin, central_user, admin_district
+            // Super admin peut créer super_admin, central_user, admin_district
             return [
                 self::ROLE_SUPER_ADMIN => 'Super Administrateur',
                 self::ROLE_CENTRAL_USER => 'Utilisateur Central',
@@ -861,7 +861,7 @@ class User extends Authenticatable
         }
 
         if ($forUser->isAdminDistrict()) {
-            // ✅ Admin district ne peut créer que des user_district
+            // Admin district ne peut créer que des user_district
             return [
                 self::ROLE_USER_DISTRICT => 'Utilisateur District',
             ];

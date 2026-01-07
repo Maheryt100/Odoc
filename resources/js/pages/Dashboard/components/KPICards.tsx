@@ -58,7 +58,6 @@ export function KPICards({ kpis }: Props) {
     };
 
     return (
-        // ✅ CORRECTION : Grid responsive améliorée
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {/* Dossiers - 1 colonne sur mobile, 1 sur tablet, 1 sur desktop */}
             <DossiersCard 

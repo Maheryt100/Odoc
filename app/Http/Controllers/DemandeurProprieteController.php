@@ -15,7 +15,7 @@ use Inertia\Inertia;
 use App\Rules\ValidCIN;
 use App\Http\Requests\StoreDemandeurRequest;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class DemandeurProprieteController extends Controller
 {
@@ -31,12 +31,8 @@ class DemandeurProprieteController extends Controller
         ]);
     }
 
-    /**
-     * ✅ CORRECTION CRITIQUE : Validation et décodage corrigés
-     */
     public function store(Request $request)
     {
-        // ✅ ÉTAPE 1 : Validation AVANT décodage JSON
         $validated = $request->validate([
             // Propriété
             'lot' => 'required|string|max:15',
@@ -67,7 +63,6 @@ class DemandeurProprieteController extends Controller
             'dep_vol_requisition' => 'nullable|string|max:50',
             'numero_dep_vol_requisition' => 'nullable|string|max:50',
             
-            // ✅ CORRECTION : demandeurs_json au lieu de demandeurs
             'demandeurs_json' => 'required|string',
         ], [
             'lot.required' => 'Le lot est obligatoire',
@@ -78,37 +73,23 @@ class DemandeurProprieteController extends Controller
         
         try {
             $id_user = Auth::id();
-            
-            // ✅ ÉTAPE 2 : Décoder les demandeurs APRÈS validation
+
             $demandeurs = json_decode($validated['demandeurs_json'], true);
-            
-            // ✅ ÉTAPE 3 : Validation des demandeurs décodés
+
             if (!is_array($demandeurs) || empty($demandeurs)) {
                 throw new \Exception('Format de demandeurs invalide');
             }
-            
-            Log::info('📦 Demandeurs décodés', [
-                'count' => count($demandeurs),
-                'cins' => array_column($demandeurs, 'cin')
-            ]);
-            
-            // ✅ ÉTAPE 4 : Vérifier les CIN en amont pour éviter les doublons
+
             $existingDemandeurs = [];
             foreach ($demandeurs as $demandeurData) {
                 $cin = $demandeurData['cin'] ?? null;
                 if ($cin) {
-                    // ✅ RECHERCHE GLOBALE sans filtre district
                     $existing = Demandeur::withoutGlobalScopes()
                         ->where('cin', $cin)
                         ->first();
                     
                     if ($existing) {
                         $existingDemandeurs[$cin] = $existing;
-                        Log::info('♻️ Demandeur existant détecté', [
-                            'cin' => $cin,
-                            'id' => $existing->id,
-                            'nom' => $existing->nom_complet
-                        ]);
                     }
                 }
             }
@@ -132,15 +113,11 @@ class DemandeurProprieteController extends Controller
 
             $proprieteData = $this->convertEmptyToNull($proprieteData);
             $propriete = Propriete::create($proprieteData);
-            
-            Log::info('✅ Propriété créée', ['id' => $propriete->id, 'lot' => $propriete->lot]);
 
-            // ✅ Préparer date_demande
             $dateDemande = isset($validated['date_demande']) 
                 ? Carbon::parse($validated['date_demande']) 
                 : Carbon::today();
 
-            // ✅ VALIDATION : date_demande >= date_requisition
             if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
                 DB::rollBack();
                 return back()->withErrors([
@@ -154,39 +131,23 @@ class DemandeurProprieteController extends Controller
             foreach ($demandeurs as $index => $demandeurData) {
                 $cleanData = $this->convertEmptyToNull($demandeurData);
                 $cin = $cleanData['cin'];
-                
-                Log::info("🔍 Traitement demandeur #{$index}", [
-                    'cin' => $cin,
-                    'nom' => $cleanData['nom_demandeur'] ?? 'N/A'
-                ]);
 
-                // ✅ CORRECTION MAJEURE : Utiliser la détection globale
                 if (isset($existingDemandeurs[$cin])) {
-                    // ✅ MISE À JOUR du demandeur existant
                     $demandeur = $existingDemandeurs[$cin];
                     
-                    // ✅ Mettre à jour UNIQUEMENT les champs non-null
                     $updateData = array_filter($cleanData, fn($v) => $v !== null);
                     $demandeur->update($updateData);
                     
-                    Log::info('♻️ Demandeur existant mis à jour', [
-                        'id' => $demandeur->id,
-                        'cin' => $cin,
-                        'champs_mis_a_jour' => count($updateData)
-                    ]);
+      
                 } else {
-                    // ✅ CRÉATION d'un nouveau demandeur
+
                     $demandeur = Demandeur::create(array_merge($cleanData, [
                         'id_user' => $id_user,
                         'nationalite' => $cleanData['nationalite'] ?? 'Malagasy',
                         'situation_familiale' => $cleanData['situation_familiale'] ?? 'Non spécifiée',
                         'regime_matrimoniale' => $cleanData['regime_matrimoniale'] ?? 'Non spécifié',
                     ]));
-                    
-                    Log::info('✨ Nouveau demandeur créé', [
-                        'id' => $demandeur->id,
-                        'cin' => $cin
-                    ]);
+
                 }
 
                 // 4. Ajouter au dossier si pas déjà présent
@@ -195,7 +156,6 @@ class DemandeurProprieteController extends Controller
                     'id_dossier' => $validated['id_dossier'],
                 ]);
 
-                // ✅ 5. Créer la liaison AVEC date_demande
                 $liaisonExistante = Demander::where('id_demandeur', $demandeur->id)
                     ->where('id_propriete', $propriete->id)
                     ->exists();
@@ -211,17 +171,12 @@ class DemandeurProprieteController extends Controller
                         // ordre calculé par boot()
                         // total_prix calculé par Observer
                     ]);
-                    
-                    Log::info('🔗 Demande créée', [
-                        'id' => $demande->id,
-                        'ordre' => $demande->ordre,
-                        'date_demande' => $dateDemande->format('Y-m-d')
-                    ]);
+
                 } else {
-                    Log::warning('⚠️ Liaison déjà existante (skipped)', [
-                        'demandeur_id' => $demandeur->id,
-                        'propriete_id' => $propriete->id
-                    ]);
+                    // Log::warning(' Liaison déjà existante (skipped)', [
+                    //     'demandeur_id' => $demandeur->id,
+                    //     'propriete_id' => $propriete->id
+                    // ]);
                 }
                 
                 $demandeursTraites[] = $demandeur->nom_demandeur;
@@ -233,27 +188,12 @@ class DemandeurProprieteController extends Controller
                 ? count($demandeurs) . ' demandeurs liés à la propriété avec succès'
                 : 'Demandeur et propriété créés avec succès';
             
-            Log::info('✅ SUCCÈS TOTAL', [
-                'propriete_id' => $propriete->id,
-                'demandeurs_count' => count($demandeursTraites),
-                'demandeurs' => $demandeursTraites,
-                'existants_mis_a_jour' => count($existingDemandeurs),
-                'nouveaux_crees' => count($demandeurs) - count($existingDemandeurs)
-            ]);
-            
             return Redirect::route('dossiers.show', $validated['id_dossier'])
                 ->with('success', $message);
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('❌ Erreur store nouveau lot', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+    
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -329,9 +269,6 @@ class DemandeurProprieteController extends Controller
         ]);
     }
 
-    /**
-     * ✅ LIER EXISTANT : Enregistrer (avec date_demande)
-     */
     public function storeLink(Request $request)
     {
         $request->validate([
@@ -348,7 +285,7 @@ class DemandeurProprieteController extends Controller
             
             if ($propriete->is_archived) {
                 DB::rollBack();
-                return back()->with('error', "❌ Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
+                return back()->with('error', "Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
             
             if ($request->mode === 'nouveau') {
@@ -397,12 +334,12 @@ class DemandeurProprieteController extends Controller
                 return back()->withErrors(['error' => 'Ce demandeur est déjà lié à cette propriété']);
             }
 
-            // ✅ Préparer date_demande
+            // Préparer date_demande
             $dateDemande = $request->filled('date_demande') 
                 ? Carbon::parse($request->date_demande) 
                 : Carbon::today();
 
-            // ✅ VALIDATION
+            // VALIDATION
             if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
                 DB::rollBack();
                 return back()->withErrors([
@@ -410,7 +347,6 @@ class DemandeurProprieteController extends Controller
                 ]);
             }
 
-            // ✅ Créer la liaison AVEC date_demande
             Demander::create([
                 'id_demandeur' => $id_demandeur,
                 'id_propriete' => $request->id_propriete,
@@ -452,9 +388,6 @@ class DemandeurProprieteController extends Controller
         ]);
     }
 
-    /**
-     * ✅ AJOUTER DEMANDEUR : Enregistrer (avec date_demande)
-     */
     public function storeToProperty(Request $request)
     {
         $request->validate([
@@ -529,12 +462,10 @@ class DemandeurProprieteController extends Controller
                 ]);
             }
 
-            // ✅ Préparer date_demande
             $dateDemande = $request->filled('date_demande') 
                 ? Carbon::parse($request->date_demande) 
                 : Carbon::today();
 
-            // ✅ VALIDATION
             if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
                 DB::rollBack();
                 return back()->withErrors([
@@ -542,7 +473,6 @@ class DemandeurProprieteController extends Controller
                 ]);
             }
 
-            // ✅ Créer la liaison AVEC date_demande
             Demander::create([
                 'id_demandeur' => $demandeur->id,
                 'id_propriete' => $request->id_propriete,
@@ -579,7 +509,7 @@ class DemandeurProprieteController extends Controller
             
             if ($propriete->is_archived) {
                 DB::rollBack();
-                return back()->with('error', "❌ Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
+                return back()->with('error', "Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
             
             $deleted = Demander::where('id_demandeur', $request->id_demandeur)

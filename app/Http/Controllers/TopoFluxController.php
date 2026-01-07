@@ -1,20 +1,18 @@
 <?php
-// ============================================
-// app/Http/Controllers/TopoFluxController.php
-// VERSION AVEC DÉGRADATION GRACIEUSE COMPLÈTE
-// ============================================
 
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use App\Services\TopoFluxService;
+use App\Services\{TopoFluxService, TopoValidationService};
+use App\Models\{Dossier, District};
 
 class TopoFluxController extends Controller
 {
     public function __construct(
-        private TopoFluxService $topoService
+        private TopoFluxService $topoService,
+        private TopoValidationService $validationService
     ) {}
     
     // ========================================
@@ -35,17 +33,20 @@ class TopoFluxController extends Controller
         // Supprimer les filtres vides
         $filters = array_filter($filters, fn($value) => !is_null($value));
         
-        // Récupérer depuis FastAPI (avec gestion d'erreur gracieuse)
+        // Récupérer depuis FastAPI
         $data = $this->topoService->getImports($filters);
+        
+        // ENRICHIR LES IMPORTS AVEC DONNÉES GEODOC
+        $enrichedImports = $this->enrichImportsData($data['data'] ?? []);
         
         // Déterminer si FastAPI est disponible
         $fastapiAvailable = !empty($data['data']) || !empty($data['stats']['total']);
         
         return Inertia::render('TopoFlux/Index', [
-            'imports' => $data['data'] ?? [],
+            'imports' => $enrichedImports,
             'stats' => $data['stats'] ?? $this->getEmptyStats(),
             'filters' => $filters,
-            'canValidate' => true, // Toujours true
+            'canValidate' => true,
             'fastapiAvailable' => $fastapiAvailable
         ]);
     }
@@ -62,56 +63,77 @@ class TopoFluxController extends Controller
             return back()->with('error', 'Import introuvable. Le service TopoFlux est peut-être indisponible.');
         }
         
+        // ENRICHIR AVEC DONNÉES GEODOC
+        $enrichedImport = $this->enrichSingleImport($import['import'] ?? []);
+        
         return Inertia::render('TopoFlux/Show', [
-            'import' => $import['import'] ?? null,
+            'import' => $enrichedImport,
             'files' => $import['files'] ?? [],
             'canValidate' => true
         ]);
     }
     
     // ========================================
-    // IMPORT - ✅ FONCTIONNE MÊME SI FASTAPI DOWN
+    // IMPORT - CRÉER/METTRE À JOUR DANS GEODOC
     // ========================================
     
     public function import(Request $request, int $id)
     {
-        // ✅ CRUCIAL : Les données sont déjà dans la requête Inertia
-        // On peut importer même si FastAPI est down maintenant
+        $user = $request->user();
         
-        // Essayer de récupérer depuis FastAPI
-        $import = $this->topoService->getImport($id);
+        // Récupérer l'import depuis FastAPI
+        $importData = $this->topoService->getImport($id);
         
-        // ✅ Si FastAPI down, utiliser les données du cache de session
-        if (!$import && session()->has('cached_import_' . $id)) {
-            $import = session()->get('cached_import_' . $id);
-            Log::info("Import #{$id} récupéré depuis le cache de session", [
-                'user' => $request->user()->email
-            ]);
+        if (!$importData || !isset($importData['import'])) {
+            // Essayer le cache de session en cas d'échec
+            if (session()->has("cached_import_{$id}")) {
+                $importData = session()->get("cached_import_{$id}");
+            } else {
+                return back()->with('error', 'Impossible de récupérer les données de cet import.');
+            }
         }
         
-        if (!$import || !isset($import['import'])) {
-            return back()->with('error', 'Impossible de récupérer les données de cet import. Veuillez réessayer plus tard.');
+        $import = $importData['import'];
+        
+        // Trouver le dossier correspondant
+        $dossier = Dossier::where('numero_ouverture', $import['numero_ouverture'])
+            ->where('id_district', $import['district_id'])
+            ->first();
+        
+        if (!$dossier) {
+            return back()->with('error', "Dossier {$import['numero_ouverture']} introuvable dans le district #{$import['district_id']}.");
         }
         
-        $data = $import['import'];
-        
-        // Vérifier que l'import est dans un état valide
-        if (in_array($data['status'], ['rejected', 'validated'])) {
-            return back()->with('error', 'Cet import ne peut pas être importé (statut: ' . $data['status'] . ')');
+        // Vérifier que le dossier n'est pas fermé
+        if ($dossier->is_closed) {
+            return back()->with('error', "Le dossier '{$dossier->nom_dossier}' est fermé.");
         }
         
-        // Déterminer si c'est une création ou une mise à jour
-        $isDuplicate = $data['validation']['duplicate_info']['is_duplicate'] ?? false;
+        // Valider avec TopoValidationService
+        $validation = $this->validationService->validateImport([
+            'id' => $import['id'],
+            'entity_type' => $import['entity_type'],
+            'raw_data' => $import['raw_data'],
+            'dossier_id' => $dossier->id,
+            'district_id' => $import['district_id']
+        ], $user);
+        
+        if (!$validation['success'] || !$validation['can_proceed']) {
+            
+            return back()->with('error', 'Validation échouée : ' . implode(', ', $validation['errors'] ?? []));
+        }
+ 
+        $isDuplicate = $validation['duplicate_info']['is_duplicate'] ?? false;
         
         // Préparer les données selon le type d'entité
-        if ($data['entity_type'] === 'demandeur') {
-            $formData = $this->prepareDemandeurData($data['raw_data']);
+        if ($import['entity_type'] === 'demandeur') {
+            $formData = $this->prepareDemandeurData($import['raw_data']);
             
             if ($isDuplicate) {
-                $existingId = $data['validation']['duplicate_info']['existing_entity']['id'] ?? null;
+                $existingId = $validation['duplicate_info']['existing_entity']['id'] ?? null;
                 
                 return redirect()
-                    ->route('dossiers.show', $data['dossier_id'])
+                    ->route('dossiers.show', $dossier->id)
                     ->with('openEditDemandeur', [
                         'demandeur_id' => $existingId,
                         'import_data' => $formData,
@@ -119,20 +141,20 @@ class TopoFluxController extends Controller
                     ]);
             } else {
                 return redirect()
-                    ->route('nouveau-lot.create', $data['dossier_id'])
+                    ->route('nouveau-lot.create', $dossier->id)
                     ->with('preloadDemandeur', array_merge($formData, [
                         'import_id' => $id
                     ]));
             }
             
         } else {
-            $formData = $this->prepareProprieteData($data['raw_data']);
+            $formData = $this->prepareProprieteData($import['raw_data']);
             
             if ($isDuplicate) {
-                $existingId = $data['validation']['duplicate_info']['existing_entity']['id'] ?? null;
+                $existingId = $validation['duplicate_info']['existing_entity']['id'] ?? null;
                 
                 return redirect()
-                    ->route('dossiers.show', $data['dossier_id'])
+                    ->route('dossiers.show', $dossier->id)
                     ->with('openEditPropriete', [
                         'propriete_id' => $existingId,
                         'import_data' => $formData,
@@ -140,7 +162,7 @@ class TopoFluxController extends Controller
                     ]);
             } else {
                 return redirect()
-                    ->route('nouveau-lot.create', $data['dossier_id'])
+                    ->route('nouveau-lot.create', $dossier->id)
                     ->with('preloadPropriete', array_merge($formData, [
                         'import_id' => $id
                     ]));
@@ -149,7 +171,7 @@ class TopoFluxController extends Controller
     }
     
     // ========================================
-    // ARCHIVER - Essaie mais ne bloque pas
+    // ARCHIVER
     // ========================================
     
     public function archive(Request $request, int $id)
@@ -160,15 +182,11 @@ class TopoFluxController extends Controller
         $success = $this->topoService->archive($id, $note);
         
         if ($success) {
-            Log::info("Import #{$id} archivé", [
-                'user' => $user->email,
-                'note' => $note
-            ]);
+
             return back()->with('success', 'Import archivé avec succès');
         }
         
-        // ✅ Message plus clair
-        return back()->with('warning', 'Impossible d\'archiver. Le service TopoFlux est temporairement indisponible. L\'import reste utilisable.');
+        return back()->with('warning', 'Impossible d\'archiver. Le service TopoFlux est temporairement indisponible.');
     }
     
     // ========================================
@@ -182,9 +200,7 @@ class TopoFluxController extends Controller
         $success = $this->topoService->unarchive($id);
         
         if ($success) {
-            Log::info("Import #{$id} restauré", [
-                'user' => $user->email
-            ]);
+
             return back()->with('success', 'Import restauré avec succès');
         }
         
@@ -199,7 +215,6 @@ class TopoFluxController extends Controller
     {
         $user = $request->user();
         
-        // Valider le motif
         $request->validate([
             'rejection_reason' => 'required|string|min:10|max:500'
         ], [
@@ -211,10 +226,7 @@ class TopoFluxController extends Controller
         $success = $this->topoService->reject($id, $request->rejection_reason);
         
         if ($success) {
-            Log::info("Import #{$id} rejeté", [
-                'user' => $user->email,
-                'reason' => $request->rejection_reason
-            ]);
+    
             return back()->with('success', 'Import rejeté avec succès');
         }
         
@@ -230,7 +242,7 @@ class TopoFluxController extends Controller
         $file = $this->topoService->downloadFile($fileId);
         
         if (!$file) {
-            return back()->with('error', 'Fichier introuvable. Le service TopoFlux est peut-être indisponible.');
+            return back()->with('error', 'Fichier introuvable.');
         }
         
         return response($file['content'])
@@ -239,20 +251,44 @@ class TopoFluxController extends Controller
     }
     
     // ========================================
-    // MÉTHODES PRIVÉES
+    // MÉTHODES PRIVÉES - ENRICHISSEMENT
     // ========================================
     
-    private function getEmptyStats(): array
+    /**
+     * Enrichir une liste d'imports avec les données GeODOC
+     */
+    private function enrichImportsData(array $imports): array
     {
-        return [
-            'total' => 0,
-            'pending' => 0,
-            'archived' => 0,
-            'validated' => 0,
-            'rejected' => 0
-        ];
+        return array_map(function ($import) {
+            return $this->enrichSingleImport($import);
+        }, $imports);
     }
     
+    /**
+     * Enrichir un import avec les données GeODOC
+     */
+    private function enrichSingleImport(array $import): array
+    {
+        // Trouver le dossier
+        $dossier = Dossier::where('numero_ouverture', $import['numero_ouverture'] ?? null)
+            ->where('id_district', $import['district_id'] ?? null)
+            ->first();
+        
+        // Trouver le district
+        $district = District::find($import['district_id'] ?? null);
+        
+        // Ajouter les informations enrichies
+        $import['dossier_id'] = $dossier?->id;
+        $import['dossier_nom'] = $dossier?->nom_dossier ?? "Dossier {$import['numero_ouverture']}";
+        $import['dossier_numero_ouverture'] = $import['numero_ouverture'];
+        $import['district_nom'] = $district?->nom_district ?? "District #{$import['district_id']}";
+        
+        return $import;
+    }
+    
+    /**
+     * Préparer les données demandeur pour le formulaire
+     */
     private function prepareDemandeurData(array $rawData): array
     {
         return [
@@ -281,6 +317,9 @@ class TopoFluxController extends Controller
         ];
     }
     
+    /**
+     * Préparer les données propriété pour le formulaire
+     */
     private function prepareProprieteData(array $rawData): array
     {
         return [
@@ -305,6 +344,17 @@ class TopoFluxController extends Controller
             'numero_dep_vol_inscription' => $rawData['numero_dep_vol_inscription'] ?? '',
             'dep_vol_requisition' => $rawData['dep_vol_requisition'] ?? '',
             'numero_dep_vol_requisition' => $rawData['numero_dep_vol_requisition'] ?? ''
+        ];
+    }
+    
+    private function getEmptyStats(): array
+    {
+        return [
+            'total' => 0,
+            'pending' => 0,
+            'archived' => 0,
+            'validated' => 0,
+            'rejected' => 0
         ];
     }
 }

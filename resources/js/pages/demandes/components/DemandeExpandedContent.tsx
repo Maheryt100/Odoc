@@ -1,4 +1,4 @@
-// pages/demandes/components/DemandeExpandedContent.tsx - VERSION CORRIGÉE
+// pages/demandes/components/DemandeExpandedContent.tsx
 import { Badge } from '@/components/ui/badge';
 import { Home, Users, AlertCircle } from 'lucide-react';
 
@@ -17,7 +17,6 @@ export default function DemandeExpandedContent({
     formatNomComplet,
     isDemandeurIncomplete
 }: DemandeExpandedContentProps) {
-    // ✅ CORRECTION : Vérifier que demandeurs existe ET n'est pas vide
     const hasValidDemandeurs = doc.demandeurs && Array.isArray(doc.demandeurs) && doc.demandeurs.length > 0;
     
 
@@ -63,7 +62,7 @@ export default function DemandeExpandedContent({
                 </div>
             </div>
 
-            {/* ✅ CORRECTION : Afficher TOUJOURS la liste si demandeurs existe */}
+            {/*Afficher TOUJOURS la liste si demandeurs existe */}
             {hasValidDemandeurs ? (
                 <div className="bg-muted/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-3">
@@ -77,7 +76,6 @@ export default function DemandeExpandedContent({
                     </div>
                     <div className="space-y-2">
                         {doc.demandeurs.map((dem: any, idx: number) => {
-                            // ✅ Vérifier que dem.demandeur existe
                             if (!dem?.demandeur) {
                                 console.warn('Demandeur manquant pour:', dem);
                                 return null;
@@ -118,7 +116,7 @@ export default function DemandeExpandedContent({
                     </div>
                 </div>
             ) : (
-                // ✅ Message si pas de demandeurs
+                // Message si pas de demandeurs
                 <div className="bg-muted/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <AlertCircle className="h-5 w-5 text-orange-600" />

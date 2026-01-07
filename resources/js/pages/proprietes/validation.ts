@@ -1,4 +1,4 @@
-// pages/proprietes/validation.ts - ✅ VERSION AVEC NOUVELLES DATES
+// pages/proprietes/validation.ts 
 
 import type { ProprieteFormData } from './types';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ export interface ValidationResult {
 }
 
 /**
- * ✅ Valider les champs obligatoires avec nouvelles dates
+ *  Valider les champs obligatoires avec nouvelles dates
  */
 export function validateProprieteForm(data: ProprieteFormData): ValidationResult {
     const errors: Record<string, string> = {};
@@ -40,7 +40,7 @@ export function validateProprieteForm(data: ProprieteFormData): ValidationResult
         }
     }
 
-    // ✅ VALIDATION DES DATES
+    //  VALIDATION DES DATES
     if (data.date_requisition && !isValidDate(data.date_requisition)) {
         errors.date_requisition = 'Date de réquisition invalide';
     }
@@ -57,7 +57,7 @@ export function validateProprieteForm(data: ProprieteFormData): ValidationResult
         errors.date_approbation_acte = 'Date d\'approbation invalide';
     }
 
-    // ✅ VALIDATION : date_approbation_acte >= date_requisition
+    //  VALIDATION : date_approbation_acte >= date_requisition
     if (data.date_approbation_acte && data.date_requisition) {
         const dateApprobation = new Date(data.date_approbation_acte);
         const dateRequisition = new Date(data.date_requisition);
@@ -90,12 +90,12 @@ export function validateAndShowErrors(data: ProprieteFormData): boolean {
 }
 
 /**
- * ✅ Validation spécifique pour la génération de document
+ * Validation spécifique pour la génération de document
  */
 export function validateForDocumentGeneration(data: ProprieteFormData): ValidationResult {
     const errors: Record<string, string> = {};
 
-    // ✅ date_approbation_acte OBLIGATOIRE pour génération
+    //  date_approbation_acte OBLIGATOIRE pour génération
     if (!data.date_approbation_acte) {
         errors.date_approbation_acte = 'La date d\'approbation de l\'acte est obligatoire pour générer le document';
     }

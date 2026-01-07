@@ -1,5 +1,5 @@
 // resources/js/pages/TopoFlux/components/FilePreviewDialog.tsx
-// ✅ VERSION CORRIGÉE AVEC DialogDescription
+// ✅ VERSION CORRIGÉE - CLÉS UNIQUES GARANTIES
 
 import {
     Dialog,
@@ -20,7 +20,14 @@ import {
     CheckSquare,
     Square
 } from 'lucide-react';
-import { useState } from 'react';
+
+interface TopoFile {
+    id: number;
+    name: string;
+    size: number;
+    mime_type: string;
+    category: string;
+}
 
 interface FilePreviewDialogProps {
     open: boolean;
@@ -37,9 +44,9 @@ export default function FilePreviewDialog({
     onSelectionChange,
     onClose
 }: FilePreviewDialogProps) {
-    if (!imp || !imp.files) return null;
+    if (!imp || !imp.files || !Array.isArray(imp.files)) return null;
     
-    const files = imp.files;
+    const files: TopoFile[] = imp.files;
     
     const getFileIcon = (mimeType: string) => {
         if (mimeType.startsWith('image/')) {
@@ -69,7 +76,7 @@ export default function FilePreviewDialog({
         if (selectedFiles.length === files.length) {
             onSelectionChange([]);
         } else {
-            onSelectionChange(files.map((f: any) => f.id));
+            onSelectionChange(files.map((f: TopoFile) => f.id));
         }
     };
     
@@ -128,53 +135,57 @@ export default function FilePreviewDialog({
                             </Badge>
                         </div>
                         
-                        {/* Liste des fichiers */}
+                        {/* Liste des fichiers - ✅ CLÉ UNIQUE GARANTIE */}
                         <div className="space-y-2">
-                            {files.map((file: any) => (
-                                <div
-                                    key={`file-${file.id}-${file.name}`}
-                                    className={`flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                        selectedFiles.includes(file.id)
-                                            ? 'border-emerald-500 bg-emerald-50'
-                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                    onClick={() => toggleFile(file.id)}
-                                >
-                                    <Checkbox
-                                        checked={selectedFiles.includes(file.id)}
-                                        onCheckedChange={() => toggleFile(file.id)}
-                                    />
-                                    
-                                    <div className="flex-shrink-0">
-                                        {getFileIcon(file.mime_type)}
-                                    </div>
-                                    
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-medium truncate">{file.name}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-xs text-muted-foreground">
-                                                {formatFileSize(file.size)}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">•</span>
-                                            {getCategoryBadge(file.category)}
-                                        </div>
-                                    </div>
-                                    
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            // TODO: Implémenter le téléchargement
-                                            console.log('Télécharger fichier:', file.id);
-                                        }}
-                                        className="gap-2"
+                            {files.map((file: TopoFile, index: number) => {
+                                // ✅ Clé composite unique : id + index + nom
+                                const uniqueKey = `file-${file.id}-${index}-${file.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+                                
+                                return (
+                                    <div
+                                        key={uniqueKey}
+                                        className={`flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                            selectedFiles.includes(file.id)
+                                                ? 'border-emerald-500 bg-emerald-50'
+                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                        onClick={() => toggleFile(file.id)}
                                     >
-                                        <Download className="h-4 w-4" />
-                                        Télécharger
-                                    </Button>
-                                </div>
-                            ))}
+                                        <Checkbox
+                                            checked={selectedFiles.includes(file.id)}
+                                            onCheckedChange={() => toggleFile(file.id)}
+                                        />
+                                        
+                                        <div className="flex-shrink-0">
+                                            {getFileIcon(file.mime_type)}
+                                        </div>
+                                        
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{file.name}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-muted-foreground">
+                                                    {formatFileSize(file.size)}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">•</span>
+                                                {getCategoryBadge(file.category)}
+                                            </div>
+                                        </div>
+                                        
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                console.log('Télécharger fichier:', file.id);
+                                            }}
+                                            className="gap-2"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Télécharger
+                                        </Button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

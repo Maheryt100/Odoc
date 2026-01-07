@@ -1,4 +1,4 @@
-// resources/js/pages/location/components/LocationHierarchy.tsx - ✅ AVEC RECHERCHE INTÉGRÉE
+// resources/js/pages/location/components/LocationHierarchy.tsx 
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

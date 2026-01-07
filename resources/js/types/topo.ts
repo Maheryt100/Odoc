@@ -1,5 +1,5 @@
 // ============================================
-// resources/js/types/topo.ts - TYPES COMPLETS
+// resources/js/types/topo.ts
 // ============================================
 
 export interface TopoImport {

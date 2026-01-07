@@ -1,4 +1,4 @@
-// pages/demandes/types.ts - ✅ VERSION FINALE CORRIGÉE
+// pages/demandes/types.ts 
 
 import type { Demandeur, Propriete, Dossier } from '@/types';
 
@@ -106,17 +106,8 @@ export interface DemandesIndexProps {
     onUnarchive: (doc: DemandeWithDetails) => void;
 }
 
-// ════════════════════════════════════════════════════════════════
-// ✅ CORRECTION : TYPES DE FILTRES ET TRI
-// ════════════════════════════════════════════════════════════════
-
 export type FiltreStatutDemandeType = 'tous' | 'actives' | 'archivees' | 'incompletes';
 
-/**
- * ✅ CORRECTION : Type cohérent avec helpers.ts
- * On retire 'date_demande' car c'est juste une variante de 'date'
- * Si besoin, gérer ça dans la logique de tri, pas dans le type
- */
 export type TriDemandeType = 'date' | 'lot' | 'demandeur' | 'prix' | 'statut';
 
 // ════════════════════════════════════════════════════════════════

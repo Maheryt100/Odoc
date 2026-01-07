@@ -62,7 +62,7 @@ export default function DemandeursListWithOrder({
                         className="flex-1 text-left hover:text-primary transition-colors"
                     >
                         <div className="flex items-center gap-2 mb-1">
-                            {/* ✅ Badge ordre avec icône */}
+                            {/* Badge ordre avec icône */}
                             {isPrincipal ? (
                                 <Badge variant="default" className="text-xs gap-1">
                                     <Crown className="h-3 w-3" />
@@ -88,7 +88,7 @@ export default function DemandeursListWithOrder({
                             </p>
                         )}
                         
-                        {/* ✅ Afficher le prix si demandé */}
+                        {/* Afficher le prix si demandé */}
                         {showPrices && (
                             <p className="text-sm font-semibold text-primary mt-2">
                                 Prix : {formatPrix(item.total_prix)}
@@ -132,7 +132,7 @@ export default function DemandeursListWithOrder({
 
     return (
         <div className="space-y-4">
-            {/* ✅ Section actifs */}
+            {/* Section actifs */}
             {demandeursActifs.length > 0 && (
                 <div className="space-y-2">
                     <h4 className="text-sm font-medium text-muted-foreground">
@@ -144,7 +144,7 @@ export default function DemandeursListWithOrder({
                 </div>
             )}
             
-            {/* ✅ Section archivés - TOUJOURS AFFICHÉE */}
+            {/* Section archivés - TOUJOURS AFFICHÉE */}
             {demandeursArchives.length > 0 && (
                 <div className="space-y-2">
                     {demandeursActifs.length > 0 && <div className="border-t pt-4" />}

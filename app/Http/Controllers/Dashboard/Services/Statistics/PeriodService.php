@@ -69,7 +69,7 @@ class PeriodService
     }
     
     /**
-     * ✅ CORRECTION : Calculer le taux de croissance entre deux périodes
+     * Calculer le taux de croissance entre deux périodes
      * 
      * @param array $dates ['from' => Carbon|string, 'to' => Carbon|string]
      * @param array $geoFilters ['province_id' => ?int, 'region_id' => ?int, 'district_id' => ?int]
@@ -105,7 +105,7 @@ class PeriodService
     }
     
     /**
-     * ✅ NOUVEAU : Obtenir les IDs de districts selon les filtres géographiques
+     * Obtenir les IDs de districts selon les filtres géographiques
      */
     private function getFilteredDistrictIds(array $geoFilters): array
     {
@@ -173,7 +173,7 @@ class PeriodService
     }
     
     /**
-     * ✅ NOUVEAU : Obtenir les statistiques de comparaison de période
+     * Obtenir les statistiques de comparaison de période
      */
     public function getComparisonStats(array $dates, array $geoFilters = []): array
     {

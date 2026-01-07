@@ -1,4 +1,4 @@
-// admin/activity-logs/components/StatsCards.tsx - VERSION RESPONSIVE
+// admin/activity-logs/components/StatsCards.tsx 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Calendar, FileText, TrendingUp } from 'lucide-react';
 import { ActivityStats } from '../types';

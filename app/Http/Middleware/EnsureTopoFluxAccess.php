@@ -12,8 +12,8 @@ use App\Models\User;
  * Middleware pour restreindre l'accès au module TopoFlux
  * 
  * RÈGLES:
- * ✅ Admin District et User District: PEUVENT accéder
- * ❌ Super Admin et Central User: NE PEUVENT PAS (lecture seule)
+ * Admin District et User District: PEUVENT accéder
+ * Super Admin et Central User: NE PEUVENT PAS (lecture seule)
  */
 class EnsureTopoFluxAccess
 {
@@ -27,7 +27,7 @@ class EnsureTopoFluxAccess
                 ->withErrors(['error' => 'Vous devez être connecté pour accéder à cette page']);
         }
 
-        // ✅ Vérifier si l'utilisateur peut accéder au TopoFlux
+        // Vérifier si l'utilisateur peut accéder au TopoFlux
         if (!$user->canAccessTopoFlux()) {
             abort(403, 'Accès refusé. Le module TopoFlux est réservé aux administrateurs et utilisateurs de district.');
         }

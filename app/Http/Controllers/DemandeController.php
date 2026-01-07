@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use NumberFormatter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -271,7 +271,7 @@ class DemandeController extends Controller
     }
 
     /**
-     * ✅ VÉRIFICATION : date_approbation_acte OBLIGATOIRE avant génération
+     * VÉRIFICATION : date_approbation_acte OBLIGATOIRE avant génération
      */
     public function download($id)
     {
@@ -285,14 +285,14 @@ class DemandeController extends Controller
             $propriete = $demande->propriete;
             $dossier = $propriete->dossier;
 
-            // ✅ VALIDATION : date_approbation_acte OBLIGATOIRE
+            // VALIDATION : date_approbation_acte OBLIGATOIRE
             if (!$propriete->date_approbation_acte) {
                 return back()->withErrors([
                     'error' => "Impossible de générer le document : la date d'approbation de l'acte est obligatoire pour la propriété Lot {$propriete->lot}."
                 ]);
             }
 
-            // ✅ VALIDATION : date_approbation_acte >= date_requisition
+            //  VALIDATION : date_approbation_acte >= date_requisition
             if ($propriete->date_requisition && $propriete->date_approbation_acte < $propriete->date_requisition) {
                 return back()->withErrors([
                     'error' => "Erreur de cohérence : la date d'approbation ({$propriete->date_approbation_acte->format('d/m/Y')}) est antérieure à la date de réquisition ({$propriete->date_requisition->format('d/m/Y')})."
@@ -360,7 +360,7 @@ class DemandeController extends Controller
 
             $type_operation = $propriete->type_operation;
 
-            // ✅ FORMATAGE DES DATES POUR LE DOCUMENT
+            //  FORMATAGE DES DATES POUR LE DOCUMENT
             $dateRequisition = $propriete->date_requisition 
                 ? Carbon::parse($propriete->date_requisition)->translatedFormat('d F Y') 
                 : '';
@@ -429,7 +429,7 @@ class DemandeController extends Controller
                     'Titre' => $propriete->titre ?? '',
                     'DateDescente' => $dateDescente,
                     
-                    // ✅ DATES MISES À JOUR
+                    // DATES MISES À JOUR
                     'DateRequisition' => $dateRequisition,
                     'DateDepot1' => $dateDepot1,
                     'DateDepot2' => $dateDepot2,
@@ -575,10 +575,10 @@ class DemandeController extends Controller
             }
             
         } catch (\Exception $e) {
-            Log::error('Erreur génération document', [
-                'demande_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('Erreur génération document', [
+            //     'demande_id' => $id,
+            //     'error' => $e->getMessage()
+            // ]);
             
             return back()->withErrors(['error' => 'Erreur lors de la génération: ' . $e->getMessage()]);
         }
@@ -720,9 +720,6 @@ class DemandeController extends Controller
 
 
 
-    /**
-     * ✅ CORRECTION 2 : Inclure date_demande dans le groupement
-     */
     private function groupeDemandes($demandes)
     {
         return $demandes->groupBy('id_propriete')->map(function ($groupe) {
@@ -776,12 +773,12 @@ class DemandeController extends Controller
                 'propriete' => $premiere->propriete,
                 'demandeurs' => $tousLesDemandeurs,
                 'demandeur' => $tousLesDemandeurs->first()['demandeur'] ?? null,
-                'date_demande' => $premiere->date_demande, // ✅ AJOUTÉ
+                'date_demande' => $premiere->date_demande,
                 'total_prix' => $premiere->total_prix,
                 'status_consort' => $groupe->count() > 1,
                 'status' => $premiere->status,
                 'nombre_demandeurs' => $tousLesDemandeurs->count(),
-                'created_at' => $premiere->created_at, // ✅ AJOUTÉ pour tri
+                'created_at' => $premiere->created_at,
             ];
         })
         ->filter()
@@ -789,7 +786,7 @@ class DemandeController extends Controller
     }
 
     /**
-     * ✅ CORRECTION 3 : Méthode list() aussi
+     *  Méthode list() aussi
      */
     public function list(Request $request, $dossierId)
     {
@@ -844,16 +841,13 @@ class DemandeController extends Controller
         ]);
     }
 
-    /**
-     * ✅ CORRECTION PRINCIPALE : Charger les demandeurs complets dans propriete.demandes
-     */
     public function resume(Request $request, $dossierId)
     {
-        // ✅ CORRECTION : Préfixer TOUTES les colonnes avec le nom de la table
+     
         $dossier = Dossier::with([
             'proprietes' => function($q) {
                 $q->select(
-                    'proprietes.id',           // ✅ Préfixe ajouté
+                    'proprietes.id',     
                     'proprietes.lot', 
                     'proprietes.titre', 
                     'proprietes.contenance', 
@@ -876,7 +870,7 @@ class DemandeController extends Controller
                 ->with([
                     'demandes' => function($subq) {
                         $subq->select(
-                            'demander.id',          // ✅ Préfixe ajouté
+                            'demander.id',  
                             'demander.id_propriete', 
                             'demander.id_demandeur', 
                             'demander.date_demande', 
@@ -889,7 +883,7 @@ class DemandeController extends Controller
                         ->with([
                             'demandeur' => function($demQ) {
                                 $demQ->select(
-                                    'demandeurs.id',           // ✅ Préfixe ajouté
+                                    'demandeurs.id', 
                                     'demandeurs.titre_demandeur', 
                                     'demandeurs.nom_demandeur', 
                                     'demandeurs.prenom_demandeur', 
@@ -907,15 +901,15 @@ class DemandeController extends Controller
                                 );
                             }
                         ])
-                        ->orderBy('demander.ordre');  // ✅ Préfixe ajouté
+                        ->orderBy('demander.ordre'); 
                     }
                 ]);
             },
             
-            // ✅ CORRECTION CRITIQUE : Préfixer TOUTES les colonnes dans demandeurs
+            // Préfixer TOUTES les colonnes dans demandeurs
             'demandeurs' => function($q) {
                 $q->select(
-                    'demandeurs.id',                    // ✅ FIX PRINCIPAL
+                    'demandeurs.id',                   
                     'demandeurs.titre_demandeur', 
                     'demandeurs.nom_demandeur', 
                     'demandeurs.prenom_demandeur', 
@@ -940,11 +934,10 @@ class DemandeController extends Controller
             }
         ])->findOrFail($dossierId);
 
-        // ✅ CORRECTION : Query principale avec préfixes
         $query = Demander::with([
             'demandeur' => function($q) {
                 $q->select(
-                    'demandeurs.id',                // ✅ Préfixe ajouté
+                    'demandeurs.id',           
                     'demandeurs.titre_demandeur', 
                     'demandeurs.nom_demandeur', 
                     'demandeurs.prenom_demandeur', 
@@ -964,7 +957,7 @@ class DemandeController extends Controller
             },
             'propriete' => function($q) {
                 $q->select(
-                    'proprietes.id',                // ✅ Préfixe ajouté
+                    'proprietes.id',         
                     'proprietes.lot', 
                     'proprietes.titre', 
                     'proprietes.contenance', 
@@ -987,7 +980,7 @@ class DemandeController extends Controller
                 ->with([
                     'demandes' => function($subq) {
                         $subq->select(
-                            'demander.id',          // ✅ Préfixe ajouté
+                            'demander.id',        
                             'demander.id_propriete', 
                             'demander.id_demandeur', 
                             'demander.date_demande', 
@@ -999,7 +992,7 @@ class DemandeController extends Controller
                         ->with([
                             'demandeur' => function($demQ) {
                                 $demQ->select(
-                                    'demandeurs.id',       // ✅ Préfixe ajouté
+                                    'demandeurs.id',  
                                     'demandeurs.titre_demandeur', 
                                     'demandeurs.nom_demandeur', 
                                     'demandeurs.prenom_demandeur', 
@@ -1010,13 +1003,13 @@ class DemandeController extends Controller
                                 );
                             }
                         ])
-                        ->orderBy('demander.ordre');  // ✅ Préfixe ajouté
+                        ->orderBy('demander.ordre');
                     }
                 ]);
             }
         ])
         ->select(
-            'demander.id',                  // ✅ Préfixe ajouté
+            'demander.id',
             'demander.id_demandeur', 
             'demander.id_propriete', 
             'demander.date_demande', 
@@ -1031,7 +1024,6 @@ class DemandeController extends Controller
         ->orderBy('demander.id_propriete')
         ->orderBy('demander.ordre', 'asc');
 
-        // Filtres (inchangés)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {

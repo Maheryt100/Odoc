@@ -1,4 +1,4 @@
-// resources/js/pages/location/components/LocationSearchBar.tsx - ✅ VERSION REDESIGNÉE
+// resources/js/pages/location/components/LocationSearchBar.tsx 
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

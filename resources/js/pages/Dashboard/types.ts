@@ -1,4 +1,4 @@
-// Dashboard/types.ts - VERSION CORRIGÉE
+// Dashboard/types.ts
 
 export interface KPI {
     dossiers_ouverts: number;
@@ -102,7 +102,7 @@ export interface SuperficieDetails {
     disponible: number;
 }
 
-// ✅ CORRECTION : Toutes les propriétés sont obligatoires
+// Toutes les propriétés sont obligatoires
 export interface DemandeurDetails {
     total: number;
     actifs: number;

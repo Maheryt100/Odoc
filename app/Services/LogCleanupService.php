@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\SystemSettings;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -14,10 +14,10 @@ class LogCleanupService
 {
     private ActivityLogsExportService $exportService;
     
-    // ✅ Seuil unique simplifié (configurable via SystemSettings)
+    // Seuil unique simplifié (configurable via SystemSettings)
     private const DEFAULT_MAX_LOGS = 500000; // 500k logs par défaut
     
-    // ✅ Actions de faible priorité (supprimables en premier en cas de surcharge)
+    // ctions de faible priorité (supprimables en premier en cas de surcharge)
     private const LOW_PRIORITY_ACTIONS = [
         ActivityLog::ACTION_LOGIN,
         ActivityLog::ACTION_LOGOUT,
@@ -30,7 +30,7 @@ class LogCleanupService
     }
 
     /**
-     * ✅ Vérifier l'état de surcharge du système (seuil unique simplifié)
+     *  Vérifier l'état de surcharge du système (seuil unique simplifié)
      */
     public function checkOverloadStatus(): array
     {
@@ -77,7 +77,7 @@ class LogCleanupService
     }
 
     /**
-     * ✅ Nettoyage d'urgence simplifié : supprime les logs basse priorité + anciens
+     * Nettoyage d'urgence simplifié : supprime les logs basse priorité + anciens
      */
     public function emergencyCleanup(): array
     {
@@ -149,12 +149,6 @@ class LogCleanupService
             
             DB::commit();
 
-            Log::warning('Nettoyage d\'urgence effectué', [
-                'deleted_logs' => $deleted,
-                'exports_created' => $exported,
-                'remaining_logs' => ActivityLog::count(),
-            ]);
-
             return [
                 'success' => true,
                 'deleted' => $deleted,
@@ -165,11 +159,6 @@ class LogCleanupService
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erreur nettoyage d\'urgence', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -178,7 +167,7 @@ class LogCleanupService
     }
 
     /**
-     * ✅ Nettoyage standard : supprime les logs au-delà de la période de rétention
+     *  Nettoyage standard : supprime les logs au-delà de la période de rétention
      */
     public function standardCleanup(): array
     {
@@ -232,11 +221,6 @@ class LogCleanupService
 
             DB::commit();
 
-            Log::info('Nettoyage standard effectué', [
-                'archived_logs' => $count,
-                'export_filename' => $exportResult['filename'],
-            ]);
-
             return [
                 'success' => true,
                 'deleted' => $count,
@@ -246,10 +230,6 @@ class LogCleanupService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('Erreur nettoyage standard', [
-                'error' => $e->getMessage()
-            ]);
 
             return [
                 'success' => false,
@@ -259,7 +239,7 @@ class LogCleanupService
     }
 
     /**
-     * ✅ NOUVEAU : Suppression manuelle de logs spécifiques (avec export optionnel)
+     * Suppression manuelle de logs spécifiques (avec export optionnel)
      */
     public function deleteManually(array $logIds, bool $exportBeforeDelete = true): array
     {
@@ -296,13 +276,6 @@ class LogCleanupService
             // Suppression
             ActivityLog::whereIn('id', $logIds)->delete();
 
-            Log::info('Suppression manuelle de logs', [
-                'count' => $count,
-                'exported' => $exportBeforeDelete,
-                'export_filename' => $exportFilename,
-                'user_id' => Auth::id(),
-            ]);
-
             return [
                 'success' => true,
                 'deleted' => $count,
@@ -314,10 +287,6 @@ class LogCleanupService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Erreur suppression manuelle', [
-                'error' => $e->getMessage(),
-                'log_ids' => $logIds,
-            ]);
 
             return [
                 'success' => false,
@@ -327,7 +296,7 @@ class LogCleanupService
     }
 
     /**
-     * ✅ NOUVEAU : Suppression manuelle par critères (date, action, utilisateur, etc.)
+     * Suppression manuelle par critères (date, action, utilisateur, etc.)
      */
     public function deleteByFilters(array $filters, bool $exportBeforeDelete = true): array
     {
@@ -400,14 +369,6 @@ class LogCleanupService
                 ActivityLog::whereIn('id', $chunk)->delete();
             }
 
-            Log::info('Suppression manuelle par filtres', [
-                'count' => $count,
-                'filters' => $filters,
-                'exported' => $exportBeforeDelete,
-                'export_filename' => $exportFilename,
-                'user_id' => Auth::id(),
-            ]);
-
             return [
                 'success' => true,
                 'deleted' => $count,
@@ -419,11 +380,7 @@ class LogCleanupService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Erreur suppression manuelle par filtres', [
-                'error' => $e->getMessage(),
-                'filters' => $filters,
-            ]);
-
+ 
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -432,13 +389,17 @@ class LogCleanupService
     }
 
     /**
-     * ✅ Obtenir des statistiques détaillées (simplifié)
+     * Obtenir des statistiques détaillées (simplifié)
      */
     public function getDetailedStats(): array
     {
         $retentionDays = SystemSettings::getRetentionDays();
         $maxLogs = SystemSettings::get('logs_max_count', self::DEFAULT_MAX_LOGS);
         
+        $dbSizeMb = DB::selectOne("
+            SELECT pg_total_relation_size('activity_logs') / 1024.0 / 1024.0 as size_mb
+        ")->size_mb ?? 0;
+
         return [
             'total_logs' => ActivityLog::count(),
             'max_logs' => $maxLogs,
@@ -452,6 +413,7 @@ class LogCleanupService
                 ->groupBy('action')
                 ->pluck('count', 'action')
                 ->toArray(),
+            'db_size_mb' => round($dbSizeMb, 2),
         ];
     }
 }

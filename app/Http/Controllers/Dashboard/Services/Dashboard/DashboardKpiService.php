@@ -15,8 +15,7 @@ use Carbon\Carbon;
 use App\Http\Controllers\Dashboard\Services\Shared\Traits\QueryFilterTrait;
 
 /**
- * Service KPI optimisé pour le Dashboard
- * ✅ AMÉLIORATION v2.0 : Stats détaillées par genre avec sans propriété
+ * Service KPI pour le Dashboard
  */
 class DashboardKpiService
 {
@@ -43,7 +42,7 @@ class DashboardKpiService
                 'superficie_details' => $this->getSuperficieDetails(),
                 
                 'demandeurs_actifs' => $this->getDemandeursActifs(),
-                'demandeurs_details' => $this->getDemandeurDetails(), // ✅ AMÉLIORATION
+                'demandeurs_details' => $this->getDemandeurDetails(), 
                 'demandeurs_sans_propriete' => $this->getDemandeursSansPropriete(),
                 
                 'completion' => $this->getCompletionDetails(),
@@ -206,7 +205,7 @@ class DashboardKpiService
     }
 
     /**
-     * ✅ AMÉLIORATION MAJEURE : Stats complètes par genre avec sans propriété
+     * Stats complètes par genre avec sans propriété
      */
     private function getDemandeurDetails(): array
     {
@@ -224,7 +223,7 @@ class DashboardKpiService
         $hommes = (clone $baseQuery)->where('sexe', 'Homme')->count();
         $femmes = (clone $baseQuery)->where('sexe', 'Femme')->count();
         
-        // ✅ REQUÊTE OPTIMISÉE : Tous les stats en une seule requête
+        // Tous les stats en une seule requête
         $statsParGenre = DB::table('demandeurs')
             ->when(!$user->canAccessAllDistricts(), function($q) use ($user) {
                 $q->whereExists(function($subq) use ($user) {

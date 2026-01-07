@@ -55,11 +55,11 @@ Route::prefix('admin/activity-logs')
             Route::post('/cleanup', [LogsSettingsController::class, 'cleanup'])
                 ->name('cleanup');
 
-            // ✅ NOUVEAU : Suppression manuelle de logs spécifiques
+            // Suppression manuelle de logs spécifiques
             Route::delete('/delete-manually', [LogsSettingsController::class, 'deleteManually'])
                 ->name('delete-manually');
 
-            // ✅ NOUVEAU : Suppression manuelle par filtres (date, action, user...)
+            // Suppression manuelle par filtres (date, action, user...)
             Route::post('/delete-by-filters', [LogsSettingsController::class, 'deleteByFilters'])
                 ->name('delete-by-filters');
 

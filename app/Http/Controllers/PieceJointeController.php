@@ -156,7 +156,6 @@ class PieceJointeController extends Controller
                 default => PieceJointe::CATEGORIE_GLOBAL,
             };
 
-            // ✅ CORRECTION : Obtenir le districtId AVANT la boucle
             $districtId = $this->getEntityDistrictId($entity);
 
             $uploaded = [];
@@ -178,7 +177,6 @@ class PieceJointeController extends Controller
                 try {
                     $description = $request->descriptions[$index] ?? null;
 
-                    // ✅ Créer la pièce jointe
                     $piece = $entity->ajouterPieceJointe(
                         $file,
                         $request->type_document,
@@ -188,7 +186,6 @@ class PieceJointeController extends Controller
                         $categorie
                     );
 
-                    // ✅ CORRECTION : Logger immédiatement après la création
                     ActivityLogger::logPieceJointeUpload(
                         $piece->id,
                         $piece->nom_original,
@@ -406,15 +403,12 @@ class PieceJointeController extends Controller
                 ], 403);
             }
 
-            // ✅ CORRECTION : Récupérer les infos AVANT la suppression
             $nomFichier = $piece->nom_original;
             $pieceId = $piece->id;
             $districtId = $this->getEntityDistrictId($piece->attachable);
 
-            // Supprimer le fichier
             $piece->deleteFile();
 
-            // ✅ Logger APRÈS la suppression (avec les infos sauvegardées)
             ActivityLogger::logPieceJointeDeletion(
                 $pieceId,
                 $nomFichier,
@@ -451,11 +445,9 @@ class PieceJointeController extends Controller
 
         try {
             $piece = PieceJointe::findOrFail($id);
-            
-            // ✅ Vérifier le document
+  
             $piece->verify($user->id);
 
-            // ✅ CORRECTION : Logger APRÈS la vérification
             ActivityLogger::logPieceJointeVerification(
                 $piece->id,
                 $piece->nom_original,

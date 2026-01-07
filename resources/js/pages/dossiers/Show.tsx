@@ -60,7 +60,7 @@ export default function Show() {
 
     const proprietes = dossier.proprietes || [];
 
-    // ✅ Déterminer si l'utilisateur est en lecture seule
+    //  Déterminer si l'utilisateur est en lecture seule
     const isReadOnly = useMemo(() => {
         return auth.user.role === 'super_admin' || auth.user.role === 'central_user';
     }, [auth.user.role]);
@@ -122,7 +122,7 @@ export default function Show() {
         }, 300);
     }, []);
 
-    // ✅ Gestionnaires avec blocage lecture seule
+    //  Gestionnaires avec blocage lecture seule
     const handleLinkDemandeur = useCallback((propriete: Propriete) => {
         if (isReadOnly) {
             toast.error('Action non autorisée', {
@@ -396,7 +396,7 @@ export default function Show() {
 
             <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1600px] space-y-4 sm:space-y-6">
                 
-                {/* ✅ Header Responsive */}
+                {/* Header Responsive */}
                 <div className="flex items-start justify-between gap-2">
                     {/* Titre et infos */}
                     <div className="flex-1 min-w-0">
@@ -501,7 +501,7 @@ export default function Show() {
                         </div>
                     )}
                 </div>
-                {/* ✅ Alertes - Responsive */}
+                {/* Alertes - Responsive */}
                 {isReadOnly && (
                     <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
                         <div className="flex items-start gap-2 sm:gap-3">
@@ -631,11 +631,10 @@ export default function Show() {
                         isProcessing={isDissociating}
                         onConfirm={confirmDissociate}
                     />
-
-                    {/* ✅ CORRECTION ICI */}
+     
                     {selectedProprieteToDelete && (
                         <SmartDeleteProprieteDialog
-                            propriete={selectedProprieteToDelete}  // ✅ Singulier, pas de tableau
+                            propriete={selectedProprieteToDelete}  
                             open={deleteProprieteOpen}
                             onOpenChange={(open: boolean) => {
                                 setDeleteProprieteOpen(open);

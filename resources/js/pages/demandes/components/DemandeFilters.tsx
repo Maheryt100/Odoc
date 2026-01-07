@@ -1,4 +1,4 @@
-// pages/demandes/components/DemandeFilters.tsx - ✅ CORRECTION TYPE
+// pages/demandes/components/DemandeFilters.tsx 
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useState, useRef, useEffect } from 'react';
 
-// ✅ CORRECTION : Importer depuis types.ts
+// Importer depuis types.ts
 import type { FiltreStatutDemandeType, TriDemandeType } from '../types';
 
 interface DemandeFiltersProps {
@@ -109,7 +109,7 @@ export default function DemandeFilters({
             lot: 'N° Lot',
             demandeur: 'Demandeur',
             prix: 'Prix',
-            statut: 'Statut', // ✅ AJOUTÉ
+            statut: 'Statut', 
         };
         return labels[sort];
     };

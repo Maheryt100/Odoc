@@ -1,10 +1,10 @@
-// pages/admin/activity-logs/Index.tsx - VERSION CORRIGÉE
+// pages/admin/activity-logs/Index.tsx
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { Activity as ActivityIcon, Info, Sparkles, Settings } from 'lucide-react';
+import { Activity as ActivityIcon, Info, Sparkles, Settings, ArrowLeft } from 'lucide-react';
 import { ActivityLogsIndexProps } from './types';
 import { StatsCards } from './components/StatsCards';
 import ActivityFilters from './components/ActivityFilters';
@@ -22,7 +22,7 @@ export default function ActivityLogsIndex({
     documentTypes,
     auth,
 }: ActivityLogsIndexProps & { auth: { user: User } }) {
-    // ✅ États pour les filtres (synchronisés avec l'URL)
+    // États pour les filtres (synchronisés avec l'URL)
     const [search, setSearch] = useState(initialFilters.search || '');
     const [userId, setUserId] = useState(initialFilters.user_id || 'all');
     const [action, setAction] = useState(initialFilters.action || 'all');
@@ -30,7 +30,6 @@ export default function ActivityLogsIndex({
     const [dateFrom, setDateFrom] = useState(initialFilters.date_from || '');
     const [dateTo, setDateTo] = useState(initialFilters.date_to || '');
 
-    // ✅ CORRECTION : Fonction pour appliquer les filtres (requête serveur)
     const applyFilters = (resetPage: boolean = true) => {
         const params: Record<string, any> = {};
 
@@ -54,7 +53,6 @@ export default function ActivityLogsIndex({
         });
     };
 
-    // ✅ CORRECTION : Réinitialiser les filtres
     const handleClearFilters = () => {
         setSearch('');
         setUserId('all');
@@ -69,7 +67,6 @@ export default function ActivityLogsIndex({
         });
     };
 
-    // ✅ CORRECTION : Changer de page en conservant les filtres
     const handlePageChange = (page: number) => {
         const params: Record<string, any> = {
             page,
@@ -111,8 +108,37 @@ export default function ActivityLogsIndex({
             <Head title="Logs d'activité" />
 
             <div className="container mx-auto p-3 sm:p-4 lg:p-6 max-w-[1800px] space-y-3 sm:space-y-4">
-                {/* En-tête avec bouton Paramètres */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                
+                {/* ✅ En-tête avec bouton retour et paramètres */}
+                <div className="flex flex-col gap-3">
+                    {/* Boutons d'action en haut à droite */}
+                    <div className="flex items-center justify-end gap-2">
+                        {/* Bouton paramètres (super_admin uniquement) */}
+                        {isSuperAdmin && (
+                            <Button asChild variant="outline" size="sm" className="gap-2">
+                                <Link href="/admin/activity-logs/settings">
+                                    <Settings className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Paramètres</span>
+                                </Link>
+                            </Button>
+                        )}
+
+                        {/* Bouton retour */}
+                        <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                        >
+                            <Link href={route('dashboard.index')}>
+                                <ArrowLeft className="h-4 w-4" />
+                                <span className="hidden sm:inline">Retour au Dashboard</span>
+                                <span className="sm:hidden">Retour</span>
+                            </Link>
+                        </Button>
+                    </div>
+
+                    {/* Titre et description */}
                     <div>
                         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent flex items-center gap-3">
                             <ActivityIcon className="h-6 w-6 sm:h-8 sm:w-8 text-slate-600" />
@@ -122,15 +148,6 @@ export default function ActivityLogsIndex({
                             Suivi complet des actions effectuées dans le système
                         </p>
                     </div>
-
-                    {isSuperAdmin && (
-                        <Link href="/admin/activity-logs/settings">
-                            <Button variant="outline" className="gap-2">
-                                <Settings className="h-4 w-4" />
-                                <span className="hidden sm:inline">Paramètres</span>
-                            </Button>
-                        </Link>
-                    )}
                 </div>
 
                 {/* Stats */}
@@ -177,7 +194,7 @@ export default function ActivityLogsIndex({
                             </div>
                         </div>
 
-                        {/* ✅ Filtres avec onApplyFilters correctement passé */}
+                        {/* Filtres avec onApplyFilters correctement passé */}
                         <ActivityFilters
                             search={search}
                             onSearchChange={setSearch}
@@ -197,7 +214,7 @@ export default function ActivityLogsIndex({
                             totalLogs={logs.total}
                             filteredCount={logs.total}
                             onClearFilters={handleClearFilters}
-                            onApplyFilters={() => applyFilters(true)} // ✅ CORRECTION
+                            onApplyFilters={() => applyFilters(true)}
                         />
                     </div>
 
@@ -205,7 +222,7 @@ export default function ActivityLogsIndex({
                     <CardContent className="p-0">
                         <LogsTable logs={logs.data} actions={actions} />
 
-                        {/* ✅ Pagination serveur avec conservation des filtres */}
+                        {/* Pagination serveur avec conservation des filtres */}
                         {logs.last_page > 1 && (
                             <div className="p-4 border-t">
                                 <Pagination

@@ -1,4 +1,4 @@
-// pages/demandes/helpers.ts - ✅ CORRECTION TRI
+// pages/demandes/helpers.ts
 
 import type { DemandeWithDetails, FiltreStatutDemandeType, TriDemandeType } from './types';
 
@@ -26,7 +26,7 @@ export function filterDemandesByStatus(
 }
 
 /**
- * ✅ CORRECTION : Trier les demandes (sans 'date_demande' dans le type)
+ * Trier les demandes (sans 'date_demande' dans le type)
  */
 export function sortDemandes(
     demandes: DemandeWithDetails[],
@@ -38,7 +38,7 @@ export function sortDemandes(
 
         switch (tri) {
             case 'date':
-                // ✅ Utiliser created_at par défaut, ou date_demande si disponible
+                // Utiliser created_at par défaut, ou date_demande si disponible
                 const dateA = a.date_demande || a.created_at || '';
                 const dateB = b.date_demande || b.created_at || '';
                 comparison = new Date(dateA).getTime() - new Date(dateB).getTime();

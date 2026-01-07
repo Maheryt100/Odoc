@@ -1,8 +1,9 @@
 // resources/js/pages/TopoFlux/components/StatsCards.tsx
-// ✅ VERSION AVEC STATUT ARCHIVÉ
+// ✅ VERSION CORRIGÉE - CLÉS UNIQUES
 
 import { Card } from '@/components/ui/card';
 import { FileText, Clock, CheckCircle2, XCircle, Archive } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface Stats {
     total: number;
@@ -16,33 +17,47 @@ interface StatsCardsProps {
     stats: Stats;
 }
 
+interface StatCard {
+    id: string; // ✅ Ajout d'un identifiant unique
+    title: string;
+    value: number;
+    icon: LucideIcon;
+    color: string;
+}
+
 export default function StatsCards({ stats }: StatsCardsProps) {
-    const cards = [
+    // ✅ Chaque carte a maintenant un ID unique
+    const cards: StatCard[] = [
         {
+            id: 'stat-total',
             title: 'Total',
             value: stats.total,
             icon: FileText,
             color: 'text-blue-600 bg-blue-100'
         },
         {
+            id: 'stat-pending',
             title: 'En attente',
             value: stats.pending,
             icon: Clock,
             color: 'text-yellow-600 bg-yellow-100'
         },
         {
+            id: 'stat-archived',
             title: 'Archivés',
             value: stats.archived,
             icon: Archive,
             color: 'text-gray-600 bg-gray-100'
         },
         {
+            id: 'stat-validated',
             title: 'Validés',
             value: stats.validated,
             icon: CheckCircle2,
             color: 'text-green-600 bg-green-100'
         },
         {
+            id: 'stat-rejected',
             title: 'Rejetés',
             value: stats.rejected,
             icon: XCircle,
@@ -53,7 +68,8 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     return (
         <div className="grid gap-4 md:grid-cols-5">
             {cards.map((card) => (
-                <Card key={card.title} className="p-4">
+                // ✅ Utilisation de l'ID unique comme clé
+                <Card key={card.id} className="p-4">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-muted-foreground">{card.title}</p>

@@ -1,4 +1,4 @@
-// Dashboard/components/QuickActions.tsx - VERSION CORRIGÉE
+// Dashboard/components/QuickActions.tsx 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from '@inertiajs/react';
@@ -14,7 +14,7 @@ export function QuickActions() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {/* ✅ CORRECTION : Grid responsive 1/2/4 colonnes */}
+                {/* Grid responsive 1/2/4 colonnes */}
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Button asChild variant="outline" className="h-auto py-4 hover:bg-accent">
                         <Link href={route('dossiers.create')}>

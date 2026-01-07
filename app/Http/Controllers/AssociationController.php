@@ -8,57 +8,56 @@ use App\Models\Demandeur;
 use App\Models\Propriete;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class AssociationController extends Controller
 {
     /**
-     * ✅ Lier un demandeur à une propriété (avec date_demande)
+     * Lier un demandeur à une propriété (avec date_demande)
      */
     public function link(Request $request)
     {
-        // ✅ VALIDATION COMPLÈTE + DATE_DEMANDE
         $validated = $request->validate([
             'id_demandeur' => 'required|exists:demandeurs,id',
             'id_propriete' => 'required|exists:proprietes,id',
             'id_dossier' => 'required|exists:dossiers,id',
-            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01', // ✅ NOUVEAU
+            'date_demande' => 'nullable|date|before_or_equal:today|after_or_equal:2020-01-01',
         ]);
 
-        Log::info('🔗 Association Link - Début', [
-            'user_id' => Auth::id(),
-            'data' => $validated,
-        ]);
+        // Log::info('Association Link - Début', [
+        //     'user_id' => Auth::id(),
+        //     'data' => $validated,
+        // ]);
 
         try {
             DB::beginTransaction();
 
-            // ✅ CHARGER LES ENTITÉS
+            // CHARGER LES ENTITÉS
             $demandeur = Demandeur::findOrFail($validated['id_demandeur']);
             $propriete = Propriete::with(['dossier', 'demandes'])->findOrFail($validated['id_propriete']);
 
-            // ✅ VÉRIFICATIONS MÉTIER (inchangées)
+            //VÉRIFICATIONS MÉTIER (inchangées)
             if ($propriete->id_dossier !== (int)$validated['id_dossier']) {
                 DB::rollBack();
-                Log::warning('❌ Incohérence dossier', [
-                    'propriete_dossier' => $propriete->id_dossier,
-                    'dossier_fourni' => $validated['id_dossier'],
-                ]);
-                return back()->with('error', '⚠️ La propriété n\'appartient pas à ce dossier.');
+                // Log::warning('Incohérence dossier', [
+                //     'propriete_dossier' => $propriete->id_dossier,
+                //     'dossier_fourni' => $validated['id_dossier'],
+                // ]);
+                return back()->with('error', 'La propriété n\'appartient pas à ce dossier.');
             }
 
             if ($propriete->dossier && $propriete->dossier->is_closed) {
                 DB::rollBack();
-                Log::warning('❌ Dossier fermé');
-                return back()->with('error', '🔒 Impossible de lier : le dossier est fermé.');
+                // Log::warning('Dossier fermé');
+                return back()->with('error', 'Impossible de lier : le dossier est fermé.');
             }
 
             if ($propriete->is_archived) {
                 DB::rollBack();
-                Log::warning('❌ Propriété archivée');
-                return back()->with('error', "📦 Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
+                // Log::warning('Propriété archivée');
+                return back()->with('error', "Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
 
             $existant = Demander::where('id_demandeur', $validated['id_demandeur'])
@@ -69,32 +68,28 @@ class AssociationController extends Controller
             if ($existant) {
                 DB::rollBack();
                 $statusMsg = $existant->status === 'archive' ? 'est archivée (acquise)' : 'existe déjà';
-                Log::warning('❌ Association déjà existante');
-                return back()->with('error', "⚠️ L'association {$statusMsg}.");
+                // Log::warning('Association déjà existante');
+                return back()->with('error', "L'association {$statusMsg}.");
             }
 
-            // ✅ ÉTAPE 1 : S'assurer que le demandeur est dans le dossier
             $this->ensureDemandeurInDossier($validated['id_demandeur'], $propriete->id_dossier);
 
-            // ✅ ÉTAPE 2 : Calculer l'ordre automatiquement
             $maxOrdre = Demander::where('id_propriete', $validated['id_propriete'])
                 ->where('status', Demander::STATUS_ACTIVE)
                 ->max('ordre') ?? 0;
 
             $nouvelOrdre = $maxOrdre + 1;
 
-            Log::info('📊 Calcul ordre', [
-                'propriete_id' => $validated['id_propriete'],
-                'max_ordre_existant' => $maxOrdre,
-                'nouvel_ordre' => $nouvelOrdre,
-            ]);
+            // Log::info('Calcul ordre', [
+            //     'propriete_id' => $validated['id_propriete'],
+            //     'max_ordre_existant' => $maxOrdre,
+            //     'nouvel_ordre' => $nouvelOrdre,
+            // ]);
 
-            // ✅ ÉTAPE 3 : Préparer date_demande
             $dateDemande = isset($validated['date_demande']) 
                 ? Carbon::parse($validated['date_demande']) 
                 : Carbon::today();
 
-            // ✅ VALIDATION OPTIONNELLE : Si propriété a date_requisition, vérifier cohérence
             if ($propriete->date_requisition && $dateDemande->lessThan($propriete->date_requisition)) {
                 DB::rollBack();
                 return back()->withErrors([
@@ -102,11 +97,10 @@ class AssociationController extends Controller
                 ]);
             }
 
-            // ✅ ÉTAPE 4 : Créer la liaison (Observer calculera le prix)
             $demande = Demander::create([
                 'id_demandeur' => $validated['id_demandeur'],
                 'id_propriete' => $validated['id_propriete'],
-                'date_demande' => $dateDemande, // ✅ NOUVEAU CHAMP
+                'date_demande' => $dateDemande,
                 'ordre' => $nouvelOrdre,
                 'status' => Demander::STATUS_ACTIVE,
                 'status_consort' => $nouvelOrdre > 1,
@@ -114,40 +108,40 @@ class AssociationController extends Controller
             ]);
 
             if ($demande->total_prix <= 0) {
-                Log::warning('⚠️ Prix non calculé par l\'Observer', [
-                    'demande_id' => $demande->id,
-                    'total_prix' => $demande->total_prix,
-                ]);
+                // Log::warning('Prix non calculé par l\'Observer', [
+                //     'demande_id' => $demande->id,
+                //     'total_prix' => $demande->total_prix,
+                // ]);
             }
 
             DB::commit();
 
             $role = $nouvelOrdre === 1 ? 'demandeur principal' : "consort #{$nouvelOrdre}";
 
-            Log::info('✅ Association créée avec succès', [
-                'demande_id' => $demande->id,
-                'demandeur' => $demandeur->nom_complet,
-                'propriete_lot' => $propriete->lot,
-                'ordre' => $nouvelOrdre,
-                'date_demande' => $dateDemande->format('d/m/Y'), // ✅ LOG DATE
-                'total_prix' => $demande->total_prix,
-            ]);
+            // Log::info('Association créée avec succès', [
+            //     'demande_id' => $demande->id,
+            //     'demandeur' => $demandeur->nom_complet,
+            //     'propriete_lot' => $propriete->lot,
+            //     'ordre' => $nouvelOrdre,
+            //     'date_demande' => $dateDemande->format('d/m/Y'),
+            //     'total_prix' => $demande->total_prix,
+            // ]);
 
             return back()->with('success', 
-                "✅ {$demandeur->nom_complet} lié à la propriété Lot {$propriete->lot} ({$role}). Date de demande : {$dateDemande->format('d/m/Y')}."
+                "{$demandeur->nom_complet} lié à la propriété Lot {$propriete->lot} ({$role}). Date de demande : {$dateDemande->format('d/m/Y')}."
             );
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('❌ Erreur création association', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'data' => $validated,
-            ]);
+            // Log::error('Erreur création association', [
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString(),
+            //     'data' => $validated,
+            // ]);
 
             return back()->with('error', 
-                "❌ Erreur lors de la liaison : " . $e->getMessage()
+                "Erreur lors de la liaison : " . $e->getMessage()
             );
         }
     }
@@ -162,10 +156,10 @@ class AssociationController extends Controller
             'id_propriete' => 'required|exists:proprietes,id',
         ]);
 
-        Log::info('🔓 Association Dissociate - Début', [
-            'user_id' => Auth::id(),
-            'data' => $validated,
-        ]);
+        // Log::info('Association Dissociate - Début', [
+        //     'user_id' => Auth::id(),
+        //     'data' => $validated,
+        // ]);
 
         try {
             DB::beginTransaction();
@@ -175,12 +169,12 @@ class AssociationController extends Controller
 
             if ($propriete->dossier && $propriete->dossier->is_closed) {
                 DB::rollBack();
-                return back()->with('error', '🔒 Impossible de dissocier : le dossier est fermé.');
+                return back()->with('error', 'Impossible de dissocier : le dossier est fermé.');
             }
 
             if ($propriete->is_archived) {
                 DB::rollBack();
-                return back()->with('error', "📦 Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
+                return back()->with('error', "Impossible de dissocier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
 
             $demande = Demander::where('id_demandeur', $validated['id_demandeur'])
@@ -190,16 +184,16 @@ class AssociationController extends Controller
 
             if (!$demande) {
                 DB::rollBack();
-                return back()->with('error', '⚠️ Association active introuvable ou déjà dissociée.');
+                return back()->with('error', 'Association active introuvable ou déjà dissociée.');
             }
 
             $ordreDissocie = $demande->ordre;
             $demande->delete();
 
-            Log::info('🗑️ Demande supprimée', [
-                'demande_id' => $demande->id,
-                'ordre_dissocie' => $ordreDissocie,
-            ]);
+            // Log::info('Demande supprimée', [
+            //     'demande_id' => $demande->id,
+            //     'ordre_dissocie' => $ordreDissocie,
+            // ]);
 
             // Réorganiser ordres
             $demandesRestantes = Demander::where('id_propriete', $validated['id_propriete'])
@@ -220,12 +214,12 @@ class AssociationController extends Controller
             DB::commit();
 
             return back()->with('success', 
-                "✅ {$demandeur->nom_complet} dissocié de la propriété Lot {$propriete->lot}."
+                "{$demandeur->nom_complet} dissocié de la propriété Lot {$propriete->lot}."
             );
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', "❌ Erreur lors de la dissociation : " . $e->getMessage());
+            return back()->with('error', "Erreur lors de la dissociation : " . $e->getMessage());
         }
     }
 
@@ -244,12 +238,12 @@ class AssociationController extends Controller
                 'id_dossier' => $dossierId,
             ]);
             
-            Log::info('➕ Demandeur ajouté au dossier');
+            // Log::info('Demandeur ajouté au dossier');
         }
     }
 
     /**
-     * ✅ API : Obtenir les propriétés d'un demandeur (avec date_demande)
+     * API : Obtenir les propriétés d'un demandeur (avec date_demande)
      */
     public function getDemandeurProprietes($id_demandeur)
     {
@@ -276,8 +270,8 @@ class AssociationController extends Controller
                     'demande_id' => $demande->id,
                     'demande_status' => $demande->status,
                     'total_prix' => $demande->total_prix,
-                    'date_demande' => $demande->date_demande?->format('Y-m-d'), // ✅ AJOUTÉ
-                    'date_demande_formatted' => $demande->date_demande_formatted, // ✅ AJOUTÉ
+                    'date_demande' => $demande->date_demande?->format('Y-m-d'), 
+                    'date_demande_formatted' => $demande->date_demande_formatted, 
                     'can_dissociate' => $demande->canBeDissociated(),
                     'autres_demandeurs_count' => $propriete->demandes()
                         ->where('id', '!=', $demande->id)
@@ -305,7 +299,7 @@ class AssociationController extends Controller
     }
 
     /**
-     * ✅ API : Obtenir les demandeurs d'une propriété (avec date_demande)
+     * API : Obtenir les demandeurs d'une propriété (avec date_demande)
      */
     public function getProprieteDemandeurs($id_propriete)
     {
@@ -332,8 +326,8 @@ class AssociationController extends Controller
                     'ordre' => $demande->ordre,
                     'is_principal' => $demande->ordre === 1,
                     'total_prix' => $demande->total_prix,
-                    'date_demande' => $demande->date_demande?->format('Y-m-d'), // ✅ AJOUTÉ
-                    'date_demande_formatted' => $demande->date_demande_formatted, // ✅ AJOUTÉ
+                    'date_demande' => $demande->date_demande?->format('Y-m-d'), 
+                    'date_demande_formatted' => $demande->date_demande_formatted, 
                     'is_archived' => $demande->status === Demander::STATUS_ARCHIVE,
                     'can_dissociate' => $demande->canBeDissociated(),
                     'stats' => $demandeur->getStats(),

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 | Legacy Routes
 |--------------------------------------------------------------------------
 | Anciennes routes conservées pour la compatibilité
-| ⚠️ À DEPRECIER PROGRESSIVEMENT - Utiliser les nouvelles routes à la place
+| À DEPRECIER PROGRESSIVEMENT - Utiliser les nouvelles routes à la place
 */
 
 Route::middleware([

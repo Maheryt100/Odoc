@@ -16,15 +16,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ============================================================================
-// 🏠 DASHBOARD - Vue d'ensemble rapide
+// DASHBOARD - Vue d'ensemble rapide
 // ============================================================================
 
-// ✅ Route principale /dashboard (SANS prefix pour compatibilité)
+// Route principale /dashboard (SANS prefix pour compatibilité)
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard.index')
     ->middleware(['auth', 'district.scope']);
 
-// ✅ Routes supplémentaires avec prefix
+// Routes supplémentaires avec prefix
 Route::prefix('dashboard')->name('dashboard.')->middleware(['auth', 'district.scope'])->group(function () {
     // Rafraîchir les données (AJAX)
     Route::post('/refresh', [DashboardController::class, 'refresh'])
@@ -42,7 +42,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware(['auth', 'district.sc
 });
 
 // ============================================================================
-// 📊 STATISTIQUES - Analyses détaillées avec filtres
+// STATISTIQUES - Analyses détaillées avec filtres
 // ============================================================================
 
 Route::prefix('statistiques')->name('statistiques.')->middleware(['auth', 'district.scope'])->group(function () {

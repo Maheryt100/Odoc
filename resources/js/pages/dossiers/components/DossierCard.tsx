@@ -1,4 +1,4 @@
-// DossierCard.tsx - ✅ VERSION AVEC PROTECTION BOUTON DOCUMENTS
+// DossierCard.tsx
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -134,7 +134,7 @@ export function DossierCard({ dossier, auth, isReadOnly = false }: DossierCardPr
                         </div>
                     </div>
 
-                    {/* ✅ Menu actions avec protection Documents */}
+                    {/* Menu actions avec protection Documents */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
@@ -162,7 +162,7 @@ export function DossierCard({ dossier, auth, isReadOnly = false }: DossierCardPr
                             
                             <DropdownMenuSeparator />
                             
-                            {/* ✅ BOUTON DOCUMENTS AVEC PROTECTION */}
+                            {/* BOUTON DOCUMENTS AVEC PROTECTION */}
                             {permissions.canGenerateDocuments ? (
                                 <DropdownMenuItem asChild>
                                     <Link href={route("documents.generate", dossier.id)} className="flex items-center">

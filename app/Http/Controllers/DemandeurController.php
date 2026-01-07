@@ -13,7 +13,7 @@ use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 use App\Rules\ValidCIN;
 use App\Services\ActivityLogger;
 use App\Models\ActivityLog;
@@ -126,10 +126,6 @@ class DemandeurController extends Controller
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Demandeur ajouté avec succès');
         } catch (\Exception $e) {
-           Log::error('Erreur création demandeur', [
-                'error' => $e->getMessage(),
-                'data' => $request->all()
-            ]);
             return back()->with('error', 'Une erreur est survenue : ' . $e->getMessage());
         }
     }
@@ -192,7 +188,6 @@ class DemandeurController extends Controller
             return back()->withErrors(['error' => 'Certains CIN sont dupliqués dans le formulaire']);
         }
 
-        // ✅ CORRECTION : Détecter les demandeurs existants AVANT la transaction
         $existingDemandeurs = [];
         foreach ($cins as $cin) {
             $existing = Demandeur::withoutGlobalScopes()
@@ -203,12 +198,6 @@ class DemandeurController extends Controller
                 $existingDemandeurs[$cin] = $existing;
             }
         }
-
-        Log::info('🔍 Détection demandeurs existants', [
-            'total_soumis' => count($demandeurs),
-            'existants_detectes' => count($existingDemandeurs),
-            'cins_existants' => array_keys($existingDemandeurs)
-        ]);
 
         DB::beginTransaction();
 
@@ -222,29 +211,18 @@ class DemandeurController extends Controller
                 $cleanData = array_map(fn($v) => ($v === '' || $v === null) ? null : $v, $demandeurData);
                 $cleanData['id_user'] = Auth::id();
                 $cin = $cleanData['cin'];
-                
-                // ✅ CORRECTION : Utiliser la détection globale
+
                 if (isset($existingDemandeurs[$cin])) {
-                    // ✅ MISE À JOUR
                     $demandeur = $existingDemandeurs[$cin];
                     $updateData = array_filter($cleanData, fn($v) => $v !== null);
                     $demandeur->update($updateData);
                     $updated++;
-                    
-                    Log::info("♻️ Demandeur #{$index} mis à jour", [
-                        'id' => $demandeur->id,
-                        'cin' => $cin,
-                        'champs_mis_a_jour' => count($updateData)
-                    ]);
+
                 } else {
-                    // ✅ CRÉATION
+
                     $demandeur = Demandeur::create($cleanData);
                     $created++;
-                    
-                    Log::info("✨ Demandeur #{$index} créé", [
-                        'id' => $demandeur->id,
-                        'cin' => $cin
-                    ]);
+                
                 }
                 
                 // Ajouter au dossier
@@ -283,10 +261,7 @@ class DemandeurController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur storeMultiple', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+
             return back()->withErrors(['error' => 'Erreur : ' . $e->getMessage()]);
         }
     }
@@ -294,30 +269,9 @@ class DemandeurController extends Controller
     public function searchByCin(Request $request, $cin)
     {
         try {
-            // ✅ LOG 1 : CIN reçu
-            Log::info('🔍 Recherche CIN globale', [
-                'cin_recu' => $cin,
-                'longueur' => strlen($cin),
-                'user_id' => Auth::id(),
-                'user_district' => Auth::user()->id_district,
-            ]);
-            
-            // ✅ Nettoyer le CIN
             $cleanCin = preg_replace('/[^0-9]/', '', $cin);
             
-            // ✅ LOG 2 : CIN nettoyé
-            Log::info('🧹 CIN nettoyé', [
-                'cin_original' => $cin,
-                'cin_nettoye' => $cleanCin,
-                'longueur_apres' => strlen($cleanCin),
-            ]);
-            
-            // ✅ Validation longueur
             if (strlen($cleanCin) !== 12) {
-                Log::warning('⚠️ CIN invalide (pas 12 chiffres)', [
-                    'cin' => $cleanCin,
-                    'longueur' => strlen($cleanCin),
-                ]);
                 
                 return response()->json([
                     'found' => false,
@@ -325,22 +279,10 @@ class DemandeurController extends Controller
                 ], 200);
             }
             
-            // ✅ LOG 3 : Recherche GLOBALE (SANS filtre district)
-            // IMPORTANT : Utiliser ::withoutGlobalScopes() pour ignorer le scope district
             $demandeur = Demandeur::withoutGlobalScopes()
                 ->where('cin', $cleanCin)
                 ->first();
             
-            // ✅ LOG 4 : Résultat recherche avec district
-            Log::info('📊 Résultat recherche', [
-                'cin_recherche' => $cleanCin,
-                'trouve' => $demandeur ? 'OUI' : 'NON',
-                'demandeur_id' => $demandeur?->id,
-                'demandeur_nom' => $demandeur?->nom_demandeur,
-                'demandeur_district' => $demandeur?->dossiers()->first()?->id_district ?? 'N/A',
-            ]);
-            
-            // ✅ Si non trouvé
             if (!$demandeur) {
                 // LOG 5 : Statistiques BDD pour debug
                 $totalDemandeurs = Demandeur::withoutGlobalScopes()->count();
@@ -348,13 +290,6 @@ class DemandeurController extends Controller
                     ->where('cin', 'like', substr($cleanCin, 0, 6) . '%')
                     ->pluck('cin')
                     ->toArray();
-            
-                Log::info('📈 Statistiques BDD', [
-                    'total_demandeurs_global' => $totalDemandeurs,
-                    'total_dans_district_user' => Demandeur::count(),
-                    'cins_similaires' => count($cinsSimilaires),
-                    'exemples_similaires' => array_slice($cinsSimilaires, 0, 3),
-                ]);
                 
                 return response()->json([
                     'found' => false,
@@ -362,20 +297,10 @@ class DemandeurController extends Controller
                 ], 200);
             }
             
-            // ✅ LOG 6 : Demandeur trouvé - Vérifier district
             $demandeurDistrict = $demandeur->dossiers()->first()?->id_district;
             $userDistrict = Auth::user()->id_district;
-            $isSameDistrict = $demandeurDistrict === $userDistrict;
+            $isSameDistrict = $demandeurDistrict === $userDistrict; 
             
-            Log::info('✅ Demandeur trouvé', [
-                'id' => $demandeur->id,
-                'nom' => $demandeur->nom_complet,
-                'demandeur_district' => $demandeurDistrict,
-                'user_district' => $userDistrict,
-                'meme_district' => $isSameDistrict ? 'OUI' : 'NON',
-            ]);
-            
-            // ✅ Préparer les données à retourner
             $data = [
                 'titre_demandeur' => $demandeur->titre_demandeur,
                 'nom_demandeur' => $demandeur->nom_demandeur,
@@ -400,7 +325,6 @@ class DemandeurController extends Controller
                 'telephone' => $demandeur->telephone,
             ];
             
-            // ✅ Message personnalisé selon le district
             $message = $isSameDistrict 
                 ? 'Demandeur trouvé dans votre district ! Vérifiez et mettez à jour les informations si nécessaire.'
                 : sprintf(
@@ -420,13 +344,6 @@ class DemandeurController extends Controller
             ], 200);
             
         } catch (\Exception $e) {
-            Log::error('❌ Erreur recherche CIN', [
-                'cin' => $cin,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
             
             return response()->json([
                 'found' => false,
@@ -510,10 +427,7 @@ class DemandeurController extends Controller
             return Redirect::route('dossiers.show', $request->id_dossier)
                 ->with('success', 'Demandeur modifié avec succès');
         } catch (\Exception $e) {
-            Log::error('Erreur modification demandeur', [
-                'demandeur_id' => $id,
-                'error' => $e->getMessage()
-            ]);
+
             return back()->withErrors(['message' => $e->getMessage()]);
         }
     }
@@ -620,83 +534,4 @@ class DemandeurController extends Controller
             return back()->with('error', $result['message']);
         }
     }
-
-    // public function searchByCin2(string $cin)
-    // {
-    //     // Validation format CIN
-    //     if (!preg_match('/^\d{12}$/', $cin)) {
-    //         return response()->json([
-    //             'found' => false,
-    //             'message' => 'Format CIN invalide (12 chiffres requis)'
-    //         ], 400);
-    //     }
-        
-    //     // Rechercher demandeur (GLOBAL - tous districts)
-    //     $demandeur = Demandeur::where('cin', $cin)
-    //         ->with('dossiers.district') // Charger relations
-    //         ->first();
-        
-    //     if (!$demandeur) {
-    //         return response()->json([
-    //             'found' => false,
-    //             'message' => 'Aucun demandeur trouvé avec ce CIN'
-    //         ]);
-    //     }
-        
-    //     /** @var \App\Models\User $user */
-    //     $user = Auth::user();
-        
-    //     // Déterminer si même district
-    //     $sameDistrict = false;
-    //     $districtInfo = null;
-        
-    //     if ($demandeur->dossiers && $demandeur->dossiers->isNotEmpty()) {
-    //         $firstDossier = $demandeur->dossiers->first();
-    //         $sameDistrict = ($firstDossier->id_district === $user->id_district);
-            
-    //         $districtInfo = [
-    //             'district_id' => $firstDossier->id_district,
-    //             'district_nom' => $firstDossier->district->nom_district ?? null
-    //         ];
-    //     }
-        
-    //     // Message personnalisé
-    //     $message = $sameDistrict 
-    //         ? '✅ Demandeur trouvé dans votre district' 
-    //         : '⚠️ Attention : Ce demandeur provient d\'un autre district';
-        
-    //     return response()->json([
-    //         'found' => true,
-    //         'message' => $message,
-    //         'demandeur' => [
-    //             'id' => $demandeur->id,
-    //             'titre_demandeur' => $demandeur->titre_demandeur,
-    //             'nom_demandeur' => $demandeur->nom_demandeur,
-    //             'prenom_demandeur' => $demandeur->prenom_demandeur,
-    //             'date_naissance' => $demandeur->date_naissance,
-    //             'lieu_naissance' => $demandeur->lieu_naissance,
-    //             'sexe' => $demandeur->sexe,
-    //             'occupation' => $demandeur->occupation,
-    //             'nom_pere' => $demandeur->nom_pere,
-    //             'nom_mere' => $demandeur->nom_mere,
-    //             'cin' => $demandeur->cin,
-    //             'date_delivrance' => $demandeur->date_delivrance,
-    //             'lieu_delivrance' => $demandeur->lieu_delivrance,
-    //             'date_delivrance_duplicata' => $demandeur->date_delivrance_duplicata,
-    //             'lieu_delivrance_duplicata' => $demandeur->lieu_delivrance_duplicata,
-    //             'domiciliation' => $demandeur->domiciliation,
-    //             'nationalite' => $demandeur->nationalite ?? 'Malagasy',
-    //             'situation_familiale' => $demandeur->situation_familiale,
-    //             'regime_matrimoniale' => $demandeur->regime_matrimoniale,
-    //             'date_mariage' => $demandeur->date_mariage,
-    //             'lieu_mariage' => $demandeur->lieu_mariage,
-    //             'marie_a' => $demandeur->marie_a,
-    //             'telephone' => $demandeur->telephone
-    //         ],
-    //         'meta' => [
-    //             'same_district' => $sameDistrict,
-    //             ...$districtInfo
-    //         ]
-    //     ]);
-    // }
 }

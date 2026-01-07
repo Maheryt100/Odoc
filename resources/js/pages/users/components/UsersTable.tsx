@@ -1,4 +1,4 @@
-// users/components/UsersTable.tsx - AVEC CONSULTATION SEULE
+// users/components/UsersTable.tsx 
 import { Link } from '@inertiajs/react';
 import {
     DropdownMenu,
@@ -53,7 +53,7 @@ export const UsersTable = ({ users, onToggleStatus, onDelete }: UsersTableProps)
         return colors[index];
     };
 
-    // ✅ Vérifier si l'utilisateur a des actions disponibles
+    // Vérifier si l'utilisateur a des actions disponibles
     const hasActions = (user: User): boolean => {
         return user.can_edit || user.can_delete;
     };

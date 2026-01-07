@@ -1,12 +1,12 @@
 <?php
 // ============================================
 // app/Services/TopoFluxService.php
-// VERSION FINALE SIMPLIFIÉE - Option A
+// ✅ VERSION FINALE - ADAPTÉE À FASTAPI V2.0
 // ============================================
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\{Http, Log};
+use Illuminate\Support\Facades\Http;
 use App\Services\JwtService;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -33,7 +33,7 @@ class TopoFluxService
             $user = Auth::user();
             
             if (!$user) {
-                Log::error('TopoFlux: Utilisateur non authentifié');
+                // Log::error('TopoFlux: Utilisateur non authentifié');
                 return [];
             }
             
@@ -45,9 +45,9 @@ class TopoFluxService
             ];
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: Erreur génération token', [
-                'error' => $e->getMessage()
-            ]);
+            // Log::error('TopoFlux: Erreur génération token', [
+            //     'error' => $e->getMessage()
+            // ]);
             return [];
         }
     }
@@ -62,33 +62,26 @@ class TopoFluxService
     public function getImports(array $filters = []): array
     {
         try {
+            // Convertir le status en uppercase pour FastAPI
+            if (isset($filters['status'])) {
+                $filters['status'] = strtoupper($filters['status']);
+            }
+            
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
                 ->get("{$this->baseUrl}/api/imports", $filters);
             
             if (!$response->successful()) {
-                Log::error('TopoFlux: Erreur récupération imports', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'filters' => $filters
-                ]);
+
                 return ['data' => [], 'stats' => $this->getEmptyStats()];
             }
             
             $data = $response->json();
-            
-            Log::debug('TopoFlux: Imports récupérés', [
-                'count' => count($data['data'] ?? []),
-                'filters' => $filters
-            ]);
-            
+
             return $data;
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: Exception lors de la récupération', [
-                'error' => $e->getMessage(),
-                'filters' => $filters
-            ]);
+
             return ['data' => [], 'stats' => $this->getEmptyStats()];
         }
     }
@@ -104,20 +97,14 @@ class TopoFluxService
                 ->get("{$this->baseUrl}/api/imports/{$importId}");
             
             if (!$response->successful()) {
-                Log::error('TopoFlux: Import introuvable', [
-                    'import_id' => $importId,
-                    'status' => $response->status()
-                ]);
+
                 return null;
             }
             
             return $response->json();
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: Erreur récupération import', [
-                'import_id' => $importId,
-                'error' => $e->getMessage()
-            ]);
+
             return null;
         }
     }
@@ -134,38 +121,26 @@ class TopoFluxService
         try {
             /** @var \App\Models\User|null $user */
             $user = Auth::user();
+            
             $payload = array_merge([
                 'action' => $action,
                 'user_email' => $user->email,
                 'user_name' => $user->name
             ], $data);
-            
+
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
                 ->put("{$this->baseUrl}/api/imports/{$importId}/status", $payload);
             
             if ($response->successful()) {
-                Log::info("TopoFlux: Import #{$importId} - {$action}", [
-                    'user' => $user->email,
-                    'data' => $data
-                ]);
+
                 return true;
             }
-            
-            Log::error('TopoFlux: Échec changement statut', [
-                'import_id' => $importId,
-                'action' => $action,
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
+
             return false;
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: Exception changement statut', [
-                'import_id' => $importId,
-                'action' => $action,
-                'error' => $e->getMessage()
-            ]);
+
             return false;
         }
     }
@@ -197,10 +172,7 @@ class TopoFluxService
     public function reject(int $importId, string $reason): bool
     {
         if (strlen($reason) < 10) {
-            Log::warning('TopoFlux: Motif de rejet trop court', [
-                'import_id' => $importId,
-                'length' => strlen($reason)
-            ]);
+
             return false;
         }
         
@@ -229,13 +201,10 @@ class TopoFluxService
         try {
             $response = Http::timeout(60)
                 ->withHeaders($this->getAuthHeaders())
-                ->get("{$this->baseUrl}/api/files/{$fileId}");
+                ->get("{$this->baseUrl}/api/v1/files/{$fileId}");
             
             if (!$response->successful()) {
-                Log::error('TopoFlux: Erreur téléchargement fichier', [
-                    'file_id' => $fileId,
-                    'status' => $response->status()
-                ]);
+   
                 return null;
             }
             
@@ -246,10 +215,7 @@ class TopoFluxService
             ];
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: Exception téléchargement fichier', [
-                'file_id' => $fileId,
-                'error' => $e->getMessage()
-            ]);
+
             return null;
         }
     }
@@ -306,9 +272,7 @@ class TopoFluxService
             return $response->successful();
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: FastAPI indisponible', [
-                'error' => $e->getMessage()
-            ]);
+
             return false;
         }
     }
@@ -321,7 +285,7 @@ class TopoFluxService
         try {
             $response = Http::timeout($this->timeout)
                 ->withHeaders($this->getAuthHeaders())
-                ->get("{$this->baseUrl}/api/imports/stats");
+                ->get("{$this->baseUrl}/api/stats");
             
             if (!$response->successful()) {
                 return $this->getEmptyStats();
@@ -330,9 +294,7 @@ class TopoFluxService
             return $response->json();
             
         } catch (Exception $e) {
-            Log::error('TopoFlux: Erreur récupération stats', [
-                'error' => $e->getMessage()
-            ]);
+ 
             return $this->getEmptyStats();
         }
     }

@@ -5,7 +5,7 @@ namespace App\Observers;
 use App\Models\Propriete;
 use App\Services\PrixCalculatorService;
 use App\Http\Controllers\Dashboard\Services\Statistics\StatisticsCacheService;
-use Illuminate\Support\Facades\Log;
+// // use Illuminate\Support\Facades\Log;
 
 /**
  * Observer pour recalculer les prix des demandes quand une propriété change

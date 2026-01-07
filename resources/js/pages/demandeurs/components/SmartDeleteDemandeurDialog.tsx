@@ -125,7 +125,7 @@ export default function SmartDeleteDemandeurDialog({
         setError(null);
         
         try {
-            // ✅ CORRECTION 1 : Vérification suppression complète
+            // Vérification suppression complète
             const deleteUrl = window.route('api.demandeur.check-delete', { id: demandeur.id });
             
             const deleteResponse = await fetch(deleteUrl, {
@@ -141,7 +141,7 @@ export default function SmartDeleteDemandeurDialog({
             
             const deleteData = await deleteResponse.json();
             
-            // ✅ Validation des données reçues
+            // Validation des données reçues
             const safeDeleteData: DeleteCheckResponse = {
                 can_delete_completely: deleteData.can_delete_completely || false,
                 can_remove_from_dossier: deleteData.can_remove_from_dossier || false,
@@ -164,7 +164,7 @@ export default function SmartDeleteDemandeurDialog({
             
             setCheckData(safeDeleteData);
 
-            // ✅ CORRECTION 2 : Vérification retrait du dossier actuel
+            // Vérification retrait du dossier actuel
             const removeUrl = window.route('api.demandeur.check-remove', { 
                 id: demandeur.id 
             }) + `?dossierId=${dossierId}`;
@@ -360,7 +360,7 @@ export default function SmartDeleteDemandeurDialog({
                                         {removeCheckData && !removeCheckData.can_remove && (
                                             <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
                                                 <p className="text-xs text-red-700 dark:text-red-400 font-medium mb-1">
-                                                    ❌ Impossible de retirer :
+                                                    Impossible de retirer :
                                                 </p>
                                                 {removeCheckData.lots_actifs.length > 0 && (
                                                     <p className="text-xs text-red-600 dark:text-red-400">
@@ -419,19 +419,19 @@ export default function SmartDeleteDemandeurDialog({
                                             Suppression définitive de la base de données
                                         </p>
                                         <p className="text-xs text-red-600 font-medium">
-                                            ⚠️ Cette action est irréversible !
+                                            Cette action est irréversible !
                                         </p>
 
                                         {checkData && !checkData.can_delete_completely && checkData.dossiers.length > 0 && (
                                             <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
                                                 <p className="text-xs text-red-700 dark:text-red-400 font-medium mb-2">
-                                                    ❌ Impossible de supprimer définitivement :
+                                                    Impossible de supprimer définitivement :
                                                 </p>
                                                 <div className="space-y-2">
                                                     {checkData.dossiers.map((dossier, idx) => (
                                                         <div key={idx} className="text-xs">
                                                             <p className="font-medium text-red-600">
-                                                                📁 {dossier.nom}
+                                                                {dossier.nom}
                                                             </p>
                                                             {dossier.lots_actifs.length > 0 && (
                                                                 <p className="text-red-600 ml-3">
@@ -461,7 +461,7 @@ export default function SmartDeleteDemandeurDialog({
                                 <div className="flex items-start gap-2">
                                     <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
                                     <div className="text-sm text-blue-700 dark:text-blue-300">
-                                        <p className="font-medium mb-1">💡 Actions possibles :</p>
+                                        <p className="font-medium mb-1">Actions possibles :</p>
                                         <ol className="list-decimal list-inside space-y-1">
                                             <li>Dissociez d'abord le demandeur de toutes les propriétés</li>
                                             <li>Ou utilisez "Retirer du dossier" pour un retrait partiel</li>

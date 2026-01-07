@@ -1,5 +1,4 @@
 // resources/js/pages/TopoFlux/components/ImportCard.tsx
-// ✅ VERSION FINALE - Import des types depuis ../types
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

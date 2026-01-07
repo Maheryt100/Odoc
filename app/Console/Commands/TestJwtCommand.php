@@ -17,15 +17,15 @@ class TestJwtCommand extends Command
 
     public function handle()
     {
-        $this->info('🔐 Test du Service JWT');
+        $this->info('Test du Service JWT');
         $this->newLine();
         
         // 1. Récupérer un utilisateur
         $user = User::first();
         
         if (!$user) {
-            $this->error('❌ Aucun utilisateur trouvé');
-            $this->info('💡 Créez un utilisateur avec: php artisan tinker');
+            $this->error('Aucun utilisateur trouvé');
+            $this->info('Créez un utilisateur avec: php artisan tinker');
             return 1;
         }
         
@@ -35,29 +35,29 @@ class TestJwtCommand extends Command
         // 2. Générer un token
         try {
             $token = JwtService::generateToken($user);
-            $this->info('✅ Token généré avec succès');
+            $this->info('Token généré avec succès');
             $this->line("Token (50 premiers caractères): " . substr($token, 0, 50) . "...");
             $this->newLine();
             
         } catch (\Exception $e) {
-            $this->error("❌ Erreur génération: {$e->getMessage()}");
+            $this->error("Erreur génération: {$e->getMessage()}");
             return 1;
         }
         
         // 3. Valider le token
         try {
             $isValid = JwtService::isTokenValid($token);
-            $this->info($isValid ? '✅ Token valide' : '❌ Token invalide');
+            $this->info($isValid ? 'Token valide' : 'Token invalide');
             $this->newLine();
             
         } catch (\Exception $e) {
-            $this->error("❌ Erreur validation: {$e->getMessage()}");
+            $this->error("Erreur validation: {$e->getMessage()}");
         }
         
         // 4. Décoder le token
         try {
             $decoded = JwtService::decodeToken($token);
-            $this->info('📋 Données du token:');
+            $this->info('Données du token:');
             $this->table(
                 ['Clé', 'Valeur'],
                 [
@@ -70,13 +70,13 @@ class TestJwtCommand extends Command
             $this->newLine();
             
         } catch (\Exception $e) {
-            $this->error("❌ Erreur décodage: {$e->getMessage()}");
+            $this->error("Erreur décodage: {$e->getMessage()}");
         }
         
         // 5. Tester expiration
         try {
             $expiringSoon = JwtService::isTokenExpiringSoon($token);
-            $this->info($expiringSoon ? '⚠️  Token expire bientôt' : '✅ Token valide pour longtemps');
+            $this->info($expiringSoon ? 'Token expire bientôt' : 'Token valide pour longtemps');
             $this->newLine();
             
         } catch (\Exception $e) {
@@ -86,7 +86,7 @@ class TestJwtCommand extends Command
         // 6. Extraire les données
         try {
             $userData = JwtService::extractUserData($token);
-            $this->info('📊 Extraction des données:');
+            $this->info('Extraction des données:');
             foreach ($userData as $key => $value) {
                 $this->line("  {$key}: {$value}");
             }
@@ -96,7 +96,7 @@ class TestJwtCommand extends Command
         }
         
         $this->newLine();
-        $this->info('🎉 Tests terminés avec succès!');
+        $this->info('Tests terminés avec succès!');
         
         return 0;
     }

@@ -8,12 +8,11 @@ use App\Models\Dossier;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class SearchController extends Controller
 {
     /**
-     * ✅ Recherche demandeur par CIN (TOUS DISTRICTS)
      * 
      * Utilisé dans DemandeurCreate.tsx pour vérifier les doublons
      * 
@@ -27,18 +26,13 @@ class SearchController extends Controller
         
         $cin = $request->input('cin');
         $currentDistrictId = Auth::user()->district_id;
-        
-        Log::info('🔍 Recherche CIN globale', [
-            'cin' => $cin,
-            'user_district' => $currentDistrictId
-        ]);
+
         
         // Chercher dans TOUS les districts
         $demandeur = Demandeur::where('cin', $cin)->first();
         
         if (!$demandeur) {
-            Log::info('❌ CIN non trouvé', ['cin' => $cin]);
-            
+   
             return response()->json([
                 'found' => false,
                 'message' => 'Nouveau demandeur - CIN non trouvé dans la base'
@@ -47,13 +41,6 @@ class SearchController extends Controller
         
         // CIN trouvé - vérifier le district
         $sameDistrict = $demandeur->district_id === $currentDistrictId;
-        
-        Log::info('CIN trouvé', [
-            'cin' => $cin,
-            'demandeur_id' => $demandeur->id,
-            'same_district' => $sameDistrict,
-            'district_name' => $demandeur->district->nom ?? 'N/A'
-        ]);
         
         return response()->json([
             'found' => true,
@@ -94,7 +81,7 @@ class SearchController extends Controller
     }
     
     /**
-     * ✅ Recherche propriété par lot (TOUS DISTRICTS)
+     * Recherche propriété par lot (TOUS DISTRICTS)
      */
     public function searchProprieteByLot(Request $request): JsonResponse
     {
@@ -138,7 +125,7 @@ class SearchController extends Controller
     }
     
     /**
-     * ✅ Recherche dossier par numéro (TOUS DISTRICTS)
+     * Recherche dossier par numéro (TOUS DISTRICTS)
      */
     public function searchDossierByNumero(Request $request): JsonResponse
     {
@@ -175,7 +162,7 @@ class SearchController extends Controller
     }
     
     /**
-     * ✅ Recherche générale (autocomplete)
+     * Recherche générale (autocomplete)
      */
     public function autocomplete(Request $request): JsonResponse
     {

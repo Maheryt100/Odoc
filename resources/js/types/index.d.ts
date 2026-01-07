@@ -1,5 +1,4 @@
 // js/types/index.d.ts 
-// ✅ VERSION AVEC TYPES TOPOFLUX INTÉGRÉS
 
 import { LucideIcon } from 'lucide-react';
 import type { Config } from 'ziggy-js';

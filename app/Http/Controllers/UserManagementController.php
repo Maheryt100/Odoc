@@ -25,7 +25,7 @@ class UserManagementController extends Controller
 
     /**
      * Liste des utilisateurs avec filtres
-     * ✅ Super Admin voit TOUS les utilisateurs (mais actions limitées)
+     * Super Admin voit TOUS les utilisateurs (mais actions limitées)
      */
     public function index(Request $request)
     {
@@ -34,20 +34,20 @@ class UserManagementController extends Controller
         
         $query = User::with(['district.region.province']);
 
-        // ✅ Admin district ne voit QUE les users de son district
+        // Admin district ne voit QUE les users de son district
         if ($user->isAdminDistrict()) {
             $query->where('id_district', $user->id_district)
                   ->where('role', User::ROLE_USER_DISTRICT);
         }
 
-        // ✅ Super Admin voit TOUS les utilisateurs (pour consultation)
+        // Super Admin voit TOUS les utilisateurs (pour consultation)
         // Les actions seront limitées au niveau des boutons
         if ($user->isSuperAdmin()) {
             // Pas de filtre - voir tous les utilisateurs
             // Les permissions (can_edit, can_delete) seront calculées individuellement
         }
 
-        // ✅ Central User voit TOUS les utilisateurs (lecture seule)
+        // Central User voit TOUS les utilisateurs (lecture seule)
         if ($user->isCentralUser()) {
             // Pas de filtre - voir tous les utilisateurs en lecture seule
         }
@@ -104,14 +104,11 @@ class UserManagementController extends Controller
                 ] : null,
                 'location' => $user->location,
                 'created_at' => $user->created_at->format('d/m/Y'),
-                // ✅ Permissions individuelles (Super Admin ne peut pas éditer user_district)
                 'can_edit' => $connectedUser->canEditUser($user),
                 'can_delete' => $connectedUser->canDeleteUser($user),
-                // ✅ Nouveau : permission de consultation
                 'can_view' => $connectedUser->canViewUser($user),
             ]);
 
-        // ✅ Stats complètes pour Super Admin et Central User
         if ($user->isSuperAdmin() || $user->isCentralUser()) {
             $stats = [
                 'total' => User::count(),
@@ -150,10 +147,8 @@ class UserManagementController extends Controller
             ];
         }
 
-        // ✅ Tous les districts visibles pour Super Admin et Central User
         $districts = District::with('region')->orderBy('nom_district')->get();
 
-        // ✅ Tous les rôles visibles dans les filtres pour Super Admin
         if ($user->isSuperAdmin() || $user->isCentralUser()) {
             $roles = [
                 User::ROLE_SUPER_ADMIN => 'Super Administrateur',
@@ -192,7 +187,6 @@ class UserManagementController extends Controller
             abort(403, 'Vous n\'avez pas la permission de créer des utilisateurs');
         }
 
-        // ✅ Locations filtrées pour admin district
         if ($user->isAdminDistrict()) {
             $district = District::with(['region.province'])->find($user->id_district);
             
@@ -290,14 +284,12 @@ class UserManagementController extends Controller
         try {
             DB::beginTransaction();
 
-            // ✅ Vérifier que l'utilisateur peut créer ce rôle
             if (!$currentUser->canCreateUserRole($validated['role'])) {
                 return back()->withErrors([
                     'role' => 'Vous n\'avez pas la permission de créer ce type d\'utilisateur'
                 ]);
             }
 
-            // ✅ Vérifications pour Super Admin
             if ($currentUser->isSuperAdmin()) {
                 // Pour super_admin et central_user : pas de district
                 if (in_array($validated['role'], [User::ROLE_SUPER_ADMIN, User::ROLE_CENTRAL_USER])) {
@@ -318,7 +310,6 @@ class UserManagementController extends Controller
                 }
             }
 
-            // ✅ Vérifications pour Admin District
             if ($currentUser->isAdminDistrict()) {
                 // Ne peut créer que des user_district
                 if ($validated['role'] !== User::ROLE_USER_DISTRICT) {
@@ -395,7 +386,7 @@ class UserManagementController extends Controller
         $currentUser = Auth::user();
         $user = User::with('district.region.province')->findOrFail($id);
 
-        // ✅ Vérifier les permissions
+        // Vérifier les permissions
         if (!$currentUser->canEditUser($user)) {
             abort(403, 'Vous n\'avez pas la permission de modifier cet utilisateur');
         }
@@ -405,7 +396,7 @@ class UserManagementController extends Controller
                 ->with('info', 'Utilisez la page de profil pour modifier vos propres informations');
         }
 
-        // ✅ Locations filtrées
+        // Locations filtrées
         if ($currentUser->isAdminDistrict()) {
             $district = District::with(['region.province'])->find($currentUser->id_district);
             
@@ -521,14 +512,14 @@ class UserManagementController extends Controller
                 'status' => $user->status,
             ];
 
-            // ✅ Vérifier que l'utilisateur peut modifier vers ce rôle
+            // Vérifier que l'utilisateur peut modifier vers ce rôle
             if (!$currentUser->canCreateUserRole($validated['role'])) {
                 return back()->withErrors([
                     'role' => 'Vous n\'avez pas la permission de modifier vers ce rôle'
                 ]);
             }
 
-            // ✅ Vérifications pour Super Admin
+            // Vérifications pour Super Admin
             if ($currentUser->isSuperAdmin()) {
                 // Pour super_admin et central_user : pas de district
                 if (in_array($validated['role'], [User::ROLE_SUPER_ADMIN, User::ROLE_CENTRAL_USER])) {
@@ -549,7 +540,7 @@ class UserManagementController extends Controller
                 }
             }
 
-            // ✅ Vérifications pour Admin District
+            // Vérifications pour Admin District
             if ($currentUser->isAdminDistrict()) {
                 if ($validated['role'] !== User::ROLE_USER_DISTRICT) {
                     return back()->withErrors([

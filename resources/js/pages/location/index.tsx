@@ -1,4 +1,4 @@
-// resources/js/pages/location/index.tsx - ✅ VERSION REDESIGNÉE AVEC RECHERCHE INTÉGRÉE
+// resources/js/pages/location/index.tsx 
 
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';

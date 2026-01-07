@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function DemandeursCard({ details, variation = '+15%' }: Props) {
-    // ✅ OPTIMISATION : Calculs mémorisés pour éviter les re-renders
+    // Calculs mémorisés pour éviter les re-renders
     const stats = useMemo(() => {
         const pourcentageHommes = details.total > 0 
             ? ((details.hommes / details.total) * 100).toFixed(0) 

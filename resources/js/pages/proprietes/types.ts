@@ -1,4 +1,4 @@
-// pages/proprietes/types.ts - VERSION CORRIGEE
+// pages/proprietes/types.ts 
 import type { Dossier, Demandeur, Nature, Vocation, TypeOperation, Propriete } from '@/types';
 
 export type FiltreStatutProprieteType = 'tous' | 'actives' | 'acquises' | 'sans_demandeur';

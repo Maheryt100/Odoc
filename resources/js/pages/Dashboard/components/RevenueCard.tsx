@@ -1,4 +1,4 @@
-// Dashboard/components/RevenueCard.tsx - VERSION CORRIGÉE
+// Dashboard/components/RevenueCard.tsx 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ export function RevenueCard({ revenus_potentiels, variation = '+25%' }: Props) {
     const { auth } = usePage().props as any;
     const canViewRevenue = ['super_admin', 'admin_district'].includes(auth.user.role);
     
-    // ✅ CORRECTION : Utiliser React state uniquement (sans localStorage)
     const [showRevenue, setShowRevenue] = useState(false);
 
     const handleToggle = () => {

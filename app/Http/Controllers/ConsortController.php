@@ -10,7 +10,7 @@ use Inertia\Inertia;
 
 class ConsortController extends Controller
 {
-    //
+
 
     public function index(){
         return Inertia::render('consorts/index');

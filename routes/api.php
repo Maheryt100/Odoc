@@ -12,22 +12,22 @@
 //     // VALIDATION DE SUPPRESSION - PRIORITAIRE
 //     // ========================================================================
     
-//     // ✅ Demandeur - Retrait d'un dossier
+//     //  Demandeur - Retrait d'un dossier
 //     // URL: /api/demandeur/{id}/check-remove?dossierId={dossierId}
 //     Route::get('/demandeur/{id}/check-remove', [ApiController::class, 'checkDemandeurRemove'])
 //         ->name('demandeur.check-remove');
     
-//     // ✅ Demandeur - Suppression définitive
+//     // Demandeur - Suppression définitive
 //     // URL: /api/demandeur/{id}/check-delete
 //     Route::get('/demandeur/{id}/check-delete', [ApiController::class, 'checkDemandeurDelete'])
 //         ->name('demandeur.check-delete');
-    
-//     // ✅ Propriété - Vérification suppression
+
+//     // Propriété - Vérification suppression
 //     // URL: /api/propriete/{id}/check-delete
 //     Route::get('/propriete/{id}/check-delete', [ApiController::class, 'checkProprieteDelete'])
 //         ->name('propriete.check-delete');
     
-//     // ✅ Dossier - Vérification suppression
+//     // Dossier - Vérification suppression
 //     Route::get('/dossier/{id}/check-delete', [ApiController::class, 'checkDossierDelete'])
 //         ->name('dossier.check-delete');
     

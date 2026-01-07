@@ -7,11 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     * Migration optimisée pour PostgreSQL 16 avec recherche floue
-     * Performances : < 50ms pour 100,000 enregistrements
-     */
+
     public function up(): void
     {
         // ========================================
@@ -377,28 +373,6 @@ return new class extends Migration
             $table->index('is_verified');
         });
 
-        // ========================================
-        // 6. PAIEMENTS
-        // ========================================
-        
-        Schema::create('recu_paiements', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('id_propriete')->constrained('proprietes')->onDelete('cascade');
-            $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
-            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
-            $table->string('numero_recu');
-            $table->bigInteger('montant');
-            $table->date('date_recu');
-            $table->string('file_path')->nullable();
-            $table->enum('status', ['draft', 'confirmed'])->default('draft');
-            $table->timestamps();
-            
-            $table->unique(['id_propriete', 'id_demandeur'], 'recu_propriete_demandeur_unique');
-            $table->index('numero_recu');
-            $table->index(['id_propriete', 'status']);
-            $table->index('date_recu');
-            $table->index(['id_propriete', 'id_demandeur', 'status'], 'idx_recu_lookup');
-        });
 
         // ========================================
         // 7. DOCUMENTS GÉNÉRÉS
@@ -415,6 +389,12 @@ return new class extends Migration
             $table->foreignId('id_district')->constrained('districts')->onDelete('cascade');
             
             $table->string('numero_document', 100)->nullable();
+            
+            // NOUVEAUX CHAMPS pour numéro de reçu externe
+            $table->string('numero_recu_externe', 50)->nullable();
+            $table->timestamp('numero_recu_saisi_at')->nullable();
+            $table->foreignId('numero_recu_saisi_by')->nullable()->constrained('users');
+            
             $table->string('file_path', 500);
             $table->string('nom_fichier', 255);
             $table->bigInteger('montant')->nullable();
@@ -439,7 +419,29 @@ return new class extends Migration
             $table->index(['type_document', 'id_propriete', 'id_demandeur', 'status']);
             $table->index(['id_dossier', 'type_document']);
             $table->index(['generated_at']);
+            
+            // NOUVEAUX INDEX pour numéro de reçu
+            $table->index('numero_recu_externe');
+            $table->index(['id_dossier', 'numero_recu_externe']);
+            
             $table->unique(['type_document', 'id_propriete', 'id_demandeur'], 'unique_document');
+        });
+
+        // NOUVELLE TABLE pour audit trail des reçus
+        Schema::create('recu_references', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('id_propriete')->constrained('proprietes')->onDelete('cascade');
+            $table->foreignId('id_demandeur')->constrained('demandeurs')->onDelete('cascade');
+            $table->foreignId('id_dossier')->constrained('dossiers')->onDelete('cascade');
+            $table->string('numero_recu', 50);
+            $table->bigInteger('montant')->nullable();
+            $table->date('date_recu')->nullable();
+            $table->text('notes')->nullable();
+            $table->foreignId('created_by')->constrained('users');
+            $table->foreignId('updated_by')->nullable()->constrained('users');
+            $table->timestamps();
+            
+            $table->index(['id_propriete', 'id_demandeur']);
         });
 
         // ========================================
@@ -755,7 +757,7 @@ return new class extends Migration
         Schema::dropIfExists('documents_generes');
         
         // Paiements
-        Schema::dropIfExists('recu_paiements');
+        Schema::dropIfExists('recu_references');
         
         // Pièces jointes
         Schema::dropIfExists('pieces_jointes');

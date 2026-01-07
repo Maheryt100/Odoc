@@ -1,4 +1,4 @@
-// // resources/js/pages/location/components/LocationStatsCards.tsx - ✅ VERSION REDESIGNÉE
+// // resources/js/pages/location/components/LocationStatsCards.tsx 
 
 // import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 // import { Building2, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';

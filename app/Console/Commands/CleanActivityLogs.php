@@ -6,7 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\SystemSettings;
 use App\Services\ActivityLogsExportService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
+// use Illuminate\Support\Facades\Log;
 
 class CleanActivityLogs extends Command
 {
@@ -28,13 +28,13 @@ class CleanActivityLogs extends Command
 
     public function handle(): int
     {
-        $this->info('🧹 Nettoyage des logs d\'activité...');
+        $this->info('Nettoyage des logs d\'activité...');
         $this->newLine();
 
-        // ✅ Vérifier si la suppression automatique est activée (sauf si --force)
+        // Vérifier si la suppression automatique est activée (sauf si --force)
         if (!$this->option('force') && !SystemSettings::isAutoDeleteEnabled()) {
-            $this->warn('⚠️  La suppression automatique est désactivée.');
-            $this->info('💡 Utilisez --force pour forcer la suppression ou activez-la dans les paramètres.');
+            $this->warn('La suppression automatique est désactivée.');
+            $this->info('Utilisez --force pour forcer la suppression ou activez-la dans les paramètres.');
             return self::FAILURE;
         }
 
@@ -42,8 +42,8 @@ class CleanActivityLogs extends Command
         $days = $this->option('days') ?? SystemSettings::getRetentionDays();
         $cutoffDate = now()->subDays($days);
 
-        $this->info("📅 Rétention configurée : {$days} jours");
-        $this->info("🗓️  Suppression des logs avant : {$cutoffDate->format('d/m/Y H:i:s')}");
+        $this->info("Rétention configurée : {$days} jours");
+        $this->info("Suppression des logs avant : {$cutoffDate->format('d/m/Y H:i:s')}");
         $this->newLine();
 
         // Récupérer les logs à supprimer
@@ -51,23 +51,23 @@ class CleanActivityLogs extends Command
         $count = $logsToDelete->count();
 
         if ($count === 0) {
-            $this->info('✅ Aucun log à supprimer.');
+            $this->info('Aucun log à supprimer.');
             return self::SUCCESS;
         }
 
-        $this->warn("⚠️  {$count} logs seront supprimés.");
+        $this->warn("{$count} logs seront supprimés.");
         
         // Mode dry-run
         if ($this->option('dry-run')) {
             $this->showStatistics($logsToDelete);
             $this->newLine();
-            $this->info('🔍 Mode dry-run : Aucune suppression effectuée.');
+            $this->info('Mode dry-run : Aucune suppression effectuée.');
             return self::SUCCESS;
         }
 
-        // ✅ Export automatique avant suppression (sauf si --no-export)
+        // Export automatique avant suppression (sauf si --no-export)
         if (!$this->option('no-export') && SystemSettings::isAutoExportEnabled()) {
-            $this->info('📤 Export automatique des logs avant suppression...');
+            $this->info('Export automatique des logs avant suppression...');
             
             $result = $this->exportService->export(
                 logs: $logsToDelete,
@@ -75,11 +75,11 @@ class CleanActivityLogs extends Command
             );
 
             if ($result['success']) {
-                $this->info("✅ Export réussi : {$result['filename']}");
-                $this->info("   📊 {$result['count']} logs exportés");
-                $this->info("   💾 Taille : " . $this->formatBytes($result['size']));
+                $this->info("Export réussi : {$result['filename']}");
+                $this->info("   {$result['count']} logs exportés");
+                $this->info("   Taille : " . $this->formatBytes($result['size']));
             } else {
-                $this->error("❌ Erreur lors de l'export : {$result['error']}");
+                $this->error("Erreur lors de l'export : {$result['error']}");
                 
                 if (!$this->option('force') && !$this->confirm('Continuer sans export ?', false)) {
                     return self::FAILURE;
@@ -88,14 +88,14 @@ class CleanActivityLogs extends Command
             $this->newLine();
         }
 
-        // ✅ Confirmation finale (sauf si --force)
+        // Confirmation finale (sauf si --force)
         if (!$this->option('force') && !$this->confirm("Confirmer la suppression de {$count} logs ?", false)) {
-            $this->info('❌ Suppression annulée.');
+            $this->info('Suppression annulée.');
             return self::FAILURE;
         }
 
         // Effectuer la suppression
-        $this->info('🗑️  Suppression en cours...');
+        $this->info('Suppression en cours...');
         $bar = $this->output->createProgressBar($count);
         $bar->start();
 
@@ -111,35 +111,35 @@ class CleanActivityLogs extends Command
             $bar->finish();
             $this->newLine(2);
 
-            // ✅ Mettre à jour la date de nettoyage
+            // Mettre à jour la date de nettoyage
             SystemSettings::updateLastCleanup();
 
-            // ✅ Nettoyer les anciens exports (garder les 10 derniers)
+            // Nettoyer les anciens exports (garder les 10 derniers)
             $cleanedExports = $this->exportService->cleanOldExports(10);
             if ($cleanedExports > 0) {
-                $this->info("🧹 {$cleanedExports} anciens exports supprimés.");
+                $this->info("{$cleanedExports} anciens exports supprimés.");
             }
 
             $this->newLine();
-            $this->info("✅ Nettoyage terminé : {$deleted} logs supprimés.");
+            $this->info("Nettoyage terminé : {$deleted} logs supprimés.");
             
-            // ✅ Logger l'opération
-            Log::info('Nettoyage automatique des logs effectué', [
-                'deleted' => $deleted,
-                'retention_days' => $days,
-                'cutoff_date' => $cutoffDate->toDateTimeString(),
-                'auto_export' => !$this->option('no-export') && SystemSettings::isAutoExportEnabled(),
-            ]);
+            // Logger l'opération
+            // Log::info('Nettoyage automatique des logs effectué', [
+            //     'deleted' => $deleted,
+            //     'retention_days' => $days,
+            //     'cutoff_date' => $cutoffDate->toDateTimeString(),
+            //     'auto_export' => !$this->option('no-export') && SystemSettings::isAutoExportEnabled(),
+            // ]);
 
             return self::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error("❌ Erreur lors de la suppression : {$e->getMessage()}");
+            $this->error("Erreur lors de la suppression : {$e->getMessage()}");
             
-            Log::error('Erreur lors du nettoyage des logs', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            // Log::error('Erreur lors du nettoyage des logs', [
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString()
+            // ]);
 
             return self::FAILURE;
         }
@@ -151,7 +151,7 @@ class CleanActivityLogs extends Command
     private function showStatistics($logs): void
     {
         $this->newLine();
-        $this->info('📊 Statistiques des logs à supprimer :');
+        $this->info('Statistiques des logs à supprimer :');
         $this->newLine();
 
         // Par action

@@ -62,7 +62,7 @@ class Propriete extends Model
     ];
 
     // ============================================
-    // RELATIONS (inchangées)
+    // RELATIONS
     // ============================================
 
     public function dossier(): BelongsTo
@@ -104,7 +104,7 @@ class Propriete extends Model
     }
 
     // ============================================
-    // ACCESSORS - DEP/VOL (inchangés)
+    // ACCESSORS - DEP/VOL 
     // ============================================
 
     public function getDepVolInscriptionCompletAttribute(): ?string
@@ -139,10 +139,6 @@ class Propriete extends Model
         return $depVol;
     }
 
-    // ============================================
-    // ✅ NOUVEAUX ACCESSORS
-    // ============================================
-
     /**
      * Vérifier si la propriété peut générer un document
      * RÈGLE : date_approbation_acte est OBLIGATOIRE
@@ -173,7 +169,7 @@ class Propriete extends Model
     }
 
     // ============================================
-    // AUTRES ACCESSORS (inchangés)
+    // AUTRES ACCESSORS
     // ============================================
 
     public function getTitreCompletAttribute(): ?string
@@ -227,7 +223,7 @@ class Propriete extends Model
     }
 
     // ============================================
-    // MÉTHODES HELPER (inchangées)
+    // MÉTHODES HELPER
     // ============================================
 
     public function getDemandesStats(): array
@@ -322,7 +318,7 @@ class Propriete extends Model
     }
 
     // ============================================
-    // SCOPES (inchangés)
+    // SCOPES 
     // ============================================
 
     public function scopeWithDossier($query)

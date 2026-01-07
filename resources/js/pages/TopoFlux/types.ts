@@ -1,5 +1,4 @@
 // resources/js/pages/TopoFlux/types.ts
-// ✅ VERSION FINALE - TYPES COMPLETS ET COHÉRENTS
 
 export interface TopoImport {
     id: number;
@@ -23,7 +22,7 @@ export interface TopoImport {
     files_count: number;
     files?: TopoFile[];
     
-    // ✅ CHAMPS REQUIS PAR ImportCard
+    // CHAMPS REQUIS PAR ImportCard
     can_import: boolean;
     is_archived: boolean;
     has_errors: boolean;

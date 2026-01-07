@@ -132,7 +132,7 @@ export default function UserCreateEdit({
         }
     };
 
-    // Helper pour afficher les descriptions de rôles - ✅ CORRIGÉ
+    // Helper pour afficher les descriptions de rôles 
     const getRoleDescription = (role: string): string => {
         switch(role) {
             case 'super_admin':

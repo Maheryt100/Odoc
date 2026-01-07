@@ -1,8 +1,8 @@
-// resources/js/pages/dossiers/helpers.ts - ✅ VERSION CORRIGÉE
+// resources/js/pages/dossiers/helpers.ts
 import type { Dossier, DossierPermissions } from './types';
 
-/**
- * ✅ RÈGLE DE PERMISSION : Génération de documents sur dossiers fermés
+/*
+ * RÈGLE DE PERMISSION : Génération de documents sur dossiers fermés
  * AUTORISÉS : super_admin, admin_district (leur district uniquement)
  * INTERDITS : central_user, user_district
  */
@@ -96,7 +96,7 @@ export function getDaysSince(dateString: string): number {
 }
 
 /**
- * ✅ CORRIGÉ : Vérifier si un dossier est complet
+ * Vérifier si un dossier est complet
  */
 export function isDossierComplete(dossier: Dossier): boolean {
     return (dossier.demandeurs_count ?? 0) > 0 && (dossier.proprietes_count ?? 0) > 0;
@@ -134,7 +134,7 @@ export function getDossierStatusBadge(dossier: Dossier): {
 }
 
 /**
- * ✅ CORRIGÉ : Calculer toutes les permissions pour un dossier
+ * Calculer toutes les permissions pour un dossier
  */
 export function calculateDossierPermissions(
     dossier: Dossier,
@@ -170,7 +170,7 @@ export function calculateDossierPermissions(
     const canExport = hasDistrictAccess && 
         (isSuperAdmin || isCentralUser || isAdminDistrict);
 
-    // ✅ NOUVELLE PERMISSION : Génération de documents
+    //Génération de documents
     const canGenerateDocuments = canGenerateDocumentsOnClosedDossier(dossier, user);
 
     return {

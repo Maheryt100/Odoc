@@ -1,4 +1,4 @@
-// pages/demandes/ResumeDossier.tsx - ✅ CORRECTION BOUTON DOCUMENTS
+// pages/demandes/ResumeDossier.tsx - 
 
 import { useState, useEffect, useMemo } from 'react';
 import { Head, router, Link, usePage } from '@inertiajs/react';
@@ -40,7 +40,7 @@ import { useDialogCleanup, useForceDialogCleanup, cleanupDialogOverlays } from '
 
 interface ResumeDossierProps {
     dossier: Dossier & {
-        can_generate_documents?: boolean; // ✅ Nouvelle prop backend
+        can_generate_documents?: boolean; 
     };
     documents: {
         data: DocumentDemande[];
@@ -69,19 +69,15 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
     const [selectedDemandeForAction, setSelectedDemandeForAction] = useState<DocumentDemande | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // ✅ Hook de nettoyage automatique
     useDialogCleanup(archiveDialogOpen);
     useDialogCleanup(unarchiveDialogOpen);
-    
-    // ✅ Hook de nettoyage manuel
+
     const forceCleanup = useForceDialogCleanup();
 
-    // ✅ NOUVEAU : Déterminer si l'utilisateur est en lecture seule
     const isReadOnly = useMemo(() => {
         return auth.user.role === 'super_admin' || auth.user.role === 'central_user';
     }, [auth.user.role]);
 
-    // ✅ NOUVEAU : Calculer les permissions pour la génération de documents
     const canGenerateDocuments = useMemo(() => {
         // Si le backend a fourni explicitement la permission
         if (dossier.can_generate_documents !== undefined) {
@@ -109,7 +105,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
         return false;
     }, [dossier, auth.user, isReadOnly]);
 
-    // ✅ NOUVEAU : Message d'erreur personnalisé pour le tooltip
     const documentButtonTooltip = useMemo(() => {
         if (canGenerateDocuments) {
             return '';
@@ -208,7 +203,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
         setUnarchiveDialogOpen(true);
     };
 
-    // ✅ Modifier les handlers d'archivage
     const confirmArchive = () => {
         if (!selectedDemandeForAction || isProcessing) return;
         setIsProcessing(true);
@@ -221,7 +215,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                     toast.success('Propriété archivée avec succès');
                     setArchiveDialogOpen(false);
                     setSelectedDemandeForAction(null);
-                    // ✅ Nettoyage forcé
                     setTimeout(forceCleanup, 100);
                 },
                 onError: (errors) => {
@@ -229,7 +222,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                 },
                 onFinish: () => {
                     setIsProcessing(false);
-                    // ✅ Sécurité supplémentaire
                     setTimeout(forceCleanup, 300);
                 }
             }
@@ -248,7 +240,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                     toast.success('Propriété désarchivée avec succès');
                     setUnarchiveDialogOpen(false);
                     setSelectedDemandeForAction(null);
-                    // ✅ Nettoyage forcé
                     setTimeout(forceCleanup, 100);
                 },
                 onError: (errors) => {
@@ -256,7 +247,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                 },
                 onFinish: () => {
                     setIsProcessing(false);
-                    // ✅ Sécurité supplémentaire
                     setTimeout(forceCleanup, 300);
                 }
             }
@@ -282,7 +272,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
 
             <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1600px] space-y-4 sm:space-y-6">
                 
-                {/* ✅ Header avec gestion des permissions */}
+                {/* Header avec gestion des permissions */}
                 <div className="flex items-start justify-between gap-2">
                     {/* Titre + Info */}
                     <div className="flex-1 min-w-0">
@@ -306,7 +296,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                         </div>
                     </div>
 
-                    {/* ✅ Menu Actions - Avec protection du bouton Documents */}
+                    {/* Avec protection du bouton Documents */}
                     {isMobile ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -345,7 +335,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                                 </Link>
                             </Button>
                             
-                            {/* ✅ Bouton Documents avec protection */}
+                            {/* Bouton Documents avec protection */}
                             {canGenerateDocuments ? (
                                 <Button size="sm" asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
                                     <Link href={route('documents.generate', dossier.id)}>
@@ -380,7 +370,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                     )}
                 </div>
 
-                {/* ✅ Alerte lecture seule */}
+                {/* Alerte lecture seule */}
                 {isReadOnly && (
                     <Alert className="border-0 shadow-md bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
                         <div className="flex items-start gap-2 sm:gap-3">
@@ -446,10 +436,10 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                             <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                             Archiver la propriété
                         </AlertDialogTitle>
-                        {/* ✅ FIX : Retirer AlertDialogDescription, utiliser div directement */}
+                        {/*Retirer AlertDialogDescription, utiliser div directement */}
                     </AlertDialogHeader>
                     
-                    {/* ✅ FIX : Contenu dans CardContent au lieu de AlertDialogDescription */}
+                    {/*Contenu dans CardContent au lieu de AlertDialogDescription */}
                     <div className="px-6 pb-6 space-y-2 sm:space-y-3">
                         <p className="text-sm text-muted-foreground">
                             Voulez-vous vraiment archiver cette propriété ?
@@ -478,7 +468,6 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                             className="w-full sm:w-auto"
                             onClick={() => {
                                 setArchiveDialogOpen(false);
-                                // ✅ Nettoyage forcé
                                 setTimeout(() => {
                                     cleanupDialogOverlays();
                                 }, 100);
@@ -506,7 +495,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                         </AlertDialogTitle>
                     </AlertDialogHeader>
                     
-                    {/* ✅ FIX : Même correction */}
+                    {/* Même correction */}
                     <div className="px-6 pb-6 space-y-2 sm:space-y-3">
                         <p className="text-sm text-muted-foreground">
                             Voulez-vous vraiment désarchiver cette propriété ?
@@ -535,7 +524,7 @@ export default function ResumeDossier({ dossier, documents, auth }: ResumeDossie
                             className="w-full sm:w-auto"
                             onClick={() => {
                                 setUnarchiveDialogOpen(false);
-                                // ✅ Nettoyage forcé
+                                // Nettoyage forcé
                                 setTimeout(() => {
                                     cleanupDialogOverlays();
                                 }, 100);

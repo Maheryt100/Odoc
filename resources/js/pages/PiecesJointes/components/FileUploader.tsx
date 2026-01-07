@@ -1,4 +1,4 @@
-// components/FileUploader.tsx - VERSION RESPONSIVE AMÉLIORÉE
+// components/FileUploader.tsx 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -20,9 +20,9 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         $this->routes(function () {
-            // ✅ ROUTES API avec préfixe /api/
+            // ROUTES API avec préfixe /api/
             Route::middleware('api')
-                ->prefix('api')  // ⚠️ CRITIQUE : Ce préfixe est essentiel
+                ->prefix('api')  // CRITIQUE : Ce préfixe est essentiel
                 ->group(base_path('routes/api.php'));
 
             // Routes web

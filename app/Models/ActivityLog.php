@@ -21,7 +21,7 @@ class ActivityLog extends Model
     ];
 
     protected $casts = [
-        'metadata' => 'array',  // ✅ Cast automatique JSON ↔ array
+        'metadata' => 'array', 
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
