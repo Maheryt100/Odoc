@@ -209,7 +209,7 @@ class DemandeurProprieteController extends Controller
             $propriete = Propriete::findOrFail($id_propriete);
             if ($propriete->is_archived) {
                 return Redirect::route('dossiers.show', $dossier->id)
-                    ->with('error', "❌ Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
+                    ->with('error', "Impossible de lier : la propriété Lot {$propriete->lot} est archivée (acquise).");
             }
         }
         

@@ -157,9 +157,9 @@ class DossierController extends Controller
             
             DB::commit();
             
-            // ✅ MODIFICATION : Redirection vers la liste des dossiers
+            // Redirection vers la liste des dossiers
             return Redirect::route('dossiers')
-                ->with('success', 'Dossier créé avec succès');
+                ->with('success');
                 
         } catch (\Exception $exception) {
             DB::rollBack();

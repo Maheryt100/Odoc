@@ -212,7 +212,7 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Settings className="h-8 w-8 text-slate-600" />
-                        Gestion des Logs - Système Simplifié
+                        Gestion des Logs
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         Rétention à {data.retention_days} jours • Seuil max : {data.max_logs.toLocaleString()} logs
@@ -224,7 +224,7 @@ export default function LogsSettings({ settings, statistics, exports }: LogsSett
                     <Alert className="border-red-500 bg-red-50 dark:bg-red-950/20">
                         <AlertOctagon className="h-5 w-5 text-red-600" />
                         <AlertTitle className="text-red-900 dark:text-red-100">
-                            ⚠️ SYSTÈME SURCHARGÉ
+                            SYSTÈME SURCHARGÉ
                         </AlertTitle>
                         <AlertDescription className="text-red-800 dark:text-red-200">
                             <strong>{statistics.total_logs.toLocaleString()} logs</strong> ({overload.percentage}% du seuil). 

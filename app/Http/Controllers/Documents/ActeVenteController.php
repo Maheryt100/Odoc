@@ -38,13 +38,12 @@ class ActeVenteController extends Controller
             'max:50',
             'regex:/^\d{3}\/\d{2}$/',
         ],
-        'date_recu' => 'required|date|before_or_equal:today',
+        'date_recu' => 'required|date',
         'notes' => 'nullable|string|max:500',
     ], [
         'numero_recu.required' => 'Le numéro de reçu est obligatoire',
         'numero_recu.regex' => 'Le numéro de reçu doit être au format XXX/XX (ex: 001/25)',
         'date_recu.required' => 'La date du reçu est obligatoire',
-        'date_recu.before_or_equal' => 'La date ne peut pas être dans le futur',
     ]);
 
     DB::beginTransaction();
@@ -432,7 +431,7 @@ class ActeVenteController extends Controller
                         'max:50',
                         'regex:/^\d{3}\/\d{2}$/',
                     ],
-                    'date_recu' => 'required|date|before_or_equal:today',
+                    'date_recu' => 'required|date',
                     'notes' => 'nullable|string|max:500',
                 ]);
 

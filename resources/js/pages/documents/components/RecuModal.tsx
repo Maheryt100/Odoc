@@ -76,15 +76,6 @@ export function RecuModal({
       return;
     }
 
-    const selectedDate = new Date(dateRecu);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (selectedDate > today) {
-      setError('La date ne peut pas être dans le futur');
-      return;
-    }
-
     onConfirm(numeroRecu.trim(), dateRecu, notes.trim() || undefined);
   };
 

@@ -425,7 +425,7 @@ class DemandeurController extends Controller
             );
 
             return Redirect::route('dossiers.show', $request->id_dossier)
-                ->with('success', 'Demandeur modifié avec succès');
+                ->with('success');
         } catch (\Exception $e) {
 
             return back()->withErrors(['message' => $e->getMessage()]);

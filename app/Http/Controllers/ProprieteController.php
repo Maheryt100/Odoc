@@ -292,7 +292,7 @@ class ProprieteController extends Controller
             );
             
             return Redirect::route('dossiers.show', $request->id_dossier)
-                ->with('success', 'Propriété modifiée avec succès');
+                ->with('success');
                 
         } catch (\Exception $exception) {
             DB::rollBack();
