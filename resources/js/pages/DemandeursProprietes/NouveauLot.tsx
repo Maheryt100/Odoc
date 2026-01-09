@@ -15,10 +15,13 @@ import type { BreadcrumbItem, Dossier } from '@/types';
 import ProprieteCreate, { ProprieteFormData, emptyPropriete } from '@/pages/proprietes/create';
 import DemandeurCreate, { DemandeurFormData, emptyDemandeur } from '@/pages/demandeurs/create';
 import DatePickerDemande from '@/components/DatePickerDemande';
+import { useIsMobile } from '@/hooks/useResponsive';
 
 type CreationMode = 'lot-demandeur' | 'lots-only' | 'demandeurs-only';
 
 export default function NouveauLot() {
+    const isMobile = useIsMobile();
+    
     const { dossier, session } = usePage<{ 
         dossier: Dossier;
         session?: {
@@ -56,7 +59,6 @@ export default function NouveauLot() {
 
     useEffect(() => {
         if (session?.preloadDemandeur) {
-            console.log('📥 Chargement demandeur depuis TopoFlux', session.preloadDemandeur);
             setDemandeurs([{
                 ...session.preloadDemandeur,
                 _tempId: generateTempId()
@@ -64,7 +66,6 @@ export default function NouveauLot() {
         }
         
         if (session?.preloadPropriete) {
-            console.log('📥 Chargement propriété depuis TopoFlux', session.preloadPropriete);
             setProprietes([{
                 ...session.preloadPropriete,
                 id_dossier: dossier.id,
@@ -358,51 +359,51 @@ export default function NouveauLot() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Nouvelle Entrée" />
-            <Toaster position="top-right" richColors />
+            <Toaster position={isMobile ? "top-center" : "top-right"} richColors />
 
-            <div className="container mx-auto p-6 max-w-[1600px] space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
+            <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-[1600px] space-y-4 sm:space-y-6">
+                {/* Header - Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                     <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                             Nouvelle Entrée
                         </h1>
-                        <div className="flex items-center gap-3 text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm sm:text-base text-muted-foreground">
                             <span className="font-medium">{dossier.nom_dossier}</span>
-                            <span className="text-gray-400">•</span>
-                            <span>{dossier.commune}</span>
+                            <span className="text-gray-400 hidden sm:inline">•</span>
+                            <span className="text-xs sm:text-sm">{dossier.commune}</span>
                         </div>
                     </div>
                     
                     <Button 
                         variant="outline" 
-                        size="sm"
+                        size={isMobile ? "sm" : "default"}
                         onClick={() => router.visit(route('dossiers.show', dossier.id))}
-                        className="shadow-sm hover:shadow-md transition-all"
+                        className="shadow-sm hover:shadow-md transition-all w-full sm:w-auto"
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
-                        Retour au dossier
+                        Retour
                     </Button>
                 </div>
 
-                {/* Mode sélection */}
+                {/* Mode sélection - Responsive */}
                 <Card className="border-0 shadow-lg">
                     <div className="bg-gradient-to-r from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 border-b">
-                        <CardHeader>
-                            <CardTitle className="text-xl flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-purple-600" />
+                        <CardHeader className="p-4 sm:p-6">
+                            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                                 Choisir le type de création
                             </CardTitle>
-                            <CardDescription>
-                                Sélectionnez ce que vous souhaitez créer dans ce dossier
+                            <CardDescription className="text-xs sm:text-sm">
+                                Sélectionnez ce que vous souhaitez créer
                             </CardDescription>
                         </CardHeader>
                     </div>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-3 sm:p-6">
                         <RadioGroup value={creationMode} onValueChange={(value) => setCreationMode(value as CreationMode)}>
-                            <div className="grid gap-4 md:grid-cols-3">
+                            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
                                 <div 
-                                    className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                                    className={`flex items-start space-x-2 sm:space-x-3 p-3 sm:p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lot-demandeur' 
                                             ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 shadow-lg' 
                                             : 'border-border hover:border-violet-300 hover:bg-violet-50/50'
@@ -410,20 +411,20 @@ export default function NouveauLot() {
                                     onClick={() => setCreationMode('lot-demandeur')}
                                 >
                                     <RadioGroupItem value="lot-demandeur" id="lot-demandeur" className="mt-1" />
-                                    <div className="flex-1 space-y-2">
-                                        <Label htmlFor="lot-demandeur" className="font-semibold cursor-pointer text-base flex items-center gap-2">
-                                            <CheckCircle2 className="h-4 w-4 text-violet-600" />
-                                            Lot + Demandeur(s)
+                                    <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
+                                        <Label htmlFor="lot-demandeur" className="font-semibold cursor-pointer text-sm sm:text-base flex items-center gap-2">
+                                            <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-violet-600 flex-shrink-0" />
+                                            <span className="truncate">Lot + Demandeur(s)</span>
                                         </Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Créer une propriété avec un ou plusieurs demandeurs associés
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
+                                            Créer une propriété avec demandeurs
                                         </p>
                                         <Badge variant="outline" className="text-xs">Recommandé</Badge>
                                     </div>
                                 </div>
 
                                 <div 
-                                    className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                                    className={`flex items-start space-x-2 sm:space-x-3 p-3 sm:p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'lots-only' 
                                             ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg' 
                                             : 'border-border hover:border-emerald-300 hover:bg-emerald-50/50'
@@ -431,19 +432,19 @@ export default function NouveauLot() {
                                     onClick={() => setCreationMode('lots-only')}
                                 >
                                     <RadioGroupItem value="lots-only" id="lots-only" className="mt-1" />
-                                    <div className="flex-1 space-y-2">
-                                        <Label htmlFor="lots-only" className="font-semibold cursor-pointer text-base flex items-center gap-2">
-                                            <LandPlot className="h-4 w-4 text-emerald-600" />
-                                            Lot(s) seulement
+                                    <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
+                                        <Label htmlFor="lots-only" className="font-semibold cursor-pointer text-sm sm:text-base flex items-center gap-2">
+                                            <LandPlot className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600 flex-shrink-0" />
+                                            <span className="truncate">Lot(s) seulement</span>
                                         </Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Créer une ou plusieurs propriétés en une fois
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
+                                            Créer une ou plusieurs propriétés
                                         </p>
                                     </div>
                                 </div>
 
                                 <div 
-                                    className={`flex items-start space-x-3 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                                    className={`flex items-start space-x-2 sm:space-x-3 p-3 sm:p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                                         creationMode === 'demandeurs-only' 
                                             ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-lg' 
                                             : 'border-border hover:border-blue-300 hover:bg-blue-50/50'
@@ -451,13 +452,13 @@ export default function NouveauLot() {
                                     onClick={() => setCreationMode('demandeurs-only')}
                                 >
                                     <RadioGroupItem value="demandeurs-only" id="demandeurs-only" className="mt-1" />
-                                    <div className="flex-1 space-y-2">
-                                        <Label htmlFor="demandeurs-only" className="font-semibold cursor-pointer text-base flex items-center gap-2">
-                                            <Users className="h-4 w-4 text-blue-600" />
-                                            Demandeur(s) seulement
+                                    <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
+                                        <Label htmlFor="demandeurs-only" className="font-semibold cursor-pointer text-sm sm:text-base flex items-center gap-2">
+                                            <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
+                                            <span className="truncate">Demandeur(s) seulement</span>
                                         </Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Créer un ou plusieurs demandeurs en une fois
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
+                                            Créer un ou plusieurs demandeurs
                                         </p>
                                     </div>
                                 </div>
@@ -466,15 +467,15 @@ export default function NouveauLot() {
                     </CardContent>
                 </Card>
 
-                {/* Date de demande */}
+                {/* Date de demande - Responsive */}
                 {creationMode === 'lot-demandeur' && (
                     <Card className="border-0 shadow-lg">
                         <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-b">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Date de la demande</CardTitle>
+                            <CardHeader className="p-4 sm:p-6">
+                                <CardTitle className="text-base sm:text-lg">Date de la demande</CardTitle>
                             </CardHeader>
                         </div>
-                        <CardContent className="pt-6">
+                        <CardContent className="p-4 sm:pt-6">
                             <DatePickerDemande
                                 value={dateDemande}
                                 onChange={handleDateDemandeChange}
@@ -485,36 +486,37 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
+                {/* Alert - Responsive */}
                 <Alert className="border-0 shadow-lg bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
-                    <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <FileText className="h-5 w-5 text-blue-600" />
+                    <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                            <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                             <AlertDescription>
-                                <p className="text-sm font-medium text-blue-900 mb-1">
+                                <p className="text-xs sm:text-sm font-medium text-blue-900 mb-1">
                                     Documents justificatifs
                                 </p>
                                 <p className="text-xs text-blue-700">
-                                    Les pièces jointes (CIN, actes, etc.) pourront être ajoutées après création
+                                    Les pièces jointes pourront être ajoutées après création
                                 </p>
                             </AlertDescription>
                         </div>
                     </div>
                 </Alert>
 
-                {/* Section Propriétés */}
+                {/* Section Propriétés - Responsive */}
                 {(creationMode === 'lots-only' || creationMode === 'lot-demandeur') && (
                     <Card className="border-0 shadow-lg">
                         <div className="bg-gradient-to-r from-violet-50/50 to-purple-50/50 border-b">
-                            <CardHeader>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-violet-100 rounded-lg">
-                                            <LandPlot className="h-5 w-5 text-violet-600" />
+                            <CardHeader className="p-4 sm:p-6">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <div className="p-1.5 sm:p-2 bg-violet-100 rounded-lg flex-shrink-0">
+                                            <LandPlot className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
                                         </div>
-                                        <div>
-                                            <CardTitle className="text-xl">
+                                        <div className="min-w-0">
+                                            <CardTitle className="text-lg sm:text-xl truncate">
                                                 Propriété{proprietes.length > 1 ? 's' : ''}
                                             </CardTitle>
                                             <CardDescription className="mt-1">
@@ -525,17 +527,22 @@ export default function NouveauLot() {
                                         </div>
                                     </div>
                                     {creationMode === 'lots-only' && (
-                                        <Button type="button" onClick={addPropriete} size="sm" className="gap-2 shadow-md">
+                                        <Button 
+                                            type="button" 
+                                            onClick={addPropriete} 
+                                            size="sm" 
+                                            className="gap-2 shadow-md w-full sm:w-auto"
+                                        >
                                             <Plus className="h-4 w-4" />
-                                            Ajouter un lot
+                                            Ajouter
                                         </Button>
                                     )}
                                 </div>
                             </CardHeader>
                         </div>
-                        <CardContent className="p-6 space-y-8">
+                        <CardContent className="p-3 sm:p-6 space-y-6 sm:space-y-8">
                             {proprietes.map((propriete, index) => (
-                                <div key={`propriete-${propriete._tempId}`} className="pb-8 border-b last:border-b-0 last:pb-0">
+                                <div key={`propriete-${propriete._tempId}`} className="pb-6 sm:pb-8 border-b last:border-b-0 last:pb-0">
                                     <ProprieteCreate
                                         data={propriete}
                                         onChange={(field, value) => updatePropriete(index, field, value)}
@@ -549,15 +556,15 @@ export default function NouveauLot() {
                             ))}
 
                             {creationMode === 'lots-only' && (
-                                <div className="flex justify-center pt-4">
+                                <div className="flex justify-center pt-2 sm:pt-4">
                                     <Button 
                                         type="button" 
                                         onClick={addPropriete} 
                                         variant="outline"
-                                        size="lg"
-                                        className="gap-2 shadow-md hover:shadow-lg transition-all"
+                                        size={isMobile ? "default" : "lg"}
+                                        className="gap-2 shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
                                     >
-                                        <Plus className="h-5 w-5" />
+                                        <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                                         Ajouter une autre propriété
                                     </Button>
                                 </div>
@@ -566,18 +573,18 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
-                {/* Section Demandeurs */}
+                {/* Section Demandeurs - Responsive */}
                 {(creationMode === 'demandeurs-only' || creationMode === 'lot-demandeur') && (
                     <Card className="border-0 shadow-lg">
                         <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 border-b">
-                            <CardHeader>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-emerald-100 rounded-lg">
-                                            <Users className="h-5 w-5 text-emerald-600" />
+                            <CardHeader className="p-4 sm:p-6">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <div className="p-1.5 sm:p-2 bg-emerald-100 rounded-lg flex-shrink-0">
+                                            <Users className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
                                         </div>
-                                        <div>
-                                            <CardTitle className="text-xl">Demandeurs</CardTitle>
+                                        <div className="min-w-0">
+                                            <CardTitle className="text-lg sm:text-xl truncate">Demandeurs</CardTitle>
                                             <CardDescription className="mt-1">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {demandeurs.length} demandeur{demandeurs.length > 1 ? 's' : ''}
@@ -585,16 +592,21 @@ export default function NouveauLot() {
                                             </CardDescription>
                                         </div>
                                     </div>
-                                    <Button type="button" onClick={addDemandeur} size="sm" className="gap-2 shadow-md">
+                                    <Button 
+                                        type="button" 
+                                        onClick={addDemandeur} 
+                                        size="sm" 
+                                        className="gap-2 shadow-md w-full sm:w-auto"
+                                    >
                                         <Plus className="h-4 w-4" />
-                                        Ajouter un demandeur
+                                        Ajouter
                                     </Button>
                                 </div>
                             </CardHeader>
                         </div>
-                        <CardContent className="p-6 space-y-8">
+                        <CardContent className="p-3 sm:p-6 space-y-6 sm:space-y-8">
                             {demandeurs.map((demandeur, index) => (
-                                <div key={`demandeur-${demandeur._tempId}`} className="pb-8 border-b last:border-b-0 last:pb-0">
+                                <div key={`demandeur-${demandeur._tempId}`} className="pb-6 sm:pb-8 border-b last:border-b-0 last:pb-0">
                                     <DemandeurCreate
                                         data={demandeur}
                                         onChange={(field, value) => updateDemandeur(index, field, value)}
@@ -605,15 +617,15 @@ export default function NouveauLot() {
                                 </div>
                             ))}
 
-                            <div className="flex justify-center pt-4">
+                            <div className="flex justify-center pt-2 sm:pt-4">
                                 <Button 
                                     type="button" 
                                     onClick={addDemandeur} 
                                     variant="outline"
-                                    size="lg"
-                                    className="gap-2 shadow-md hover:shadow-lg transition-all"
+                                    size={isMobile ? "default" : "lg"}
+                                    className="gap-2 shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
                                 >
-                                    <Plus className="h-5 w-5" />
+                                    <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                                     Ajouter un autre demandeur
                                 </Button>
                             </div>
@@ -621,31 +633,36 @@ export default function NouveauLot() {
                     </Card>
                 )}
 
-                {/* Actions */}
-                <div className="flex gap-4 justify-end pb-6">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => router.visit(route('dossiers.show', dossier.id))}
-                        disabled={processing}
-                        size="lg"
-                    >
-                        Annuler
-                    </Button>
-                    <Button 
-                        type="button" 
-                        onClick={handleSubmit} 
-                        disabled={processing || (creationMode === 'lot-demandeur' && !!dateDemandeError)}
-                        size="lg"
-                        className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
-                    >
-                        <Save className="h-5 w-5" />
-                        {processing ? 'Enregistrement...' : 
-                            creationMode === 'lot-demandeur' ? 'Créer le lot et demandeur(s)' :
-                            creationMode === 'lots-only' ? `Créer ${proprietes.length} propriété(s)` :
-                            `Créer ${demandeurs.length} demandeur(s)`
-                        }
-                    </Button>
+                {/* Actions - Responsive avec boutons sticky sur mobile */}
+                <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t sm:relative sm:bg-transparent sm:backdrop-blur-none sm:border-t-0 p-3 sm:p-0 -mx-3 sm:mx-0">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:justify-end sm:pb-6">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => router.visit(route('dossiers.show', dossier.id))}
+                            disabled={processing}
+                            size={isMobile ? "default" : "lg"}
+                            className="w-full sm:w-auto order-2 sm:order-1"
+                        >
+                            Annuler
+                        </Button>
+                        <Button 
+                            type="button" 
+                            onClick={handleSubmit} 
+                            disabled={processing || (creationMode === 'lot-demandeur' && !!dateDemandeError)}
+                            size={isMobile ? "default" : "lg"}
+                            className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto order-1 sm:order-2"
+                        >
+                            <Save className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <span className="text-sm sm:text-base">
+                                {processing ? 'Enregistrement...' : 
+                                    creationMode === 'lot-demandeur' ? 'Créer lot + demandeur(s)' :
+                                    creationMode === 'lots-only' ? `Créer ${proprietes.length} propriété(s)` :
+                                    `Créer ${demandeurs.length} demandeur(s)`
+                                }
+                            </span>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </AppLayout>

@@ -112,15 +112,20 @@ export default function UploadPieceJointeDialog({
         }
 
         try {
+            const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            console.log('CSRF Token:', csrfToken); // Debug
+            
             const response = await fetch(route('pieces-jointes.upload'), {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-CSRF-TOKEN': csrfToken || '',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
+
 
             const data = await response.json();
 

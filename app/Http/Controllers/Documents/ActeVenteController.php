@@ -176,7 +176,7 @@ class ActeVenteController extends Controller
             'metadata' => [
                 'recu_reference_id' => $recuRef->id,
                 'recu_numero' => $numeroRecu,
-                'recu_date' => $dateRecu->toDateString(), // ✅ MÉTADONNÉE
+                'recu_date' => $dateRecu->toDateString(), 
             ],
         ]);
 
@@ -191,187 +191,7 @@ class ActeVenteController extends Controller
         return response()->download($tempFilePath, $nomFichier)->deleteFileAfterSend(true);
     }
 
-    /**
-     * CRÉER LE DOCUMENT WORD (MODIFIÉ pour date reçu)
-     */
-    private function createActeVenteDocument(
-        Propriete $propriete,
-        $tousLesDemandeurs,
-        bool $hasConsorts,
-        string $numeroRecu,
-        Carbon $dateRecu // ✅ PARAMÈTRE AJOUTÉ
-    ): string {
-   
-        Carbon::setLocale('fr');
-        $formatter = new NumberFormatter('fr', NumberFormatter::SPELLOUT);
-
-        $dossier = $propriete->dossier;
-        $type_operation = $propriete->type_operation;
-
-        // Calculs de prix
-        $prix = $this->getPrixFromDistrict($propriete);
-        $prixLettre = $this->formatMontantEnLettres($prix);
-        $prixTotal = $prix * $propriete->contenance;
-        $totalLettre = $this->formatMontantEnLettres($prixTotal);
-
-        // DONNÉES DU REÇU EXTERNE
-        $numeroQuittance = $numeroRecu;
-        $dateQuittance = $this->formatDateDocument($dateRecu);
-        
-        // MONTANT : Utiliser le total_prix du demandeur principal
-        $montantRecu = $hasConsorts 
-            ? array_sum($tousLesDemandeurs->pluck('total_prix')->toArray())
-            : $tousLesDemandeurs->first()->total_prix;
-        
-        $montantRecuFormate = $this->formatMontantChiffres($montantRecu);
-
-        // Dates
-        $dateRequisition = $this->formatDateDocument(Carbon::parse($propriete->date_requisition));
-        $dateDepot1 = $this->formatDateDocument(Carbon::parse($propriete->date_depot_1));
-        $dateDepot2 = $this->formatDateDocument(Carbon::parse($propriete->date_depot_2));
-        $dateApprobation = $this->formatDateDocument(Carbon::parse($propriete->date_approbation_acte));
-
-        // Dep/Vol
-        $depVolInscription = $this->formatDepVolComplet(
-            $propriete->dep_vol_inscription,
-            $propriete->numero_dep_vol_inscription
-        );
-
-        $depVolRequisition = $this->formatDepVolComplet(
-            $propriete->dep_vol_requisition,
-            $propriete->numero_dep_vol_requisition
-        );
-
-        $contenanceData = $this->formatContenance((int) $propriete->contenance);
-        $locationData = $this->getLocationData($propriete);
-        $articles = $this->getArticles($locationData['district'], $dossier->commune);
-
-        $dateDescente = $this->formatPeriodeDates(
-            Carbon::parse($dossier->date_descente_debut),
-            Carbon::parse($dossier->date_descente_fin)
-        );
-
-        // DONNÉES DU REÇU EXTERNE
-        $numeroQuittance = $numeroRecu;
-        $dateQuittance = $this->formatDateDocument($dateRecu);
-
-        if (!$hasConsorts) {
-            // SANS CONSORT
-            $demandeur = $tousLesDemandeurs->first()->demandeur;
-
-            $templatePath = $type_operation == 'morcellement'
-                ? storage_path('app/public/modele_odoc/sans_consort/morcellement.docx')
-                : storage_path('app/public/modele_odoc/sans_consort/immatriculation.docx');
-
-            if (!file_exists($templatePath)) {
-                throw new \Exception("Template ADV sans consort introuvable: {$templatePath}");
-            }
-
-            $modele = new TemplateProcessor($templatePath);
-            $demandeurData = $this->buildDemandeurData($demandeur);
-
-            $modele->setValues(array_merge([
-                'ContenanceFormatLettre' => $contenanceData['lettres'],
-                'ContenanceFormat' => $contenanceData['format'],
-                'Prix' => $prixLettre,
-                'PrixTotal' => $this->formatMontantChiffres($prixTotal),
-                'TotalLettre' => $totalLettre,
-                'PrixCarre' => $this->formatMontantChiffres($prix),
-                'Nature' => $propriete->nature,
-                'Vocation' => $propriete->vocation,
-                'Situation' => $propriete->situation,
-                'Fokotany' => $dossier->fokontany,
-                'Commune' => $dossier->commune,
-                'Tcommune' => $dossier->type_commune,
-                'Propriete_mere' => Str::upper($this->getOrDefault($propriete->propriete_mere, 'NON RENSEIGNÉE')),
-                'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
-                'Titre' => $propriete->titre,
-                'DateDescente' => $dateDescente,
-                'Requisition' => $dateRequisition,
-                'DateDepot1' => $dateDepot1,
-                'DateDepot2' => $dateDepot2,
-                'DateApprobation' => $dateApprobation,
-                'DepVolInscription' => $depVolInscription,
-                'DepVolRequisition' => $depVolRequisition,
-                'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
-                'Proprietaire' => Str::upper($propriete->proprietaire),
-                'Province' => $locationData['province'],
-                'Region' => $locationData['region'],
-                'District' => $locationData['district'],
-                'DISTRICT' => $locationData['DISTRICT'],
-                'NumeroQuittance' => $numeroQuittance,
-                'DateQuittance' => $dateQuittance,
-                'MontantRecu' => $montantRecuFormate,
-            ], $demandeurData, $articles));
-
-            $fileName = 'ADV_' . uniqid() . '_' . Str::slug($demandeur->nom_demandeur) . '.docx';
-
-        } else {
-            // AVEC CONSORTS
-            $templatePath = $type_operation == 'morcellement'
-                ? storage_path('app/public/modele_odoc/avec_consort/morcellement.docx')
-                : storage_path('app/public/modele_odoc/avec_consort/immatriculation.docx');
-
-            if (!file_exists($templatePath)) {
-                throw new \Exception("Template ADV avec consorts introuvable: {$templatePath}");
-            }
-
-            $modele = new TemplateProcessor($templatePath);
-
-            $nombreDemandeurs = $tousLesDemandeurs->count();
-            $modele->cloneBlock('consort_block_1', $nombreDemandeurs, true, true);
-            $modele->cloneBlock('consort_block_2', $nombreDemandeurs, true, true);
-
-            foreach ($tousLesDemandeurs as $key => $demande) {
-                $n = $key + 1;
-                $dmdr = $demande->demandeur;
-                $demandeurData = $this->buildDemandeurDataWithIndex($dmdr, $n);
-                $modele->setValues($demandeurData);
-            }
-
-            $modele->setValues(array_merge([
-                'ContenanceFormatLettre' => $contenanceData['lettres'],
-                'ContenanceFormat' => $contenanceData['format'],
-                'Prix' => $prixLettre,
-                'PrixTotal' => $this->formatMontantChiffres($prixTotal),
-                'TotalLettre' => $totalLettre,
-                'PrixCarre' => $this->formatMontantChiffres($prix),
-                'Nature' => $propriete->nature,
-                'Vocation' => $propriete->vocation,
-                'Situation' => $propriete->situation,
-                'Fokotany' => $dossier->fokontany,
-                'Tcommune' => $dossier->type_commune,
-                'Commune' => $dossier->commune,
-                'Propriete_mere' => Str::upper($this->getOrDefault($propriete->propriete_mere, 'NON RENSEIGNÉE')),
-                'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
-                'Titre' => $propriete->titre,
-                'Date_descente' => $dateDescente,
-                'Requisition' => $dateRequisition,
-                'DateDepot1' => $dateDepot1,
-                'DateDepot2' => $dateDepot2,
-                'DateApprobation' => $dateApprobation,
-                'DepVolInscription' => $depVolInscription,
-                'DepVolRequisition' => $depVolRequisition,
-                'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
-                'Proprietaire' => Str::upper($propriete->proprietaire),
-                'Province' => $locationData['province'],
-                'Region' => $locationData['region'],
-                'District' => $locationData['district'],
-                'DISTRICT' => $locationData['DISTRICT'],
-                'NumeroQuittance' => $numeroQuittance,
-                'DateQuittance' => $dateQuittance,
-                'MontantRecu' => $montantRecuFormate,
-            ], $articles));
-
-            $premierDemandeur = $tousLesDemandeurs->first()->demandeur;
-            $fileName = 'ADV_CONSORTS_' . uniqid() . '_' . Str::slug($premierDemandeur->nom_demandeur) . '.docx';
-        }
-
-        $filePath = sys_get_temp_dir() . '/' . $fileName;
-        $modele->saveAs($filePath);
-
-        return $filePath;
-    }
+    
 
     // Téléchargement et régénération (INCHANGÉS)
     public function download($id)
@@ -639,5 +459,273 @@ class ActeVenteController extends Controller
                 'message' => 'Erreur lors de la suppression : ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Détermine le terme d'acquéreur approprié selon le sexe
+     */
+    private function getAcquereurTerms($demandeurs, bool $isPlural = false): array
+    {
+        // Cas simple : un seul demandeur
+        if (!$isPlural && count($demandeurs) == 1) {
+            $sexe = $demandeurs->first()->demandeur->sexe ?? 'Homme';
+            $isFeminin = strtolower($sexe) === 'femme';
+            
+            return [
+                'acquereur' => $isFeminin ? 'acquéreuse' : 'acquéreur',
+                'Acquereur' => $isFeminin ? 'Acquéreuse' : 'Acquéreur',
+                'L_acquereur' => $isFeminin ? "L'acquéreuse" : "L'acquéreur",
+                'l_acquereur' => $isFeminin ? "l'acquéreuse" : "l'acquéreur",
+            ];
+        }
+        
+        // Cas pluriel : consorts
+        // Vérifier si tous sont du même sexe
+        $sexes = $demandeurs->map(fn($d) => strtolower($d->demandeur->sexe ?? 'homme'))->unique();
+        
+        if ($sexes->count() == 1 && $sexes->first() === 'femme') {
+            // Toutes féminines
+            return [
+                'acquereur' => 'acquéreuses',
+                'Acquereur' => 'Acquéreuses',
+                'L_acquereur' => 'Les acquéreuses',
+                'l_acquereur' => 'les acquéreuses',
+            ];
+        }
+        
+        // Mixte ou tous masculins → masculin pluriel (règle grammaticale française)
+        return [
+            'acquereur' => 'acquéreurs',
+            'Acquereur' => 'Acquéreurs',
+            'L_acquereur' => 'Les acquéreurs',
+            'l_acquereur' => 'les acquéreurs',
+        ];
+    }
+
+    /**
+     * Obtient tous les termes variables selon le genre pour le template
+     */
+    private function getGenderAgreementTerms($demandeurs, bool $hasConsorts): array
+    {
+        $terms = $this->getAcquereurTerms($demandeurs, $hasConsorts);
+        
+        // Ajouter d'autres termes qui varient selon le genre
+        if (!$hasConsorts) {
+            $sexe = $demandeurs->first()->demandeur->sexe ?? 'Homme';
+            $isFeminin = strtolower($sexe) === 'femme';
+            
+            $terms['susnomnee'] = $isFeminin ? 'susnommée' : 'susnommé';
+            $terms['qualifiee'] = $isFeminin ? 'qualifiée' : 'qualifié';
+            $terms['de_l_acquereur'] = $isFeminin ? "de l'acquéreuse" : "de l'acquéreur";
+            $terms['des_acquereurs'] = $isFeminin ? "de l'acquéreuse" : "de l'acquéreur";
+        } else {
+            // Pour les consorts, toujours pluriel
+            $sexes = $demandeurs->map(fn($d) => strtolower($d->demandeur->sexe ?? 'homme'))->unique();
+            $allFeminin = $sexes->count() == 1 && $sexes->first() === 'femme';
+            
+            $terms['susnomnee'] = $allFeminin ? 'susnommées' : 'susnommés';
+            $terms['qualifiee'] = $allFeminin ? 'qualifiées' : 'qualifiés';
+            $terms['de_l_acquereur'] = $allFeminin ? "des acquéreuses" : "des acquéreurs";
+            $terms['des_acquereurs'] = $allFeminin ? "des acquéreuses" : "des acquéreurs";
+        }
+        
+        return $terms;
+    }
+
+    /**
+     * MÉTHODE MODIFIÉE : createActeVenteDocument avec accord de genre
+     */
+    private function createActeVenteDocument(
+        Propriete $propriete,
+        $tousLesDemandeurs,
+        bool $hasConsorts,
+        string $numeroRecu,
+        Carbon $dateRecu
+    ): string {
+        Carbon::setLocale('fr');
+        $formatter = new NumberFormatter('fr', NumberFormatter::SPELLOUT);
+
+        $dossier = $propriete->dossier;
+        $type_operation = $propriete->type_operation;
+
+        // Calculs de prix
+        $prix = $this->getPrixFromDistrict($propriete);
+        $prixLettre = $this->formatMontantEnLettres($prix);
+        $prixTotal = $prix * $propriete->contenance;
+        $totalLettre = $this->formatMontantEnLettres($prixTotal);
+
+        // DONNÉES DU REÇU EXTERNE
+        $numeroQuittance = $numeroRecu;
+        $dateQuittance = $this->formatDateDocument($dateRecu);
+        
+        $montantRecu = $hasConsorts 
+            ? array_sum($tousLesDemandeurs->pluck('total_prix')->toArray())
+            : $tousLesDemandeurs->first()->total_prix;
+        
+        $montantRecuFormate = $this->formatMontantChiffres($montantRecu);
+
+        // Dates
+        $dateRequisition = $this->formatDateDocument(Carbon::parse($propriete->date_requisition));
+        $dateDepot1 = $this->formatDateDocument(Carbon::parse($propriete->date_depot_1));
+        $dateDepot2 = $this->formatDateDocument(Carbon::parse($propriete->date_depot_2));
+        $dateApprobation = $this->formatDateDocument(Carbon::parse($propriete->date_approbation_acte));
+
+        // Dep/Vol
+        $depVolInscription = $this->formatDepVolComplet(
+            $propriete->dep_vol_inscription,
+            $propriete->numero_dep_vol_inscription
+        );
+
+        $depVolRequisition = $this->formatDepVolComplet(
+            $propriete->dep_vol_requisition,
+            $propriete->numero_dep_vol_requisition
+        );
+
+        $contenanceData = $this->formatContenance((int) $propriete->contenance);
+        $locationData = $this->getLocationData($propriete);
+        $articles = $this->getArticles($locationData['district'], $dossier->commune);
+
+        $dateDescente = $this->formatPeriodeDates(
+            Carbon::parse($dossier->date_descente_debut),
+            Carbon::parse($dossier->date_descente_fin)
+        );
+
+        // Obtenir les termes avec accord de genre
+        $genderTerms = $this->getGenderAgreementTerms($tousLesDemandeurs, $hasConsorts);
+
+        if (!$hasConsorts) {
+            // SANS CONSORT
+            $demandeur = $tousLesDemandeurs->first()->demandeur;
+
+            $templatePath = $type_operation == 'morcellement'
+                ? storage_path('app/public/modele_odoc/sans_consort/morcellement.docx')
+                : storage_path('app/public/modele_odoc/sans_consort/immatriculation.docx');
+
+            if (!file_exists($templatePath)) {
+                throw new \Exception("Template ADV sans consort introuvable: {$templatePath}");
+            }
+
+            $modele = new TemplateProcessor($templatePath);
+            $demandeurData = $this->buildDemandeurData($demandeur);
+
+            $modele->setValues(array_merge([
+                'ContenanceFormatLettre' => $contenanceData['lettres'],
+                'ContenanceFormat' => $contenanceData['format'],
+                'Prix' => $prixLettre,
+                'PrixTotal' => $this->formatMontantChiffres($prixTotal),
+                'TotalLettre' => $totalLettre,
+                'PrixCarre' => $this->formatMontantChiffres($prix),
+                'Nature' => $propriete->nature,
+                'Vocation' => $propriete->vocation,
+                'Situation' => $propriete->situation,
+                'Fokotany' => $dossier->fokontany,
+                'Commune' => $dossier->commune,
+                'Tcommune' => $dossier->type_commune,
+                'Propriete_mere' => Str::upper($this->getOrDefault($propriete->propriete_mere, 'NON RENSEIGNÉE')),
+                'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
+                'Titre' => $propriete->titre,
+                'DateDescente' => $dateDescente,
+                'Requisition' => $dateRequisition,
+                'DateDepot1' => $dateDepot1,
+                'DateDepot2' => $dateDepot2,
+                'DateApprobation' => $dateApprobation,
+                'DepVolInscription' => $depVolInscription,
+                'DepVolRequisition' => $depVolRequisition,
+                'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
+                'Proprietaire' => Str::upper($propriete->proprietaire),
+                'Province' => $locationData['province'],
+                'Region' => $locationData['region'],
+                'District' => $locationData['district'],
+                'DISTRICT' => $locationData['DISTRICT'],
+                'NumeroQuittance' => $numeroQuittance,
+                'DateQuittance' => $dateQuittance,
+                'MontantRecu' => $montantRecuFormate,
+                'Acquereur' => $genderTerms['Acquereur'],
+                'acquereur' => $genderTerms['acquereur'],
+                'L_acquereur' => $genderTerms['L_acquereur'],
+                'l_acquereur' => $genderTerms['l_acquereur'],
+                'susnomnee' => $genderTerms['susnomnee'],
+                'qualifiee' => $genderTerms['qualifiee'],
+                'de_l_acquereur' => $genderTerms['de_l_acquereur'],
+                'des_acquereurs' => $genderTerms['des_acquereurs'],
+                'de_l_acquereur' => $genderTerms['de_l_acquereur'],
+                'des_acquereurs' => $genderTerms['des_acquereurs'],
+            ], $demandeurData, $articles));
+
+            $fileName = 'ADV_' . uniqid() . '_' . Str::slug($demandeur->nom_demandeur) . '.docx';
+
+        } else {
+            // AVEC CONSORTS
+            $templatePath = $type_operation == 'morcellement'
+                ? storage_path('app/public/modele_odoc/avec_consort/morcellement.docx')
+                : storage_path('app/public/modele_odoc/avec_consort/immatriculation.docx');
+
+            if (!file_exists($templatePath)) {
+                throw new \Exception("Template ADV avec consorts introuvable: {$templatePath}");
+            }
+
+            $modele = new TemplateProcessor($templatePath);
+
+            $nombreDemandeurs = $tousLesDemandeurs->count();
+            $modele->cloneBlock('consort_block_1', $nombreDemandeurs, true, true);
+            $modele->cloneBlock('consort_block_2', $nombreDemandeurs, true, true);
+
+            foreach ($tousLesDemandeurs as $key => $demande) {
+                $n = $key + 1;
+                $dmdr = $demande->demandeur;
+                $demandeurData = $this->buildDemandeurDataWithIndex($dmdr, $n);
+                $modele->setValues($demandeurData);
+            }
+
+            $modele->setValues(array_merge([
+                'ContenanceFormatLettre' => $contenanceData['lettres'],
+                'ContenanceFormat' => $contenanceData['format'],
+                'Prix' => $prixLettre,
+                'PrixTotal' => $this->formatMontantChiffres($prixTotal),
+                'TotalLettre' => $totalLettre,
+                'PrixCarre' => $this->formatMontantChiffres($prix),
+                'Nature' => $propriete->nature,
+                'Vocation' => $propriete->vocation,
+                'Situation' => $propriete->situation,
+                'Fokotany' => $dossier->fokontany,
+                'Tcommune' => $dossier->type_commune,
+                'Commune' => $dossier->commune,
+                'Propriete_mere' => Str::upper($this->getOrDefault($propriete->propriete_mere, 'NON RENSEIGNÉE')),
+                'Titre_mere' => $this->getOrDefault($propriete->titre_mere, 'N/A'),
+                'Titre' => $propriete->titre,
+                'Date_descente' => $dateDescente,
+                'Requisition' => $dateRequisition,
+                'DateDepot1' => $dateDepot1,
+                'DateDepot2' => $dateDepot2,
+                'DateApprobation' => $dateApprobation,
+                'DepVolInscription' => $depVolInscription,
+                'DepVolRequisition' => $depVolRequisition,
+                'Dep_vol' => $this->formatDepVol($propriete->dep_vol, $propriete->numero_dep_vol),
+                'Proprietaire' => Str::upper($propriete->proprietaire),
+                'Province' => $locationData['province'],
+                'Region' => $locationData['region'],
+                'District' => $locationData['district'],
+                'DISTRICT' => $locationData['DISTRICT'],
+                'NumeroQuittance' => $numeroQuittance,
+                'DateQuittance' => $dateQuittance,
+                'MontantRecu' => $montantRecuFormate,
+                'Acquereur' => $genderTerms['Acquereur'],
+                'acquereur' => $genderTerms['acquereur'],
+                'L_acquereur' => $genderTerms['L_acquereur'],
+                'l_acquereur' => $genderTerms['l_acquereur'],
+                'susnomnee' => $genderTerms['susnomnee'],
+                'qualifiee' => $genderTerms['qualifiee'],
+                'de_l_acquereur' => $genderTerms['de_l_acquereur'],
+                'des_acquereurs' => $genderTerms['des_acquereurs'],
+            ], $articles));
+
+            $premierDemandeur = $tousLesDemandeurs->first()->demandeur;
+            $fileName = 'ADV_CONSORTS_' . uniqid() . '_' . Str::slug($premierDemandeur->nom_demandeur) . '.docx';
+        }
+
+        $filePath = sys_get_temp_dir() . '/' . $fileName;
+        $modele->saveAs($filePath);
+
+        return $filePath;
     }
 }

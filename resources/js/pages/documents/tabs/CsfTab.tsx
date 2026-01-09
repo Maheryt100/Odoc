@@ -211,10 +211,10 @@ export function CsfTab({
                 ]}
               />
 
-              <div className="flex items-center gap-2 text-sm">
+              {/* <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Document CSF:</span>
                 <StatusBadge document={documentCsf} showCount />
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -236,7 +236,7 @@ export function CsfTab({
           )}
 
           {selectedDemandeur && (
-            <div className="flex justify-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
               {hasCsf ? (
                 <>
                   <ActionButton

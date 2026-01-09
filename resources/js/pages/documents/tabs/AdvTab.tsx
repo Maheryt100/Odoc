@@ -11,8 +11,7 @@ import { documentApi } from '../core/api';
 import { toast } from 'sonner';
 import { router } from '@inertiajs/react';
 import type { ProprieteWithDemandeurs, DemandeurLie, GenerateDocumentFn } from '../types';
-import { AlertDialogHeader, AlertDialogFooter } from '@/components/ui/alert-dialog';
-import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '@radix-ui/react-alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction, AlertDialogHeader, AlertDialogFooter } from '@/components/ui/alert-dialog';
 
 interface AdvTabProps {
   selectedProprieteId: string;
@@ -264,7 +263,7 @@ export function AdvTab({
       )}
 
       {selectedPropriete && demandeurPrincipal && (
-        <div className="flex justify-center gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
           {hasAdv ? (
             <>
               <ActionButton
