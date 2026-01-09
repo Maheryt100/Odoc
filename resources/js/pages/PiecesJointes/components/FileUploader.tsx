@@ -150,10 +150,14 @@ export default function FileUploader({
                 formData.append('type_document', typeDocument);
             }
 
+            const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            console.log('CSRF Token:', csrfToken); // Debug
+
             const response = await fetch(route('pieces-jointes.upload'), {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN': csrfToken || '',
                 },
                 body: formData
             });

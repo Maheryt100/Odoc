@@ -1,0 +1,98 @@
+
+
+services:
+  # Service PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: geodoc_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: geodoc
+      POSTGRES_USER: geodoc_user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Configuration PostgreSQL optimisée pour 30 utilisateurs
+    command: >
+      postgres
+      -c max_connections=50
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - geodoc_network
+
+  # Service PHP/Laravel
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: geodoc_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+      # Volume persistant pour les fichiers uploadés
+      - storage_data:/var/www/html/storage/app
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: geodoc
+      DB_USERNAME: geodoc_user
+      DB_PASSWORD: password
+    # Limites de ressources pour 30 utilisateurs
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    depends_on:
+      - postgres
+    networks:
+      - geodoc_network
+    command: php artisan serve --host=0.0.0.0 --port=8000
+
+  # Service Nginx (optionnel mais recommandé pour la production)
+  nginx:
+    image: nginx:alpine
+    container_name: geodoc_nginx
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - geodoc_network
+
+networks:
+  geodoc_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  storage_data:
+    driver: local
