@@ -1,5 +1,5 @@
 // resources/js/pages/TopoFlux/components/StatsCards.tsx
-// ✅ VERSION CORRIGÉE - CLÉS UNIQUES
+
 
 import { Card } from '@/components/ui/card';
 import { FileText, Clock, CheckCircle2, XCircle, Archive } from 'lucide-react';
@@ -18,7 +18,7 @@ interface StatsCardsProps {
 }
 
 interface StatCard {
-    id: string; // ✅ Ajout d'un identifiant unique
+    id: string; 
     title: string;
     value: number;
     icon: LucideIcon;
@@ -26,7 +26,7 @@ interface StatCard {
 }
 
 export default function StatsCards({ stats }: StatsCardsProps) {
-    // ✅ Chaque carte a maintenant un ID unique
+   
     const cards: StatCard[] = [
         {
             id: 'stat-total',

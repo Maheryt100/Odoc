@@ -1,4 +1,4 @@
-// resources/js/components/app-sidebar.tsx
+// ===== FICHIER 2: resources/js/components/app-sidebar.tsx =====
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -6,26 +6,47 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Separator } from '@/components/ui/separator';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
 import {
     BookOpen,
     Folder,
     Folders,
     MapPin,
     LayoutGrid,
-    Settings,
     UserCog,
     Activity,
-    BarChart3,
     Shield,
     RefreshCw
 } from 'lucide-react';
 import AppLogo from './app-logo';
+import ComingSoonDialog from './coming-soon-dialog';
 
 export function AppSidebar() {
     const { auth } = usePage().props as any;
     const user = auth?.user;
+    const [showComingSoonDialog, setShowComingSoonDialog] = useState(false);
 
-    // ============ NAVIGATION PRINCIPALE ============
+    // Intercepter les clics sur les liens TopoFlux
+    useEffect(() => {
+        const handleTopoFluxClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const link = target.closest('a[href*="topo-flux"]');
+            
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowComingSoonDialog(true);
+            }
+        };
+
+        document.addEventListener('click', handleTopoFluxClick, true);
+        
+        return () => {
+            document.removeEventListener('click', handleTopoFluxClick, true);
+        };
+    }, []);
+
+    // Navigation principale
     const mainNavItems: NavItem[] = [
         {
             title: 'Dashboard',
@@ -39,7 +60,7 @@ export function AppSidebar() {
         },
     ];
 
-    // ✅ Flux TopoManager - UNIQUEMENT pour Admin District et User District
+    // Flux TopoManager - pour Admin District et User District
     if (user && (user.role === 'admin_district' || user.role === 'user_district')) {
         mainNavItems.push({
             title: 'Flux TopoManager',
@@ -48,10 +69,9 @@ export function AppSidebar() {
         });
     }
 
-    // ============ CONFIGURATION (Admin uniquement) ============
+    // Configuration
     const configNavItems: NavItem[] = [];
 
-    // Gestion des localisations - accessible aux super_admin, central_user et admin_district
     if (user && (user.role === 'super_admin' || user.role === 'admin_district' || user.role === 'central_user')) {
         configNavItems.push({
             title: 'Localisations',
@@ -60,7 +80,6 @@ export function AppSidebar() {
         });
     }
 
-    // Logs d'activité - super_admin et admin_district
     if (user && (user.role === 'super_admin' || user.role === 'admin_district' || user.role === 'central_user')) {
         configNavItems.push({
             title: 'Logs d\'activité',
@@ -69,7 +88,6 @@ export function AppSidebar() {
         });
     }
 
-    // Gestion des utilisateurs - super_admin et admin_district
     if (user && (user.role === 'super_admin' || user.role === 'admin_district')) {
         configNavItems.push({
             title: 'Utilisateurs',
@@ -78,7 +96,6 @@ export function AppSidebar() {
         });
     }
 
-    // ============ FOOTER (Documentation) ============
     const footerNavItems: NavItem[] = [
         {
             title: 'Repository',
@@ -92,7 +109,6 @@ export function AppSidebar() {
         },
     ];
 
-    // Déterminer le badge de rôle
     const getRoleBadge = () => {
         if (!user) return null;
         
@@ -127,46 +143,51 @@ export function AppSidebar() {
     };
 
     return (
-        <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-                
-                {/* Badge de rôle sous le logo */}
-                <div className="px-3 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
-                    {getRoleBadge()}
-                </div>
-            </SidebarHeader>
-
-            <SidebarContent>
-                {/* Navigation principale */}
-                <NavMain items={mainNavItems} />
-                
-                {/* Séparateur si items de configuration */}
-                {configNavItems.length > 0 && (
-                    <div className="px-3 py-3">
-                        <Separator />
+        <>
+            <Sidebar collapsible="icon" variant="inset">
+                <SidebarHeader>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton size="lg" asChild>
+                                <Link href="/dashboard" prefetch>
+                                    <AppLogo />
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                    
+                    <div className="px-3 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
+                        {getRoleBadge()}
                     </div>
-                )}
-                
-                {/* Section Configuration (si items disponibles) */}
-                {configNavItems.length > 0 && (
-                    <div>
-                        <NavMain items={configNavItems} />
-                    </div>
-                )}
-            </SidebarContent>
+                </SidebarHeader>
 
-            <SidebarFooter>
-                <NavUser />
-            </SidebarFooter>
-        </Sidebar>
+                <SidebarContent>
+                    <NavMain items={mainNavItems} />
+                    
+                    {configNavItems.length > 0 && (
+                        <div className="px-3 py-3">
+                            <Separator />
+                        </div>
+                    )}
+                    
+                    {configNavItems.length > 0 && (
+                        <div>
+                            <NavMain items={configNavItems} />
+                        </div>
+                    )}
+                </SidebarContent>
+
+                <SidebarFooter>
+                    <NavUser />
+                </SidebarFooter>
+            </Sidebar>
+
+            <ComingSoonDialog
+                open={showComingSoonDialog}
+                onClose={() => setShowComingSoonDialog(false)}
+                featureName="Flux TopoManager"
+                description="L'intégration avec TopoManager pour la synchronisation des données terrain est en cours de développement."
+            />
+        </>
     );
 }

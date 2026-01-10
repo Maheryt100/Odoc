@@ -38,7 +38,7 @@ export default function DashboardIndex({ kpis, charts, alerts, recentActivity }:
                             </h1>
                             <Badge variant="outline" className="gap-1.5 text-xs">
                                 <Calendar className="h-3 w-3" />
-                                12 derniers mois
+                                
                             </Badge>
                         </div>
                     </div>

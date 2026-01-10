@@ -1,5 +1,4 @@
 // resources/js/pages/TopoFlux/components/FilePreviewDialog.tsx
-// ✅ VERSION CORRIGÉE - CLÉS UNIQUES GARANTIES
 
 import {
     Dialog,

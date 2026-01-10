@@ -170,7 +170,7 @@ export default function ProprieteCreate({
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs sm:text-sm font-medium">Titre mère</Label>
+                                <Label className="text-xs sm:text-sm font-medium">Titre mère (format : 12.345-A)</Label>
                                 <Input
                                     value={data.titre_mere}
                                     onChange={(e) => onChange('titre_mere', e.target.value)}
@@ -191,7 +191,7 @@ export default function ProprieteCreate({
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-xs sm:text-sm font-medium">Titre</Label>
+                        <Label className="text-xs sm:text-sm font-medium">Titre  (format : 12.345-A)</Label>
                         <Input
                             value={data.titre}
                             onChange={(e) => onChange('titre', e.target.value)}
@@ -229,7 +229,7 @@ export default function ProprieteCreate({
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-xs sm:text-sm font-medium">Numero FNº</Label>
+                        <Label className="text-xs sm:text-sm font-medium">Numero FNº  (format : 12-A/26)</Label>
                         <Input
                             value={data.numero_FN}
                             onChange={(e) => onChange('numero_FN', e.target.value)}

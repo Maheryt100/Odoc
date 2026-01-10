@@ -74,6 +74,7 @@ export default function DossierForm({
         date_descente_debut: dossier?.date_descente_debut || '',
         date_descente_fin: dossier?.date_descente_fin || '',
         date_ouverture: dossier?.date_ouverture || '',
+        date_sensibilisation: dossier?.date_sensibilisation || '',
         circonscription: dossier?.circonscription || '',
         id_district: dossier?.id_district || 0,
     });
@@ -361,14 +362,25 @@ export default function DossierForm({
                                 )}
                             </div>
 
-                            {/* Date d'ouverture */}
-                            <DateField
-                                label="Date d'ouverture"
-                                value={data.date_ouverture}
-                                onChange={(val) => setData('date_ouverture', val)}
-                                error={errors.date_ouverture}
-                                helperText="Date officielle d'ouverture du dossier"
-                            />
+                            {/* Date d'ouverture + Date de sensibilisation */}
+                            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+                                <DateField
+                                    label="Date d'ouverture"
+                                    value={data.date_ouverture}
+                                    onChange={(val) => setData('date_ouverture', val)}
+                                    error={errors.date_ouverture}
+                                    helperText="Date officielle d'ouverture du dossier"
+                                />
+
+                                <DateField
+                                    label="Date de sensibilisation"
+                                    value={data.date_sensibilisation}
+                                    onChange={(val) => setData('date_sensibilisation', val)}
+                                    error={errors.date_sensibilisation}
+                                    helperText="Session de sensibilisation (optionnel)"
+                                    required={false}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -781,6 +793,7 @@ function DateField({
     min,
     max,
     helperText,
+    required = true,
 }: {
     label: string;
     value: string;
@@ -789,6 +802,7 @@ function DateField({
     min?: string;
     max?: string;
     helperText?: string;
+    required?: boolean;
 }) {
     return (
         <div className="space-y-2">

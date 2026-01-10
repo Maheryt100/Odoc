@@ -185,25 +185,40 @@ return new class extends Migration
         
         Schema::create('dossiers', function (Blueprint $table) {
             $table->id();
+
             $table->string('nom_dossier', 100);
             $table->unsignedInteger('numero_ouverture')->unique();
+
             $table->date('date_descente_debut');
             $table->date('date_descente_fin');
+
             $table->string('type_commune', 50);
             $table->string('commune', 100);
             $table->string('fokontany', 100);
             $table->string('circonscription', 100);
-            $table->foreignId('id_district')->constrained('districts')->onDelete('cascade');
-            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
-            
-            // Gestion de l'ouverture/fermeture du dossier
+
+            $table->foreignId('id_district')
+                ->constrained('districts')
+                ->onDelete('cascade');
+
+            $table->foreignId('id_user')
+                ->constrained('users')
+                ->onDelete('cascade');
+                
             $table->date('date_ouverture')->nullable();
+            $table->date('date_sensibilisation')->nullable();
+
             $table->date('date_fermeture')->nullable();
-            $table->foreignId('closed_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('closed_by')
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null');
+
             $table->text('motif_fermeture')->nullable();
-            
+
             $table->timestamps();
-            
+
+            // Index
             $table->index('nom_dossier');
             $table->index('numero_ouverture');
             $table->index('id_district');
@@ -211,7 +226,9 @@ return new class extends Migration
             $table->index(['id_district', 'numero_ouverture']);
             $table->index('date_fermeture');
             $table->index(['id_district', 'date_fermeture']);
+            $table->index('date_sensibilisation');
         });
+
 
         Schema::create('proprietes', function (Blueprint $table) {
             $table->id();

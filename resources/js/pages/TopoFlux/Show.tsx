@@ -1,5 +1,4 @@
 // resources/js/pages/TopoFlux/Show.tsx
-// ✅ VERSION CORRIGÉE - CLÉS UNIQUES ET STRUCTURE AMÉLIORÉE
 
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';

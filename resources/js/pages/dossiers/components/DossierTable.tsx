@@ -335,7 +335,7 @@ function DossierActions({ dossier, permissions, docTooltip, onDelete }: DossierA
                 <DropdownMenuItem asChild>
                     <Link href={route('demandes.resume', dossier.id)} className="flex items-center text-sm">
                         <FileText className="mr-2 h-4 w-4" />
-                        Résumé
+                        Demandes
                     </Link>
                 </DropdownMenuItem>
                 

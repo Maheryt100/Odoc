@@ -225,7 +225,7 @@ export default function PiecesJointesIndex({
                             </div>
                             <div className="min-w-0">
                                 <h2 className="text-sm sm:text-lg font-bold leading-tight truncate">
-                                    {title}
+                                    Pièces jointes
                                 </h2>
                                 <p className="text-xs text-muted-foreground hidden sm:block">
                                     {totalCount} document{totalCount > 1 ? 's' : ''}
@@ -260,7 +260,7 @@ export default function PiecesJointesIndex({
                     <div className="relative mb-3">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Rechercher un document..."
+                            placeholder="Rechercher une pièce jointe..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-8 sm:pl-9 h-8 sm:h-9 text-sm"

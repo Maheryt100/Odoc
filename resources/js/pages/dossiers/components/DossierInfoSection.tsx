@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
     Lock, LockOpen, Pencil, LandPlot, MapPin, Calendar, 
-    Building2, Hash, User, Clock, AlertCircle, MoreVertical
+    Building2, Hash, User, Clock, AlertCircle, MoreVertical,
+    Users
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -259,8 +260,9 @@ export default function DossierInfoSection({
                         />
                     </div>
 
-                    {/* Dates */}
+                    {/* SECTION DATES - Affichage simple en ligne */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        {/* Dates de descente */}
                         <div className="p-3 bg-orange-50/50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900">
                             <div className="flex items-start gap-2">
                                 <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
@@ -279,6 +281,7 @@ export default function DossierInfoSection({
                             </div>
                         </div>
 
+                        {/* Date d'ouverture */}
                         <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg border border-indigo-100 dark:border-indigo-900">
                             <div className="flex items-start gap-2">
                                 <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
@@ -291,6 +294,24 @@ export default function DossierInfoSection({
                                 </div>
                             </div>
                         </div>
+
+                        {/*  Date de sensibilisation  */}
+                        {dossier.date_sensibilisation && (
+                            <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900 sm:col-span-2">
+                                <div className="flex items-start gap-2">
+                                    <Users className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-muted-foreground mb-1">Sensibilisation</p>
+                                        <p className="text-xs sm:text-sm font-semibold">
+                                            {formatDate(dossier.date_sensibilisation)}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {getDaysSince(dossier.date_sensibilisation)} jour{getDaysSince(dossier.date_sensibilisation) > 1 ? 's' : ''} écoulés
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Statistiques  */}

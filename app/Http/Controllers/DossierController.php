@@ -105,6 +105,7 @@ class DossierController extends Controller
             'date_descente_debut' => 'required|date',
             'date_descente_fin' => 'required|date|after_or_equal:date_descente_debut',
             'date_ouverture' => 'required|date',
+            'date_sensibilisation' => 'nullable|date',
             'id_district' => 'required|numeric|exists:districts,id',
             'numero_ouverture' => 'required|integer|min:1',
         ]);
@@ -237,6 +238,7 @@ class DossierController extends Controller
                 'date_descente_debut' => $dossier->date_descente_debut,
                 'date_descente_fin' => $dossier->date_descente_fin,
                 'date_ouverture' => $dossier->date_ouverture,
+                'date_sensibilisation' => $dossier->date_sensibilisation,
                 'date_fermeture' => $dossier->date_fermeture,
                 'closed_by' => $dossier->closed_by,
                 'motif_fermeture' => $dossier->motif_fermeture,
@@ -323,6 +325,7 @@ class DossierController extends Controller
             'date_descente_debut' => 'required|date',
             'date_descente_fin' => 'required|date|after_or_equal:date_descente_debut',
             'date_ouverture' => 'required|date', 
+            'date_sensibilisation' => 'nullable|date',
             'circonscription' => 'required|string|max:255',
             'id_district' => 'required|exists:districts,id',
             'numero_ouverture' => 'required|integer|min:1',

@@ -27,8 +27,12 @@ export interface NavItem {
     title: string;
     href: string;
     icon?: LucideIcon | null;
+    onClick?: (e: React.MouseEvent) => void;
     isActive?: boolean;
     children?: NavItem[];
+    disabled?: boolean;
+    external?: boolean;
+    items?: NavItem[];
 }
 
 export interface SharedData {
@@ -242,6 +246,7 @@ export interface Dossier {
     date_descente_debut: string;
     date_descente_fin: string;
     date_ouverture: string;
+    date_sensibilisation: string | null;
     date_fermeture: string | null;
     closed_by: number | null;
     motif_fermeture: string | null;

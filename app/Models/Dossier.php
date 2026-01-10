@@ -24,6 +24,7 @@ class Dossier extends Model
         'date_descente_debut',
         'date_descente_fin',
         'date_ouverture',
+        'date_sensibilisation', 
         'date_fermeture',
         'closed_by',
         'motif_fermeture',
@@ -49,6 +50,7 @@ class Dossier extends Model
         'date_descente_debut' => 'date',
         'date_descente_fin' => 'date',
         'date_ouverture' => 'date',
+        'date_sensibilisation' => 'date',
         'date_fermeture' => 'date',
         'numero_ouverture' => 'integer',
     ];
